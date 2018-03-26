@@ -1,0 +1,18 @@
+[package]
+
+name = "plygui-gtk"
+version = "0.0.1"
+authors = [ "Your name <you@example.com>" ]
+
+[lib]
+name = "plygui_gtk"
+path = "src/lib.rs"
+
+[dependencies]
+plygui-api = {version = "0.0.1", path = "../plygui-api"}
+gtk = { version = "0.4.0", features = ["v3_10"] }
+gdk = { version = "0.8.0", features = ["v3_10"] }
+lazy_static = {version = "~1.0"}
+
+[features]
+markup = ["plygui-api/markup"]
