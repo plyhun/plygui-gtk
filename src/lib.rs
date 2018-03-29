@@ -5,18 +5,22 @@ extern crate lazy_static;
 
 extern crate gtk;
 extern crate gdk;
+extern crate glib;
+extern crate gobject_sys;
+extern crate libc;
+extern crate pango;
 
 #[macro_use]
 pub mod common;
 
 mod application;
 mod window;
-//mod button;
+mod button;
 //mod layout_linear;
 
 pub use self::application::Application;
 pub use self::window::Window;
-//pub use self::button::Button;
+pub use self::button::Button;
 //pub use self::layout_linear::LinearLayout;
 
 /*#[cfg(feature = "markup")]

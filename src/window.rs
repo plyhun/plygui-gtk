@@ -1,8 +1,7 @@
 use super::*;
-use super::common::*;
 
 use gtk::prelude::*;
-use gtk::{Window as GtkWindow, WindowType};
+use gtk::{Window as GtkWindow, WindowType, ResizeMode, Fixed, Rectangle, Widget};
 
 use plygui_api::{development, ids, types, callbacks};
 use plygui_api::traits::{UiControl, UiWindow, UiSingleContainer, UiMember, UiContainer, UiHasLabel};
@@ -16,6 +15,9 @@ pub struct Window {
 	base: development::UiMemberCommon,
 	
     window: GtkWindow,
+    frame: Fixed,
+    
+    size: (i32, i32),
     
     child: Option<Box<UiControl>>,
     h_resize: Option<callbacks::Resize>,
@@ -39,22 +41,33 @@ impl Window {
                     fn_size: size,
                 }
             ),
+	        size: (0, 0),
 	        window: GtkWindow::new(WindowType::Toplevel),
+	        frame: Fixed::new(),
 	        child: None,
 	        h_resize: None,
         });
+        {
+        	let ptr = window.as_ref() as *const _ as *mut std::os::raw::c_void;
+        	common::set_pointer(&mut window.window.clone().upcast::<Widget>(), ptr);
+        }
         window.set_label(title);
-        match start_size {
+        window.window.add(&window.frame);
+        window.size = match start_size {
 	        types::WindowStartSize::Exact(w, h) => {
-		        window.window.set_default_size(w as i32, h as i32);
+		        (w as i32, h as i32)
 	        }
 	        types::WindowStartSize::Fullscreen => {
 	        	use gdk::ScreenExt;
 	        	let screen = window.window.get_screen().unwrap();
-	        	window.window.set_default_size(screen.get_width(), screen.get_height());
+	        	(screen.get_width(), screen.get_height())
 	        }
-        }
+        };
+        window.window.set_size_request(window.size.0, window.size.1);
+        window.window.connect_size_allocate(on_resize_move);
         window.window.show();
+        window.frame.show();
+        window.window.set_resize_mode(ResizeMode::Immediate);
         window
     }
 }
@@ -79,37 +92,34 @@ impl UiWindow for Window {
 
 impl UiSingleContainer for Window {
 	fn set_child(&mut self, mut child: Option<Box<UiControl>>) -> Option<Box<UiControl>> {
-		/*let mut old = self.child.take();
+		let mut old = self.child.take();
         if let Some(old) = old.as_mut() {
             old.on_removed_from_container(self);
         }
         if let Some(new) = child.as_mut() {
         	unsafe {
-        		let mut base: &mut QtControlBase = common::cast_uicommon_to_qtcommon_mut(mem::transmute(new.as_base_mut()));		
-				self.window.as_mut().set_central_widget(base.widget.as_mut_ptr());
+        		let mut base = common::cast_uicommon_to_gtkcommon_mut(mem::transmute(new.as_base_mut()));
+        		self.window.get_child().unwrap().downcast::<Fixed>().unwrap().add(&base.widget);
         	}
             new.on_added_to_container(self, 0, 0);
         } else {
-        	unsafe {
-        		self.window.as_mut().set_central_widget(QWidget::new().into_raw());
-        	}
+        	for child in self.frame.get_children().as_slice() {
+        		self.frame.remove(child);
+    		}
         }
         self.child = child;
 
-        old*/
-		unimplemented!();
-    }
+        old
+	}
     fn child(&self) -> Option<&UiControl> {
-        //self.child.as_ref().map(|c| c.as_ref())
-        unimplemented!();
+        self.child.as_ref().map(|c| c.as_ref())
     }
     fn child_mut(&mut self) -> Option<&mut UiControl> {
-        /*if let Some(child) = self.child.as_mut() {
+        if let Some(child) = self.child.as_mut() {
             Some(child.as_mut())
         } else {
             None
-        }*/
-        unimplemented!();
+        }
     }
     fn as_container(&self) -> &UiContainer {
     	self
@@ -121,19 +131,19 @@ impl UiSingleContainer for Window {
 
 impl UiContainer for Window {
     fn find_control_by_id_mut(&mut self, id_: ids::Id) -> Option<&mut UiControl> {
-        /*if let Some(child) = self.child.as_mut() {
+        if let Some(child) = self.child.as_mut() {
             if let Some(c) = child.is_container_mut() {
                 return c.find_control_by_id_mut(id_);
             }
-        }*/
+        }
         None
     }
     fn find_control_by_id(&self, id_: ids::Id) -> Option<&UiControl> {
-        /*if let Some(child) = self.child.as_ref() {
+        if let Some(child) = self.child.as_ref() {
             if let Some(c) = child.is_container() {
                 return c.find_control_by_id(id_);
             }
-        }*/
+        }
         None
     }
     fn is_single_mut(&mut self) -> Option<&mut UiSingleContainer> {
@@ -153,11 +163,11 @@ impl UiContainer for Window {
 impl UiMember for Window {
     fn set_visibility(&mut self, visibility: types::Visibility) {
         self.base.visibility = visibility;
-        /*if types::Visibility::Visible == visibility {
-            self.window.slots().set_visible();
+        if types::Visibility::Visible == visibility {
+            self.window.show();
         } else {
-            self.window.slots().set_hidden();
-        }*/
+            self.window.hide();
+        }
     }
     fn visibility(&self) -> types::Visibility {
         self.base.visibility
@@ -171,8 +181,7 @@ impl UiMember for Window {
         
     }
 	unsafe fn native_id(&self) -> usize {
-    	//self.window.win_id() as usize
-    	unimplemented!();
+    	common::pointer(&self.window.clone().upcast::<Widget>()) as usize
     }
     
     fn is_control_mut(&mut self) -> Option<&mut UiControl> {
@@ -188,7 +197,26 @@ impl UiMember for Window {
     	self.base.as_mut()
     }
 }
-
+fn on_resize_move(this: &GtkWindow, allo: &Rectangle) {
+	let mut window = this.clone().upcast::<Widget>();
+	let window = common::cast_gtk_widget_to_uimember_mut::<Window>(&mut window);
+	if let Some(window) = window {
+		if window.size.0 != allo.width || window.size.1 != allo.height {
+			use std::cmp::max;
+			
+			window.size = (max(0, allo.width), max(0, allo.height));
+			if let Some(ref mut child) = window.child {
+	            child.measure(window.size.0 as u16, window.size.1 as u16);
+	            child.draw(Some((0, 0)));
+	        }
+			if let Some(ref mut cb) = window.h_resize {
+	            let mut w2 = this.clone().upcast::<Widget>();
+				let mut w2 = common::cast_gtk_widget_to_uimember_mut::<Window>(&mut w2).unwrap();
+				(cb.as_mut())(w2, window.size.0 as u16, window.size.1 as u16);
+	        }
+		}
+	}
+}
 unsafe fn is_control(_: &development::UiMemberCommon) -> Option<&development::UiControlCommon> {
     None
 }

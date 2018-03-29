@@ -10,9 +10,13 @@ path = "src/lib.rs"
 
 [dependencies]
 plygui-api = {version = "0.0.1", path = "../plygui-api"}
-gtk = { version = "0.4.0", features = ["v3_10"] }
-gdk = { version = "0.8.0", features = ["v3_10"] }
-lazy_static = {version = "~1.0"}
+gtk = { version = "^0.4.0", features = ["v3_10"] }
+gdk = { version = "^0.8.0", features = ["v3_10"] }
+glib = { version = "^0.5.0" }
+gobject-sys = { version = "^0.6.0" }
+lazy_static = { version = "^1.0" }
+libc = { version = "^0.2" }
+pango = { version = "^0.4" }
 
 [features]
 markup = ["plygui-api/markup"]
