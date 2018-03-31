@@ -15,7 +15,7 @@ pub struct Window {
 	base: development::UiMemberCommon,
 	
     window: GtkWindow,
-    frame: Fixed,
+    frame: reckless::RecklessFixed,
     
     size: (i32, i32),
     
@@ -29,8 +29,6 @@ impl Window {
                       start_size: types::WindowStartSize,
                       has_menu: bool)
                       -> Box<Window> {
-        use gtk::GtkWindowExt;
-                      	
         let mut window = Box::new(Window {
 	        base: development::UiMemberCommon::with_params(
 	            types::Visibility::Visible,
@@ -43,7 +41,7 @@ impl Window {
             ),
 	        size: (0, 0),
 	        window: GtkWindow::new(WindowType::Toplevel),
-	        frame: Fixed::new(),
+	        frame: reckless::RecklessFixed::new(),
 	        child: None,
 	        h_resize: None,
         });

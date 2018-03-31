@@ -3,6 +3,7 @@
 name = "plygui-gtk"
 version = "0.0.1"
 authors = [ "Your name <you@example.com>" ]
+build = "build.rs"
 
 [lib]
 name = "plygui_gtk"
@@ -10,13 +11,19 @@ path = "src/lib.rs"
 
 [dependencies]
 plygui-api = {version = "0.0.1", path = "../plygui-api"}
-gtk = { version = "^0.4.0", features = ["v3_10"] }
-gdk = { version = "^0.8.0", features = ["v3_10"] }
-glib = { version = "^0.5.0" }
-gobject-sys = { version = "^0.6.0" }
+gtk = { version = "^0.4", features = ["v3_10"] }
+gdk = { version = "^0.8", features = ["v3_10"] }
+glib = { version = "^0.5" }
+glib-sys = { version = "^0.6" }
+gobject-sys = { version = "^0.6" }
+gtk-sys = { version = "^0.6" }
 lazy_static = { version = "^1.0" }
 libc = { version = "^0.2" }
 pango = { version = "^0.4" }
+
+[build-dependencies]
+cc = { version = "^1.0" }
+pkg-config = { version = "^0.3" }
 
 [features]
 markup = ["plygui-api/markup"]
