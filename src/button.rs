@@ -1,6 +1,6 @@
 use super::*;
 
-use gtk::{Cast, Object, Widget, WidgetExt, Button as GtkButton, ButtonExt, Bin, BinExt, Label, LabelExt, Fixed, FixedExt};
+use gtk::{Cast, Widget, WidgetExt, Button as GtkButton, ButtonExt, Bin, BinExt, Label, LabelExt, Fixed, FixedExt, Rectangle};
 use pango::LayoutExt;
 
 use plygui_api::{layout, types, development, callbacks};
@@ -40,7 +40,12 @@ impl Button {
         	let ptr = btn.as_ref() as *const _ as *mut std::os::raw::c_void;
         	btn.base.set_pointer(ptr);
         }
-        
+        {
+        	let button = btn.base.widget.clone().downcast::<GtkButton>().unwrap();
+			button.connect_clicked(on_click);
+        }
+        btn.set_layout_padding(layout::BoundarySize::AllTheSame(DEFAULT_PADDING).into());
+        btn.base.widget.connect_size_allocate(on_resize_move);
         btn
     }
 }
@@ -173,12 +178,12 @@ impl UiControl for Button {
     	
     	fill_from_markup_base!(self, markup, registry, Button, [MEMBER_ID_BUTTON, MEMBER_TYPE_BUTTON]);
     	fill_from_markup_label!(self, markup);
-    	//fill_from_markup_callbacks!(self, markup, registry, ["on_click" => FnMut(&mut UiButton)]);
+    	fill_from_markup_callbacks!(self, markup, registry, ["on_click" => FnMut(&mut UiButton)]);
     	
-    	if let Some(on_click) = markup.attributes.get("on_click") {
+    	/*if let Some(on_click) = markup.attributes.get("on_click") {
     		let callback: callbacks::Click = registry.pop_callback(on_click.as_attribute()).unwrap();
     		self.on_click(Some(callback));
-    	}
+    	}*/
     }
     fn as_has_layout(&self) -> &UiHasLayout {
     	self
@@ -268,7 +273,7 @@ impl development::UiDrawable for Button {
                 (max(0, w) as u16, max(0, h) as u16)
             },
         };
-        (self.base.measured_size.0 as u16, self.base.measured_size.1 as i32 as u16, self.base.measured_size != old_size)
+    	(self.base.measured_size.0 as u16, self.base.measured_size.1 as i32 as u16, self.base.measured_size != old_size)
     }
 }
 
@@ -282,24 +287,27 @@ impl_is_control!(Button);
 impl_size!(Button);
 impl_member_id!(MEMBER_ID_BUTTON);
 
-/*fn event_handler(object: &mut QObject, event: &QEvent) -> bool {
-	unsafe {
-		match event.type_() {
-			QEventType::Resize => {
-				let ptr = object.property(PROPERTY.as_ptr() as *const i8).to_u_long_long();
-				if ptr != 0 {
-					use std::mem;
-					
-					let button: &mut Button = mem::transmute(ptr);
-					let (width,height) = button.size();
-					if let Some(ref mut cb) = button.base.h_resize {
-		                let w2: &mut Button = mem::transmute(ptr);
-		                (cb.as_mut())(w2, width, height);
-		            }
-				}
-			},
-			_ => {},
-		} 
-		false
+fn on_resize_move(this: &Widget, allo: &Rectangle) {
+	let mut b = this.clone().upcast::<Widget>();
+	let b = common::cast_gtk_widget_to_uimember_mut::<Button>(&mut b).unwrap();
+	if b.base.measured_size.0 as i32 != allo.width || b.base.measured_size.1 as i32 != allo.height {
+		use std::cmp::max;
+		
+		b.base.measured_size = (max(0, allo.width) as u16, max(0, allo.height) as u16);
+		if let Some(ref mut cb) = b.base.h_resize {
+            let mut w2 = this.clone().upcast::<Widget>();
+			let mut w2 = common::cast_gtk_widget_to_uimember_mut::<Button>(&mut w2).unwrap();
+			(cb.as_mut())(w2, b.base.measured_size.0 as u16, b.base.measured_size.1 as u16);
+        }
 	}
-}*/
+}
+fn on_click(this: &GtkButton) {
+	let mut b = this.clone().upcast::<Widget>();
+	let b = common::cast_gtk_widget_to_uimember_mut::<Button>(&mut b).unwrap();
+	if let Some(ref mut cb) = b.h_left_clicked {
+        let mut w2 = this.clone().upcast::<Widget>();
+		let mut w2 = common::cast_gtk_widget_to_uimember_mut::<Button>(&mut w2).unwrap();
+		(cb.as_mut())(w2);
+    }
+}
+

@@ -61,7 +61,7 @@ impl Window {
 	        	(screen.get_width(), screen.get_height())
 	        }
         };
-        window.window.set_size_request(window.size.0, window.size.1);
+        window.window.set_default_size(window.size.0, window.size.1);
         window.window.connect_size_allocate(on_resize_move);
         window.window.show();
         window.frame.show();

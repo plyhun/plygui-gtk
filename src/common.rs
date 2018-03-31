@@ -59,7 +59,10 @@ impl GtkControlBase {
     pub fn set_visibility(&mut self, visibility: types::Visibility) {
         if self.control_base.member_base.visibility != visibility {
             self.control_base.member_base.visibility = visibility;
-
+			match self.control_base.member_base.visibility {
+				types::Visibility::Visible => self.widget.show(),
+				_ => self.widget.hide(),
+			}
         }
     }
     pub fn visibility(&self) -> types::Visibility {
