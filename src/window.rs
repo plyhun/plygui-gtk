@@ -92,6 +92,9 @@ impl UiSingleContainer for Window {
 	fn set_child(&mut self, mut child: Option<Box<UiControl>>) -> Option<Box<UiControl>> {
 		let mut old = self.child.take();
         if let Some(old) = old.as_mut() {
+            for child in self.frame.get_children().as_slice() {
+        		self.frame.remove(child);
+    		}
             old.on_removed_from_container(self);
         }
         if let Some(new) = child.as_mut() {
@@ -100,11 +103,7 @@ impl UiSingleContainer for Window {
         		self.window.get_child().unwrap().downcast::<Fixed>().unwrap().add(&base.widget);
         	}
             new.on_added_to_container(self, 0, 0);
-        } else {
-        	for child in self.frame.get_children().as_slice() {
-        		self.frame.remove(child);
-    		}
-        }
+        } 
         self.child = child;
 
         old

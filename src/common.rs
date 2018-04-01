@@ -72,10 +72,26 @@ impl GtkControlBase {
         self.control_base.member_base.id
     }
     pub fn parent(&self) -> Option<&types::UiMemberBase> {
-        self.widget.get_parent().map(|w| cast_gtk_widget(&w).unwrap())
+    	if let Some(w) = self.widget.get_parent() {
+	    	if pointer(&w).is_null() {
+	        	w.get_parent().map(|w| cast_gtk_widget(&w).unwrap())
+        	} else {
+	        	Some(cast_gtk_widget(&w).unwrap())
+        	}
+    	} else {
+	    	None
+    	}
     }
     pub fn parent_mut(&mut self) -> Option<&mut types::UiMemberBase> {
-        self.widget.get_parent().map(|mut w| cast_gtk_widget_mut(&mut w).unwrap())
+        if let Some(mut w) = self.widget.get_parent() {
+	    	if pointer(&w).is_null() {
+	        	w.get_parent().map(|mut w| cast_gtk_widget_mut(&mut w).unwrap())
+        	} else {
+	        	Some(cast_gtk_widget_mut(&mut w).unwrap())
+        	}
+    	} else {
+	    	None
+    	}
     }
     pub fn root(&self) -> Option<&types::UiMemberBase> {
         self.widget.get_toplevel().map(|w| cast_gtk_widget(&w).unwrap())
@@ -90,8 +106,12 @@ macro_rules! impl_invalidate {
 	($typ: ty) => {
 		unsafe fn invalidate_impl(this: &mut common::GtkControlBase) {
 			use plygui_api::development::UiDrawable;
+			use gtk::WidgetExt;
 			
 			if let Some(mut parent_widget) = this.widget.get_parent() {
+				if common::pointer(&parent_widget).is_null() {
+					parent_widget = parent_widget.get_parent().unwrap();
+				}
 				if let Some(mparent) = common::cast_gtk_widget_to_common_mut(&mut parent_widget) {
 					let (pw, ph) = mparent.size();
 					let this: &mut $typ = ::std::mem::transmute(this);

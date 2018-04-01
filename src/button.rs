@@ -1,6 +1,6 @@
 use super::*;
 
-use gtk::{Cast, Widget, WidgetExt, Button as GtkButton, ButtonExt, Bin, BinExt, Label, LabelExt, Fixed, FixedExt, Rectangle};
+use gtk::{Cast, Widget, WidgetExt, Button as GtkButton, ButtonExt, Bin, BinExt, Label, LabelExt, Fixed, FixedExt, Rectangle, CssProvider, CssProviderExt, StyleContextExt};
 use pango::LayoutExt;
 
 use plygui_api::{layout, types, development, callbacks};
@@ -47,6 +47,14 @@ impl Button {
         btn.set_layout_padding(layout::BoundarySize::AllTheSame(DEFAULT_PADDING).into());
         btn.base.widget.connect_size_allocate(on_resize_move);
         btn
+    }
+    fn apply_padding(&mut self) {
+	    let (lp,tp,rp,bp) = self.base.control_base.layout.padding.into();
+			
+	    let btn = self.base.widget.clone().downcast::<GtkButton>().unwrap();   
+		let css = CssProvider::new();
+		css.load_from_data(format!("GtkButton {{ padding-left: {}px; padding-top: {}px; padding-right: {}px; padding-bottom: {}px; }}", lp, tp, rp, bp).as_bytes()).unwrap();
+		btn.get_style_context().unwrap().add_provider(&css, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
     }
 }
 
@@ -113,6 +121,7 @@ impl UiHasLayout for Button {
 	
 	fn set_layout_padding(&mut self, padding: layout::BoundarySizeArgs) {
 		self.base.control_base.layout.padding = padding.into();
+		self.apply_padding();
 		self.base.invalidate();
 	}
 	fn set_layout_margin(&mut self, margin: layout::BoundarySizeArgs) {
@@ -178,12 +187,12 @@ impl UiControl for Button {
     	
     	fill_from_markup_base!(self, markup, registry, Button, [MEMBER_ID_BUTTON, MEMBER_TYPE_BUTTON]);
     	fill_from_markup_label!(self, markup);
-    	fill_from_markup_callbacks!(self, markup, registry, ["on_click" => FnMut(&mut UiButton)]);
+    	//fill_from_markup_callbacks!(self, markup, registry, ["on_click" => FnMut(&mut UiButton)]);
     	
-    	/*if let Some(on_click) = markup.attributes.get("on_click") {
+    	if let Some(on_click) = markup.attributes.get("on_click") {
     		let callback: callbacks::Click = registry.pop_callback(on_click.as_attribute()).unwrap();
     		self.on_click(Some(callback));
-    	}*/
+    	}
     }
     fn as_has_layout(&self) -> &UiHasLayout {
     	self
@@ -234,7 +243,11 @@ impl development::UiDrawable for Button {
 			let (lm,tm,rm,bm) = self.base.control_base.layout.margin.into();
 	        self.base.widget.get_parent().unwrap().downcast::<Fixed>().unwrap().move_(&self.base.widget, coords.0 as i32 + lm, coords.1 as i32 + tm);
 			self.base.widget.set_size_request(self.base.measured_size.0 as i32 - lm - rm, self.base.measured_size.1 as i32 - rm - bm);
-			self.base.widget.show();
+			if let types::Visibility::Visible = self.base.control_base.member_base.visibility {
+				self.base.widget.show();
+			} else {
+				self.base.widget.hide();
+			}
 		}
     }
     fn measure(&mut self, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
@@ -255,7 +268,11 @@ impl development::UiDrawable for Button {
                         	let mut label = bin.get_child().unwrap().downcast::<Label>().unwrap();		
                         	label_size = label.get_layout().unwrap().get_pixel_size();			
                         }
-                        label_size.0 + lp + rp + lm + rm + 16
+                        // why the bloody hell I need these?
+                        label_size.0 += 4;
+                        label_size.1 += 4;
+                        
+                        label_size.0 + lp + rp + lm + rm
                     } 
                 };
                 let h = match self.base.control_base.layout.height {
@@ -267,6 +284,10 @@ impl development::UiDrawable for Button {
                         	let mut label = bin.get_child().unwrap().downcast::<Label>().unwrap();		
                         	label_size = label.get_layout().unwrap().get_pixel_size();	
                         }
+                        // why the bloody hell I need these?
+                        label_size.0 += 4;
+                        label_size.1 += 4;
+                        
                         label_size.1 + tp + bp + tm + bm
                     } 
                 };
