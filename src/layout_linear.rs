@@ -39,7 +39,7 @@ impl LinearLayout {
         	ll.base.set_pointer(ptr);
         }
         ll.set_layout_padding(layout::BoundarySize::AllTheSame(DEFAULT_PADDING).into());
-        ll.base.widget.connect_size_allocate(on_resize_move);
+        ll.base.widget.connect_size_allocate(on_size_allocate);
         ll
     }
 }
@@ -99,7 +99,10 @@ impl development::UiDrawable for LinearLayout {
 		}
     	if let types::Visibility::Visible = self.base.control_base.member_base.visibility {
 			self.base.widget.show();
+		} else {
+			self.base.widget.hide();
 		}
+    	self.base.dirty = false;
     }
     fn measure(&mut self, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
     	use std::cmp::max;
@@ -165,7 +168,12 @@ impl development::UiDrawable for LinearLayout {
         		(w, h)
         	}
         };
-    	(self.base.measured_size.0, self.base.measured_size.1, self.base.measured_size != old_size)
+    	self.base.dirty = self.base.measured_size != old_size;
+        (
+            self.base.measured_size.0,
+            self.base.measured_size.1,
+            self.base.dirty,
+        )
     }
 }
 
@@ -246,6 +254,7 @@ impl UiControl for LinearLayout {
     	
         let (pw, ph) = parent.draw_area_size();
         self.measure(pw, ph);
+        self.base.dirty = false;
         self.draw(Some((x, y)));
         
         let selfptr = self as *mut _ as *mut c_void;
@@ -418,19 +427,4 @@ impl_invalidate!(LinearLayout);
 impl_is_control!(LinearLayout);
 impl_size!(LinearLayout);
 impl_member_id!(MEMBER_ID_LAYOUT_LINEAR);
-
-fn on_resize_move(this: &Widget, allo: &Rectangle) {
-	let mut ll = this.clone().upcast::<Widget>();
-	let ll = common::cast_gtk_widget_to_uimember_mut::<LinearLayout>(&mut ll).unwrap();
-	if ll.base.measured_size.0 as i32 != allo.width || ll.base.measured_size.1 as i32 != allo.height {
-		use std::cmp::max;
-		
-		ll.base.measured_size = (max(0, allo.width) as u16, max(0, allo.height) as u16);
-		if let Some(ref mut cb) = ll.base.h_resize {
-            let mut w2 = this.clone().upcast::<Widget>();
-			let mut w2 = common::cast_gtk_widget_to_uimember_mut::<LinearLayout>(&mut w2).unwrap();
-			(cb.as_mut())(w2, ll.base.measured_size.0 as u16, ll.base.measured_size.1 as u16);
-        }
-	}
-}
-
+impl_on_size_allocate!(LinearLayout);

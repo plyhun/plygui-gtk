@@ -1,28 +1,17 @@
 extern crate cc;
 extern crate pkg_config;
 
-use std::process::Command;
-
 fn main() {
-	let mut libs = unsafe {
-		String::from_utf8_unchecked(
-			Command::new("pkg-config")
-			.args(&["--cflags", "gtk+-3.0", "glib-2.0"])
-			.output()
-			.unwrap()
-			.stdout)};
-	let len = libs.len();
-	libs.split_off(len-1);
-	let libs = libs.split(" ")
-		.filter(|i| i.len()>2 && "-I" == &i[..2])
-		.map(|i| &i[2..])
-		.collect::<Vec<_>>();
-	
+	let gtk_probe = pkg_config::Config::new().atleast_version("3.0").probe("gtk+-3.0").unwrap();
+	let glib_probe = pkg_config::Config::new().atleast_version("2.0").probe("glib-2.0").unwrap();
 	
 	let mut cc_build = cc::Build::new();
 	
-	for lib in libs {
-		cc_build.include(lib);
+	for lib in gtk_probe.include_paths.as_slice() {
+		cc_build.include(lib.to_str().unwrap());
+	}
+	for lib in glib_probe.include_paths.as_slice() {
+		cc_build.include(lib.to_str().unwrap());
 	}
 	
     cc_build

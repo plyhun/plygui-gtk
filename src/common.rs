@@ -18,6 +18,7 @@ pub struct GtkControlBase {
     pub widget: Widget,
     pub coords: Option<(i32, i32)>,
     pub measured_size: (u16, u16),
+    pub dirty: bool,
     
     pub h_resize: Option<callbacks::Resize>,
     
@@ -42,6 +43,7 @@ impl GtkControlBase {
         	h_resize: None,
             coords: None,
             measured_size: (0, 0),
+            dirty: true,
             
             invalidate: invalidate
         };
@@ -222,6 +224,24 @@ macro_rules! impl_draw {
 	($typ: ty) => {
 		unsafe fn draw(&mut UiMemberBase, coords: Option<(i32, i32)>) {
 			::plygui_api::utils::base_to_impl::<$typ>(this).draw(coords)
+		}
+	}
+}
+#[macro_export]
+macro_rules! impl_on_size_allocate {
+	($typ: ty) => {
+		fn on_size_allocate(this: &Widget, _allo: &Rectangle) {
+			let mut ll = this.clone().upcast::<Widget>();
+			let ll = common::cast_gtk_widget_to_uimember_mut::<$typ>(&mut ll).unwrap();
+			
+			if ll.base.dirty {
+				ll.base.dirty = false;
+				if let Some(ref mut cb) = ll.base.h_resize {
+		            let mut w2 = this.clone().upcast::<Widget>();
+					let mut w2 = common::cast_gtk_widget_to_uimember_mut::<$typ>(&mut w2).unwrap();
+					(cb.as_mut())(w2, ll.base.measured_size.0 as u16, ll.base.measured_size.1 as u16);
+		        }
+			}
 		}
 	}
 }

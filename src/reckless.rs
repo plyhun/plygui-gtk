@@ -46,7 +46,7 @@ glib_wrapper! {
          Container => gtk_ffi::GtkContainer,
          Widget => gtk_ffi::GtkWidget,
          Buildable => gtk_ffi::GtkBuildable,
-     ];
+    ];
 
     match fn {
         get_type => || ffi::reckless_fixed_get_type(),

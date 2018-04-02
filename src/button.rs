@@ -45,7 +45,7 @@ impl Button {
 			button.connect_clicked(on_click);
         }
         btn.set_layout_padding(layout::BoundarySize::AllTheSame(DEFAULT_PADDING).into());
-        btn.base.widget.connect_size_allocate(on_resize_move);
+        btn.base.widget.connect_size_allocate(on_size_allocate);
         btn
     }
     fn apply_padding(&mut self) {
@@ -177,6 +177,7 @@ impl UiControl for Button {
     	
         let (pw, ph) = parent.draw_area_size();
         self.measure(pw, ph);
+        self.base.dirty = false;
         self.draw(Some((x, y)));
     }
     fn on_removed_from_container(&mut self, _: &UiContainer) {}	
@@ -249,6 +250,7 @@ impl development::UiDrawable for Button {
 				self.base.widget.hide();
 			}
 		}
+        self.base.dirty = false;
     }
     fn measure(&mut self, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
     	let old_size = self.base.measured_size;
@@ -294,7 +296,12 @@ impl development::UiDrawable for Button {
                 (max(0, w) as u16, max(0, h) as u16)
             },
         };
-    	(self.base.measured_size.0 as u16, self.base.measured_size.1 as i32 as u16, self.base.measured_size != old_size)
+    	self.base.dirty = self.base.measured_size != old_size;
+        (
+            self.base.measured_size.0,
+            self.base.measured_size.1,
+            self.base.dirty,
+        )
     }
 }
 
@@ -307,21 +314,8 @@ impl_invalidate!(Button);
 impl_is_control!(Button);
 impl_size!(Button);
 impl_member_id!(MEMBER_ID_BUTTON);
+impl_on_size_allocate!(Button);
 
-fn on_resize_move(this: &Widget, allo: &Rectangle) {
-	let mut b = this.clone().upcast::<Widget>();
-	let b = common::cast_gtk_widget_to_uimember_mut::<Button>(&mut b).unwrap();
-	if b.base.measured_size.0 as i32 != allo.width || b.base.measured_size.1 as i32 != allo.height {
-		use std::cmp::max;
-		
-		b.base.measured_size = (max(0, allo.width) as u16, max(0, allo.height) as u16);
-		if let Some(ref mut cb) = b.base.h_resize {
-            let mut w2 = this.clone().upcast::<Widget>();
-			let mut w2 = common::cast_gtk_widget_to_uimember_mut::<Button>(&mut w2).unwrap();
-			(cb.as_mut())(w2, b.base.measured_size.0 as u16, b.base.measured_size.1 as u16);
-        }
-	}
-}
 fn on_click(this: &GtkButton) {
 	let mut b = this.clone().upcast::<Widget>();
 	let b = common::cast_gtk_widget_to_uimember_mut::<Button>(&mut b).unwrap();
