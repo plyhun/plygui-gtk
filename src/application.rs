@@ -1,55 +1,78 @@
 use super::*;
-use super::common::*;
 
-use gtk::prelude::*;
+use plygui_api::{types, ids, controls, development};
+use plygui_api::development::HasInner;
 
-//use plygui_api::members::MEMBER_ID_APPLICATION;
-use plygui_api::traits::{UiWindow, UiApplication, UiMember};
-use plygui_api::types::WindowStartSize;
-use plygui_api::ids::Id;
+use std::mem;
 
-use std::borrow::Cow;
-
-pub struct Application {
+pub struct GtkApplication {
+	name: String,
     windows: Vec<usize>,
 }
 
-impl Application {
-    pub fn with_name(name: &str) -> Box<Application> {
-    	if gtk::init().is_err() {
+pub type Application = development::Application<GtkApplication>;
+
+impl development::ApplicationInner for GtkApplication {
+	fn with_name(name: &str) -> Box<controls::Application> {
+		if gtk::init().is_err() {
 	        panic!("Failed to initialize GTK");
 	    }
     	Box::new(
-        	Application { 
+        	development::Application::with_inner(GtkApplication { 
+        		name: name.into(),
         		windows: Vec::with_capacity(1),
-	        }
+	        }, ())
         )
-    }
-}
-
-impl UiApplication for Application {
-    fn new_window(&mut self, title: &str, size: WindowStartSize, has_menu: bool) -> Box<UiWindow> {
-        let mut w = Window::new(title, size, has_menu);
-        //self.windows.push(w.qwindow());
+	}
+	fn new_window(&mut self, title: &str, size: types::WindowStartSize, menu: types::WindowMenu) -> Box<controls::Window> {
+		use plygui_api::development::WindowInner;
+		
+		let w = window::GtkWindow::with_params(title, size, menu);
+        self.windows.push(unsafe { w.native_id() } );
         w
-    }
-    fn name<'a>(&'a self) -> Cow<'a, str> {
-        unimplemented!()
+	}
+    fn name(&self) -> ::std::borrow::Cow<str> {
+    	::std::borrow::Cow::Borrowed(self.name.as_ref())
     }
     fn start(&mut self) {
-        gtk::main();
+    	gtk::main()
     }
-    fn find_member_by_id_mut(&mut self, id: Id) -> Option<&mut UiMember> {
-    	unimplemented!()
+    fn find_member_by_id_mut(&mut self, id: ids::Id) -> Option<&mut controls::Member> {
+    	use plygui_api::controls::{SingleContainer, Member, Container};
+    	
+        for window in self.windows.as_mut_slice() {
+            let window: &mut window::Window = unsafe { mem::transmute(*window) };
+            if window.id() == id {
+                return Some(window.as_single_container_mut().as_container_mut().as_member_mut());
+            } else {
+                return window.find_control_by_id_mut(id).map(|control| {
+                    control.as_member_mut()
+                });
+            }
+        }
+        None
     }
-    fn find_member_by_id(&self, id: Id) -> Option<&UiMember> {
-    	unimplemented!()
+    fn find_member_by_id(&self, id: ids::Id) -> Option<&controls::Member> {
+    	use plygui_api::controls::{SingleContainer, Member, Container};
+    	
+    	for window in self.windows.as_slice() {
+            let window: &window::Window = unsafe { mem::transmute(*window) };
+            if window.id() == id {
+                return Some(window.as_single_container().as_container().as_member());
+            } else {
+                return window.find_control_by_id(id).map(|control| {
+                    control.as_member()
+                });
+            }
+        }
+
+        None
     }
 }
 
-impl Drop for Application {
+impl Drop for GtkApplication {
     fn drop(&mut self) {
     	gtk::main_quit();
-        Inhibit(false);
+        gtk::prelude::Inhibit(false);
     }
 }

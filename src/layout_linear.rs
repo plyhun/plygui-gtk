@@ -1,90 +1,73 @@
 use super::*;
 
-use plygui_api::{layout, ids, types, development, callbacks};
-use plygui_api::traits::{UiControl, UiHasLayout, UiMultiContainer, UiLinearLayout, UiMember, UiContainer, UiHasOrientation};
-use plygui_api::members::MEMBER_ID_LAYOUT_LINEAR;
+use plygui_api::{layout, ids, types, development, controls};
+use plygui_api::development::{HasInner, Drawable};
 
-use gtk::{Cast, Widget, WidgetExt, Fixed, FixedExt, ContainerExt, Rectangle};
+use gtk::{Cast, Widget, WidgetExt, Fixed, FixedExt, ContainerExt};
 
 use std::mem;
 use std::os::raw::c_void;
 
 const DEFAULT_PADDING: i32 = 0;
 
+pub type LinearLayout = development::Member<development::Control<development::MultiContainer<GtkLinearLayout>>>;
+
 #[repr(C)]
-pub struct LinearLayout {
-    base: common::GtkControlBase,
+pub struct GtkLinearLayout {
+    base: common::GtkControlBase<LinearLayout>,
     orientation: layout::Orientation,
-    children: Vec<Box<UiControl>>,
+    gravity_horizontal: layout::Gravity,
+    gravity_vertical: layout::Gravity,
+    children: Vec<Box<controls::Control>>,
 }
 
-impl LinearLayout {
-    pub fn new(orientation: layout::Orientation) -> Box<LinearLayout> {
-        let mut ll = Box::new(LinearLayout {
-                     base: common::GtkControlBase::with_params(
-                     	reckless::RecklessFixed::new().upcast::<Widget>(),
-                     	invalidate_impl,
-                     	development::UiMemberFunctions {
-                             fn_member_id: member_id,
-						     fn_is_control: is_control,
-						     fn_is_control_mut: is_control_mut,
-						     fn_size: size,
-                        },
-                     ),
+impl development::LinearLayoutInner for GtkLinearLayout {
+	fn with_orientation(orientation: layout::Orientation) -> Box<controls::LinearLayout> {
+		use plygui_api::controls::HasLayout;
+		
+		let mut ll = Box::new(development::Member::with_inner(development::Control::with_inner(development::MultiContainer::with_inner(GtkLinearLayout {
+                     base: common::GtkControlBase::with_gtk_widget(reckless::RecklessFixed::new().upcast::<Widget>()),
                      orientation: orientation,
-                     children: Vec::new(),
-                 });
+                     gravity_horizontal: layout::Gravity::default(),
+					    gravity_vertical: layout::Gravity::default(),
+					    children: Vec::new(),
+                 }, ()), ()), development::MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut)));
         {
         	let ptr = ll.as_ref() as *const _ as *mut std::os::raw::c_void;
-        	ll.base.set_pointer(ptr);
+        	ll.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
         }
         ll.set_layout_padding(layout::BoundarySize::AllTheSame(DEFAULT_PADDING).into());
-        ll.base.widget.connect_size_allocate(on_size_allocate);
+        ll.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.connect_size_allocate(on_size_allocate);
         ll
-    }
+	}
 }
 
-impl UiMember for LinearLayout {
-    fn set_visibility(&mut self, visibility: types::Visibility) {
-        self.base.set_visibility(visibility);
-    }
-    fn visibility(&self) -> types::Visibility {
-        self.base.visibility()
-    }
-    fn size(&self) -> (u16, u16) {
-        self.base.measured_size
-    }
-    fn on_resize(&mut self, handler: Option<callbacks::Resize>) {
-        self.base.h_resize = handler;
-    }
+impl development::MemberInner for GtkLinearLayout {
+	type Id = common::GtkWidget;
 	
-    unsafe fn native_id(&self) -> usize {
-        self.base.pointer() as usize
+    fn size(&self) -> (u16, u16) {
+    	self.base.measured_size
     }
-    fn is_control(&self) -> Option<&UiControl> {
-    	Some(self)
+    
+    fn on_set_visibility(&mut self, base: &mut development::MemberBase) {
+    	self.base.invalidate()
     }
-    fn is_control_mut(&mut self) -> Option<&mut UiControl> {
-    	Some(self)
-    } 
-    fn as_base(&self) -> &types::UiMemberBase {
-    	self.base.control_base.member_base.as_ref()
-    }
-    fn as_base_mut(&mut self) -> &mut types::UiMemberBase {
-    	self.base.control_base.member_base.as_mut()
+    
+    unsafe fn native_id(&self) -> Self::Id {
+    	self.base.widget.clone()
     }
 }
 
-impl development::UiDrawable for LinearLayout {
-	fn draw(&mut self, coords: Option<(i32, i32)>) {
-    	if coords.is_some() {
+impl development::Drawable for GtkLinearLayout {
+	fn draw(&mut self, base: &mut development::MemberControlBase, coords: Option<(i32, i32)>) {
+		if coords.is_some() {
     		self.base.coords = coords;
     	}
     	if let Some((x, y)) = self.base.coords {
-    		let orientation = self.layout_orientation();
-			let (lp,tp,_,_) = self.base.control_base.layout.padding.into();
-	    	let (lm,tm,rm,bm) = self.base.control_base.layout.margin.into();
-	    	self.base.widget.get_parent().unwrap().downcast::<Fixed>().unwrap().move_(&self.base.widget, x as i32 + lm, y as i32 + tm);
+    		let orientation = self.orientation;
+			let (lp,tp,_,_) = base.control.layout.padding.into();
+	    	let (lm,tm,rm,bm) = base.control.layout.margin.into();
+	    	self.base.widget.get_parent().unwrap().downcast::<Fixed>().unwrap().move_::<Widget>(&(self.base.widget.clone().into()), x as i32 + lm, y as i32 + tm);
 			self.base.widget.set_size_request(self.base.measured_size.0 as i32 - lm - rm, self.base.measured_size.1 as i32 - rm - bm);
 	        let mut x = x + lp + lm;
 	        let mut y = y + tp + tm;
@@ -97,25 +80,25 @@ impl development::UiDrawable for LinearLayout {
 	            }
 	        }
 		}
-    	if let types::Visibility::Visible = self.base.control_base.member_base.visibility {
+    	if let types::Visibility::Visible = base.member.visibility {
 			self.base.widget.show();
 		} else {
 			self.base.widget.hide();
 		}
     	self.base.dirty = false;
-    }
-    fn measure(&mut self, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
+	}
+    fn measure(&mut self, base: &mut development::MemberControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
     	use std::cmp::max;
     	
-    	let orientation = self.layout_orientation();
+    	let orientation = self.orientation;
     	let old_size = self.base.measured_size;
-    	let (lp,tp,rp,bp) = self.base.control_base.layout.padding.into();
-    	let (lm,tm,rm,bm) = self.base.control_base.layout.margin.into();
-    	self.base.measured_size = match self.visibility() {
+    	let (lp,tp,rp,bp) = base.control.layout.padding.into();
+    	let (lm,tm,rm,bm) = base.control.layout.margin.into();
+    	self.base.measured_size = match base.member.visibility {
         	types::Visibility::Gone => (0,0),
         	_ => {
         		let mut measured = false;
-        		let w = match self.layout_width() {
+        		let w = match base.control.layout.width {
         			layout::Size::Exact(w) => w,
         			layout::Size::MatchParent => parent_width,
         			layout::Size::WrapContent => {
@@ -138,7 +121,7 @@ impl development::UiDrawable for LinearLayout {
 	        			max(0, w as i32 + lm + rm + lp + rp) as u16
         			}
         		};
-        		let h = match self.layout_height() {
+        		let h = match base.control.layout.height {
         			layout::Size::Exact(h) => h,
         			layout::Size::MatchParent => parent_height,
         			layout::Size::WrapContent => {
@@ -175,92 +158,28 @@ impl development::UiDrawable for LinearLayout {
             self.base.dirty,
         )
     }
+    fn invalidate(&mut self, base: &mut development::MemberControlBase) {
+    	self.base.invalidate()
+    }
 }
 
-impl UiHasLayout for LinearLayout {
-	fn layout_width(&self) -> layout::Size {
-    	self.base.control_base.layout.width
-    }
-	fn layout_height(&self) -> layout::Size {
-		self.base.control_base.layout.height
-	}
-	fn layout_gravity(&self) -> layout::Gravity {
-		self.base.control_base.layout.gravity
-	}
-	fn layout_alignment(&self) -> layout::Alignment {
-		self.base.control_base.layout.alignment
-	}
-	fn layout_padding(&self) -> layout::BoundarySize {
-		self.base.control_base.layout.padding
-	}
-	fn layout_margin(&self) -> layout::BoundarySize {
-		self.base.control_base.layout.margin
-	}
-	
-	fn set_layout_padding(&mut self, padding: layout::BoundarySizeArgs) {
-		self.base.control_base.layout.padding = padding.into();
-		self.base.invalidate();
-	}
-	fn set_layout_margin(&mut self, margin: layout::BoundarySizeArgs) {
-		self.base.control_base.layout.margin = margin.into();
-		self.base.invalidate();
-	} 
-	fn set_layout_width(&mut self, width: layout::Size) {
-		self.base.control_base.layout.width = width;
-		self.base.invalidate();
-	}
-	fn set_layout_height(&mut self, height: layout::Size) {
-		self.base.control_base.layout.height = height;
-		self.base.invalidate();
-	}
-	fn set_layout_gravity(&mut self, gravity: layout::Gravity) {
-		self.base.control_base.layout.gravity = gravity;
-		self.base.invalidate();
-	}
-	fn set_layout_alignment(&mut self, alignment: layout::Alignment) {
-		self.base.control_base.layout.alignment = alignment;
-		self.base.invalidate();
-	}   
-	fn as_member(&self) -> &UiMember {
-		self
-	}
-	fn as_member_mut(&mut self) -> &mut UiMember {
-		self
+impl development::HasLayoutInner for GtkLinearLayout {
+	fn on_layout_changed(&mut self, base: &mut development::MemberBase) {
+		self.base.invalidate()
 	}
 }
 
-impl UiControl for LinearLayout {
-	fn is_container_mut(&mut self) -> Option<&mut UiContainer> {
-		Some(self)
-	}
-    fn is_container(&self) -> Option<&UiContainer> {
-    	Some(self)
-    }
-    
-    fn parent(&self) -> Option<&types::UiMemberBase> {
-        self.base.parent()
-    }
-    fn parent_mut(&mut self) -> Option<&mut types::UiMemberBase> {
-        self.base.parent_mut()
-    }
-    fn root(&self) -> Option<&types::UiMemberBase> {
-        self.base.root()
-    }
-    fn root_mut(&mut self) -> Option<&mut types::UiMemberBase> {
-        self.base.root_mut()
-    }
-    fn on_added_to_container(&mut self, parent: &UiContainer, x: i32, y: i32) {
-    	use plygui_api::development::UiDrawable;
-    	
-        let (pw, ph) = parent.draw_area_size();
-        self.measure(pw, ph);
+impl development::ControlInner for GtkLinearLayout {
+	fn on_added_to_container(&mut self, base: &mut development::MemberControlBase, parent: &controls::Container, x: i32, y: i32) {
+		let (pw, ph) = parent.draw_area_size();
+        self.measure(base, pw, ph);
         self.base.dirty = false;
-        self.draw(Some((x, y)));
+        self.draw(base, Some((x, y)));
         
         let selfptr = self as *mut _ as *mut c_void;
-        let orientation = self.layout_orientation();
-        let (lp,tp,_,_) = self.base.control_base.layout.padding.into();
-    	let (lm,tm,_,_) = self.base.control_base.layout.margin.into();
+        let orientation = self.orientation;
+        let (lp,tp,_,_) = base.control.layout.padding.into();
+    	let (lm,tm,_,_) = base.control.layout.margin.into();
         let mut x = x + lp + lm;
         let mut y = y + tp + tm;
         for ref mut child in self.children.as_mut_slice() {
@@ -272,51 +191,54 @@ impl UiControl for LinearLayout {
                 layout::Orientation::Vertical => y += yy as i32,
             }
         }
-    }
-    fn on_removed_from_container(&mut self, _: &UiContainer) {
-	    let selfptr = self as *mut _ as *mut c_void;
+	}
+    fn on_removed_from_container(&mut self, base: &mut development::MemberControlBase, parent: &controls::Container) {
+    	let selfptr = self as *mut _ as *mut c_void;
         for mut child in self.children.drain(..) {
             let self2: &mut LinearLayout = unsafe { mem::transmute(selfptr) };
             child.on_removed_from_container(self2);
         }
-    }	
-
+    }
+    
+    fn parent(&self) -> Option<&controls::Member> {
+    	self.base.parent().map(|m| m.as_member())
+    }
+    fn parent_mut(&mut self) -> Option<&mut controls::Member> {
+    	self.base.parent_mut().map(|m| m.as_member_mut())
+    }
+    fn root(&self) -> Option<&controls::Member> {
+    	self.base.root().map(|m| m.as_member())
+    }
+    fn root_mut(&mut self) -> Option<&mut controls::Member> {
+    	self.base.root_mut().map(|m| m.as_member_mut())
+    }
+    
     #[cfg(feature = "markup")]
-    fn fill_from_markup(&mut self, markup: &plygui_api::markup::Markup, registry: &mut plygui_api::markup::MarkupRegistry) {
+    fn fill_from_markup(&mut self, base: &mut development::MemberControlBase, mberarkup: &super::markup::Markup, registry: &mut super::markup::MarkupRegistry) {
     	use plygui_api::markup::MEMBER_TYPE_LINEAR_LAYOUT;
     	
-    	fill_from_markup_base!(self, markup, registry, LinearLayout, [MEMBER_ID_LAYOUT_LINEAR, MEMBER_TYPE_LINEAR_LAYOUT]);
-		fill_from_markup_children!(self, markup, registry);		
-    }
-
-    fn as_has_layout(&self) -> &UiHasLayout {
-    	self
-    }
-    fn as_has_layout_mut(&mut self) -> &mut UiHasLayout {
-    	self
+    	fill_from_markup_base!(self, markup, registry, LinearLayout, [MEMBER_TYPE_LINEAR_LAYOUT]);
+		fill_from_markup_children!(self, markup, registry);	
     }
 }
 
-impl UiHasOrientation for LinearLayout {
+impl development::HasOrientationInner for GtkLinearLayout {
 	fn layout_orientation(&self) -> layout::Orientation {
     	self.orientation
     }
-    fn set_layout_orientation(&mut self, orientation: layout::Orientation) {
+    fn set_layout_orientation(&mut self, base: &mut development::MemberBase, orientation: layout::Orientation) {
     	self.orientation = orientation;
 		self.base.invalidate();
     }
 }
 
-impl UiContainer for LinearLayout {
-    fn find_control_by_id_mut(&mut self, id_: ids::Id) -> Option<&mut UiControl> {
-        if self.as_base().id() == id_ {
-            return Some(self);
-        }
-        for child in self.children.as_mut_slice() {
-            if child.as_base().id() == id_ {
+impl development::ContainerInner for GtkLinearLayout {
+	fn find_control_by_id_mut(&mut self, id: ids::Id) -> Option<&mut controls::Control> {
+		for child in self.children.as_mut_slice() {
+            if child.as_member().id() == id {
                 return Some(child.as_mut());
             } else if let Some(c) = child.is_container_mut() {
-                let ret = c.find_control_by_id_mut(id_);
+                let ret = c.find_control_by_id_mut(id);
                 if ret.is_none() {
                     continue;
                 }
@@ -324,16 +246,13 @@ impl UiContainer for LinearLayout {
             }
         }
         None
-    }
-    fn find_control_by_id(&self, id_: ids::Id) -> Option<&UiControl> {
-        if self.as_base().id() == id_ {
-            return Some(self);
-        }
-        for child in self.children.as_slice() {
-            if child.as_base().id() == id_ {
+	}
+    fn find_control_by_id(&self, id: ids::Id) -> Option<&controls::Control> {
+    	for child in self.children.as_slice() {
+            if child.as_member().id() == id {
                 return Some(child.as_ref());
             } else if let Some(c) = child.is_container() {
-                let ret = c.find_control_by_id(id_);
+                let ret = c.find_control_by_id(id);
                 if ret.is_none() {
                     continue;
                 }
@@ -342,89 +261,76 @@ impl UiContainer for LinearLayout {
         }
         None
     }
-    fn is_multi_mut(&mut self) -> Option<&mut UiMultiContainer> {
-        Some(self)
+    fn gravity(&self) -> (layout::Gravity, layout::Gravity) {
+    	(self.gravity_horizontal, self.gravity_vertical)
     }
-    fn is_multi(&self) -> Option<&UiMultiContainer> {
-        Some(self)
+    fn set_gravity(&mut self, base: &mut development::MemberBase, w: layout::Gravity, h: layout::Gravity) {
+    	if self.gravity_horizontal != w || self.gravity_vertical != h {
+    		self.gravity_horizontal = w;
+    		self.gravity_vertical = h;
+    		self.invalidate(unsafe { mem::transmute(base) });
+    	}
     }
-    fn as_member(&self) -> &UiMember {
-    	self
-    }
-	fn as_member_mut(&mut self) -> &mut UiMember {
-		self
-	}
 }
 
-impl UiMultiContainer for LinearLayout {
+impl development::MultiContainerInner for GtkLinearLayout {
 	fn len(&self) -> usize {
-        self.children.len()
-    }
-    fn set_child_to(&mut self, index: usize, child: Box<UiControl>) -> Option<Box<UiControl>> {
-        self.children.insert(index, child);
-        unsafe {
-    		let base = common::cast_uicommon_to_gtkcommon_mut(mem::transmute(self.children.get_mut(index).unwrap().as_base_mut()));
-    		self.base.widget.clone().downcast::<Fixed>().unwrap().add(&base.widget);
-    	}
-        if (index + 1) >= self.children.len() {
+		self.children.len()
+	}
+    fn set_child_to(&mut self, base: &mut development::MemberBase, index: usize, child: Box<controls::Control>) -> Option<Box<controls::Control>> {
+    	self.children.insert(index, child);
+        let widget = common::cast_control_to_gtkwidget(self.children.get_mut(index).unwrap().as_mut());
+    	let self_widget: gtk::Widget = self.base.widget.clone().into();
+    	self_widget.downcast::<Fixed>().unwrap().add::<Widget>(&widget.into());
+    	
+    	if (index + 1) >= self.children.len() {
             return None;
         }
         Some(self.children.remove(index + 1))
     }
-    fn remove_child_from(&mut self, index: usize) -> Option<Box<UiControl>> {
-        if index < self.children.len() {
-        	let mut item = self.children.remove(index);
-        	unsafe {
-	        	let base = common::cast_uicommon_to_gtkcommon_mut(mem::transmute(item.as_base_mut()));					
-	        	self.base.widget.clone().downcast::<Fixed>().unwrap().remove(&base.widget);
-	        }
+    fn remove_child_from(&mut self, base: &mut development::MemberBase, index: usize) -> Option<Box<controls::Control>> {
+    	if index < self.children.len() {
+        	let item = self.children.remove(index);
+        	let widget = common::cast_control_to_gtkwidget(item.as_ref());					
+	        let self_widget: gtk::Widget = self.base.widget.clone().into();
+    		self_widget.downcast::<Fixed>().unwrap().remove::<Widget>(&widget.into());
+	        
 	        Some(item)
         } else {
             None
         }
     }
-    fn child_at(&self, index: usize) -> Option<&Box<UiControl>> {
-        self.children.get(index)
+    fn child_at(&self, index: usize) -> Option<&controls::Control> {
+    	self.children.get(index).map(|m| m.as_ref())
     }
-    fn child_at_mut(&mut self, index: usize) -> Option<&mut Box<UiControl>> {
-        self.children.get_mut(index)
-    }
-    fn as_container(&self) -> &UiContainer {
-    	self
-    }
-	fn as_container_mut(&mut self) -> &mut UiContainer {
-		self
-	}
-}
-
-impl UiLinearLayout for LinearLayout {
-    fn as_control(&self) -> &UiControl {
-    	self
-    }
-    fn as_control_mut(&mut self) -> &mut UiControl {
-    	self
-    }
-    fn as_multi_container(&self) -> &UiMultiContainer {
-    	self
-    }
-    fn as_multi_container_mut(&mut self) -> &mut UiMultiContainer {
-    	self
-    }
-    fn as_has_orientation(&self) -> &UiHasOrientation {
-    	self
-    }
-    fn as_has_orientation_mut(&mut self) -> &mut UiHasOrientation {
-    	self
+    fn child_at_mut(&mut self, index: usize) -> Option<&mut controls::Control> {
+    	//self.children.get_mut(index).map(|c| c.as_mut()) //the anonymous lifetime #1 does not necessarily outlive the static lifetime
+        if let Some(c) = self.children.get_mut(index) {
+        	Some(c.as_mut())
+        } else {
+        	None
+        }
     }
 }
 
 #[allow(dead_code)]
-pub(crate) fn spawn() -> Box<UiControl> {
-	LinearLayout::new(layout::Orientation::Vertical)
+pub(crate) fn spawn() -> Box<controls::Control> {
+	LinearLayout::with_orientation(layout::Orientation::Vertical).into_control()
 }
 
-impl_invalidate!(LinearLayout);
-impl_is_control!(LinearLayout);
-impl_size!(LinearLayout);
-impl_member_id!(MEMBER_ID_LAYOUT_LINEAR);
-impl_on_size_allocate!(LinearLayout);
+fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
+	let mut ll = this.clone().upcast::<Widget>();
+	let ll = common::cast_gtk_widget_to_member_mut::<LinearLayout>(&mut ll).unwrap();
+	
+	if ll.as_inner_mut().as_inner_mut().as_inner_mut().base.dirty {
+		ll.as_inner_mut().as_inner_mut().as_inner_mut().base.dirty = false;
+		let measured_size = ll.as_inner_mut().as_inner_mut().as_inner_mut().base.measured_size;
+		if let Some(ref mut cb) = ll.base_mut().handler_resize {
+            let mut w2 = this.clone().upcast::<Widget>();
+			let mut w2 = common::cast_gtk_widget_to_member_mut::<LinearLayout>(&mut w2).unwrap();
+			(cb.as_mut())(w2, measured_size.0 as u16, measured_size.1 as u16);
+        }
+	}
+}
+
+impl_all_defaults!(LinearLayout);

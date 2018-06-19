@@ -1,51 +1,73 @@
-use plygui_api::{development, ids, layout, types, callbacks, traits};
+use plygui_api::{development, controls};
 
 use gtk::{Widget, WidgetExt};
 use glib::translate::ToGlibPtr;
 
-use std::mem;
+use std::{cmp, mem, ops};
 use std::ffi::CString;
+use std::marker::PhantomData;
 use std::os::raw::{c_char, c_void};
 
 lazy_static! {
 	pub static ref PROPERTY: CString = CString::new("plygui").unwrap();
 }
 
+#[derive(Debug,Clone,PartialEq,Eq,Hash)]
+pub struct GtkWidget(Widget);
+
+impl From<Widget> for GtkWidget {
+	fn from(a: Widget) -> GtkWidget {
+		GtkWidget(a)
+	}
+}
+impl From<GtkWidget> for Widget {
+	fn from(a: GtkWidget) -> Widget {
+		a.0
+	}
+}
+impl From<GtkWidget> for usize {
+	fn from(a: GtkWidget) -> usize {
+		pointer(&a.0) as usize
+	}
+}
+impl cmp::PartialOrd for GtkWidget {
+	fn partial_cmp(&self, other: &GtkWidget) -> Option<cmp::Ordering> {
+		pointer(&self.0).partial_cmp(&pointer(&other.0))
+	}
+}
+impl cmp::Ord for GtkWidget {
+	fn cmp(&self, other: &GtkWidget) -> cmp::Ordering {
+		pointer(&self.0).cmp(&pointer(&other.0))
+	}
+}
+impl ops::Deref for GtkWidget {
+	type Target = Widget;
+
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+impl ops::DerefMut for GtkWidget {
+	fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
+}
+impl development::NativeId for GtkWidget {}
+
 #[repr(C)]
-pub struct GtkControlBase {
-    pub control_base: development::UiControlCommon, 
-    
-    pub widget: Widget,
+pub struct GtkControlBase<T: controls::Control + Sized> {
+    pub widget: GtkWidget,
     pub coords: Option<(i32, i32)>,
     pub measured_size: (u16, u16),
     pub dirty: bool,
-    
-    pub h_resize: Option<callbacks::Resize>,
-    
-    invalidate: unsafe fn(this: &mut GtkControlBase),
+    _marker: PhantomData<T>,
 }
 
-impl GtkControlBase {
-	pub fn with_params(widget: Widget, invalidate: unsafe fn(this: &mut GtkControlBase), functions: development::UiMemberFunctions) -> GtkControlBase {
+impl <T: controls::Control + Sized> GtkControlBase<T> {
+	pub fn with_gtk_widget(widget: Widget) -> GtkControlBase<T> {
 		let base = GtkControlBase {
-        	control_base: development::UiControlCommon {
-	        	member_base: development::UiMemberCommon::with_params(types::Visibility::Visible, functions),
-		        layout: layout::Attributes {
-		            width: layout::Size::MatchParent,
-					height: layout::Size::WrapContent,
-					gravity: layout::gravity::CENTER_HORIZONTAL | layout::gravity::TOP,
-					alignment: layout::Alignment::None,
-					..
-					Default::default()
-	            },
-        	},
-        	widget: widget,
-        	h_resize: None,
-            coords: None,
+        	widget: widget.into(),
+        	coords: None,
             measured_size: (0, 0),
             dirty: true,
             
-            invalidate: invalidate
+            _marker: PhantomData,
         };
 		base
 	}
@@ -55,25 +77,7 @@ impl GtkControlBase {
 	pub fn pointer(&self) -> *mut c_void {
 		pointer(&self.widget)
 	}
-	pub fn invalidate(&mut self) {
-		unsafe { (self.invalidate)(self) }
-	}
-    pub fn set_visibility(&mut self, visibility: types::Visibility) {
-        if self.control_base.member_base.visibility != visibility {
-            self.control_base.member_base.visibility = visibility;
-			match self.control_base.member_base.visibility {
-				types::Visibility::Visible => self.widget.show(),
-				_ => self.widget.hide(),
-			}
-        }
-    }
-    pub fn visibility(&self) -> types::Visibility {
-        self.control_base.member_base.visibility
-    }
-    pub fn id(&self) -> ids::Id {
-        self.control_base.member_base.id
-    }
-    pub fn parent(&self) -> Option<&types::UiMemberBase> {
+	pub fn parent(&self) -> Option<&development::MemberBase> {
     	if let Some(w) = self.widget.get_parent() {
 	    	if pointer(&w).is_null() {
 	        	w.get_parent().map(|w| cast_gtk_widget(&w).unwrap())
@@ -84,7 +88,7 @@ impl GtkControlBase {
 	    	None
     	}
     }
-    pub fn parent_mut(&mut self) -> Option<&mut types::UiMemberBase> {
+    pub fn parent_mut(&mut self) -> Option<&mut development::MemberBase> {
         if let Some(mut w) = self.widget.get_parent() {
 	    	if pointer(&w).is_null() {
 	        	w.get_parent().map(|mut w| cast_gtk_widget_mut(&mut w).unwrap())
@@ -95,42 +99,42 @@ impl GtkControlBase {
 	    	None
     	}
     }
-    pub fn root(&self) -> Option<&types::UiMemberBase> {
+    pub fn root(&self) -> Option<&development::MemberBase> {
         self.widget.get_toplevel().map(|w| cast_gtk_widget(&w).unwrap())
     }
-    pub fn root_mut(&mut self) -> Option<&mut types::UiMemberBase> {
+    pub fn root_mut(&mut self) -> Option<&mut development::MemberBase> {
         self.widget.get_toplevel().map(|mut w| cast_gtk_widget_mut(&mut w).unwrap())
     }
-}
-
-#[macro_export]
-macro_rules! impl_invalidate {
-	($typ: ty) => {
-		unsafe fn invalidate_impl(this: &mut common::GtkControlBase) {
-			use plygui_api::development::UiDrawable;
-			use gtk::WidgetExt;
-			
-			if let Some(mut parent_widget) = this.widget.get_parent() {
-				if common::pointer(&parent_widget).is_null() {
-					parent_widget = parent_widget.get_parent().unwrap();
-				}
-				if let Some(mparent) = common::cast_gtk_widget_to_common_mut(&mut parent_widget) {
-					let (pw, ph) = mparent.size();
-					let this: &mut $typ = ::std::mem::transmute(this);
-					let (_,_,changed) = this.measure(pw, ph);
-					this.draw(None);		
-							
-					if mparent.is_control().is_some() {
-						let wparent: &mut common::GtkControlBase = ::std::mem::transmute(mparent);
-						if changed {
-							wparent.invalidate();
-						} 
-					}
+    pub fn invalidate(&mut self) {
+		use gtk::WidgetExt;
+		
+		if let Some(mut parent_widget) = self.widget.get_parent() {
+			if pointer(&parent_widget).is_null() {
+				parent_widget = parent_widget.get_parent().unwrap();
+			}
+			if let Some(mparent) = cast_gtk_widget_to_base_mut(&mut parent_widget) {
+				let (pw, ph) = mparent.as_member().size();
+				let this: &mut T = cast_gtk_widget_to_member_mut(&mut self.widget).unwrap();
+				let (_,_,changed) = this.measure(pw, ph);
+				this.draw(None);		
+						
+				if let Some(cparent) = mparent.as_member_mut().is_control_mut() {
+					if changed && !cparent.is_skip_draw() {
+						cparent.invalidate();
+					} 
 				}
 			}
 		}
 	}
 }
+
+#[repr(C)]
+struct GtkMemberControlBase {
+	pub member: development::MemberBase,
+	pub control: development::ControlBase,
+	pub widget: GtkWidget,
+}
+
 pub fn set_pointer(this: &mut Widget, ptr: *mut c_void) {
 	unsafe {
 		::gobject_sys::g_object_set_data(this.to_glib_none().0, PROPERTY.as_ptr() as *const c_char, ptr as *mut ::libc::c_void);
@@ -141,7 +145,12 @@ pub fn pointer(this: &Widget) -> *mut c_void {
     	::gobject_sys::g_object_get_data(this.to_glib_none().0, PROPERTY.as_ptr() as *const c_char) as *mut c_void
     }
 }
-pub fn cast_uicommon_to_gtkcommon_mut<'a>(control: &'a mut development::UiControlCommon) -> &'a mut GtkControlBase {
+pub fn cast_control_to_gtkwidget(control: &controls::Control) -> GtkWidget {
+	let gtk_base: &GtkMemberControlBase = unsafe { mem::transmute(control.native_id()) };
+	gtk_base.widget.clone()
+}
+
+/*pub fn cast_uicommon_to_gtkcommon_mut<'a>(control: &'a mut development::UiControlCommon) -> &'a mut GtkControlBase {
 	unsafe {
 		mem::transmute(control)
 	}
@@ -150,7 +159,7 @@ pub fn cast_uicommon_to_gtkcommon<'a>(control: &'a development::UiControlCommon)
 	unsafe {
 		mem::transmute(control)
 	}
-}
+}*/
 fn cast_gtk_widget_mut<'a, T>(this: &mut Widget) -> Option<&'a mut T> where T: Sized {
 	unsafe {
 		let ptr = pointer(this);
@@ -171,77 +180,16 @@ fn cast_gtk_widget<'a, T>(this: &Widget) -> Option<&'a T> where T: Sized {
 		}
 	}
 }
-pub fn cast_gtk_widget_to_uimember_mut<'a, T>(object: &'a mut Widget) -> Option<&'a mut T> where T: traits::UiMember + Sized {
+pub fn cast_gtk_widget_to_member_mut<'a, T>(object: &'a mut Widget) -> Option<&'a mut T> where T: controls::Member + Sized {
 	cast_gtk_widget_mut(object)
 }
-pub fn cast_gtk_widget_to_uimember<'a, T>(object: &'a Widget) -> Option<&'a T> where T: traits::UiMember + Sized {
+pub fn cast_gtk_widget_to_member<'a, T>(object: &'a Widget) -> Option<&'a T> where T: controls::Member + Sized {
 	cast_gtk_widget(object)
 }
-pub fn cast_gtk_widget_to_common_mut<'a>(object: &'a mut Widget) -> Option<&'a mut development::UiMemberCommon> {
+pub fn cast_gtk_widget_to_base_mut<'a>(object: &'a mut Widget) -> Option<&'a mut development::MemberBase> {
 	cast_gtk_widget_mut(object)
 }
-pub fn cast_gtk_widget_to_common<'a>(object: &'a Widget) -> Option<&'a development::UiMemberCommon> {
+pub fn cast_gtk_widget_to_base<'a>(object: &'a Widget) -> Option<&'a development::MemberBase> {
 	cast_gtk_widget(object)
 }
 
-#[macro_export]
-macro_rules! impl_is_control {
-	($typ: ty) => {
-		unsafe fn is_control(this: &::plygui_api::development::UiMemberCommon) -> Option<&::plygui_api::development::UiControlCommon> {
-			Some(&::plygui_api::utils::base_to_impl::<$typ>(this).base.control_base)
-		}
-		unsafe fn is_control_mut(this: &mut ::plygui_api::development::UiMemberCommon) -> Option<&mut ::plygui_api::development::UiControlCommon> {
-			Some(&mut ::plygui_api::utils::base_to_impl_mut::<$typ>(this).base.control_base)
-		}
-	}
-}
-#[macro_export]
-macro_rules! impl_size {
-	($typ: ty) => {
-		unsafe fn size(this: &::plygui_api::development::UiMemberCommon) -> (u16, u16) {
-			::plygui_api::utils::base_to_impl::<$typ>(this).size()
-		}
-	}
-}
-#[macro_export]
-macro_rules! impl_member_id {
-	($mem: expr) => {
-		unsafe fn member_id(_: &::plygui_api::development::UiMemberCommon) -> &'static str {
-			$mem
-		}
-	}
-}
-#[macro_export]
-macro_rules! impl_measure {
-	($typ: ty) => {
-		unsafe fn measure(&mut UiMemberBase, w: u16, h: u16) -> (u16, u16, bool) {
-			::plygui_api::utils::base_to_impl::<$typ>(this).measure(w, h)
-		}
-	}
-}
-#[macro_export]
-macro_rules! impl_draw {
-	($typ: ty) => {
-		unsafe fn draw(&mut UiMemberBase, coords: Option<(i32, i32)>) {
-			::plygui_api::utils::base_to_impl::<$typ>(this).draw(coords)
-		}
-	}
-}
-#[macro_export]
-macro_rules! impl_on_size_allocate {
-	($typ: ty) => {
-		fn on_size_allocate(this: &Widget, _allo: &Rectangle) {
-			let mut ll = this.clone().upcast::<Widget>();
-			let ll = common::cast_gtk_widget_to_uimember_mut::<$typ>(&mut ll).unwrap();
-			
-			if ll.base.dirty {
-				ll.base.dirty = false;
-				if let Some(ref mut cb) = ll.base.h_resize {
-		            let mut w2 = this.clone().upcast::<Widget>();
-					let mut w2 = common::cast_gtk_widget_to_uimember_mut::<$typ>(&mut w2).unwrap();
-					(cb.as_mut())(w2, ll.base.measured_size.0 as u16, ll.base.measured_size.1 as u16);
-		        }
-			}
-		}
-	}
-}
