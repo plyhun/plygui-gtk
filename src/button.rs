@@ -62,7 +62,7 @@ impl development::HasLabelInner for GtkButton {
 		let self_widget: gtk::Widget = self.base.widget.clone().into();
 		Cow::Owned(self_widget.downcast::<GtkButtonSys>().unwrap().get_label().unwrap_or(String::new()))
 	}
-    fn set_label(&mut self, base: &mut development::MemberBase, label: &str) {
+    fn set_label(&mut self, _: &mut development::MemberBase, label: &str) {
     	let self_widget: gtk::Widget = self.base.widget.clone().into();
     	self_widget.downcast::<GtkButtonSys>().unwrap().set_label(label)
     }
@@ -88,7 +88,7 @@ impl development::ControlInner for GtkButton {
         self.base.dirty = false;
         self.draw(base, Some((x, y)));
 	}
-    fn on_removed_from_container(&mut self, base: &mut development::MemberControlBase, parent: &controls::Container) {}
+    fn on_removed_from_container(&mut self, _: &mut development::MemberControlBase, _: &controls::Container) {}
     
     fn parent(&self) -> Option<&controls::Member> {
     	self.base.parent().map(|m| m.as_member())
@@ -154,6 +154,7 @@ impl development::Drawable for GtkButton {
 	}
     fn measure(&mut self, base: &mut development::MemberControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
     	let old_size = self.base.measured_size;
+    	println!("parent {} / {}", parent_width, parent_height);
     	self.base.measured_size = match base.member.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
@@ -198,6 +199,7 @@ impl development::Drawable for GtkButton {
                 (max(0, w) as u16, max(0, h) as u16)
             },
         };
+    	println!("{:?}", self.base.measured_size);
     	self.base.dirty = self.base.measured_size != old_size;
         (
             self.base.measured_size.0,

@@ -1,9 +1,10 @@
 use plygui_api::{development, controls};
 
 use gtk::{Widget, WidgetExt};
+use gtk_sys::GtkWidget as WidgetSys;
 use glib::translate::ToGlibPtr;
 
-use std::{cmp, mem, ops};
+use std::{cmp, ops};
 use std::ffi::CString;
 use std::marker::PhantomData;
 use std::os::raw::{c_char, c_void};
@@ -27,8 +28,16 @@ impl From<GtkWidget> for Widget {
 }
 impl From<GtkWidget> for usize {
 	fn from(a: GtkWidget) -> usize {
-		pointer(&a.0) as usize
+	    let aa: *mut WidgetSys = a.0.to_glib_full();
+		aa as usize
 	}
+}
+impl From<usize> for GtkWidget {
+    fn from(a: usize) -> GtkWidget {
+        use glib::translate::FromGlibPtrFull;
+        
+        unsafe { GtkWidget(Widget::from_glib_full(a as *mut WidgetSys)) }
+    }
 }
 impl cmp::PartialOrd for GtkWidget {
 	fn partial_cmp(&self, other: &GtkWidget) -> Option<cmp::Ordering> {
@@ -61,7 +70,7 @@ pub struct GtkControlBase<T: controls::Control + Sized> {
 
 impl <T: controls::Control + Sized> GtkControlBase<T> {
 	pub fn with_gtk_widget(widget: Widget) -> GtkControlBase<T> {
-		let base = GtkControlBase {
+	    let base = GtkControlBase {
         	widget: widget.into(),
         	coords: None,
             measured_size: (0, 0),
@@ -128,13 +137,6 @@ impl <T: controls::Control + Sized> GtkControlBase<T> {
 	}
 }
 
-#[repr(C)]
-struct GtkMemberControlBase {
-	pub member: development::MemberBase,
-	pub control: development::ControlBase,
-	pub widget: GtkWidget,
-}
-
 pub fn set_pointer(this: &mut Widget, ptr: *mut c_void) {
 	unsafe {
 		::gobject_sys::g_object_set_data(this.to_glib_none().0, PROPERTY.as_ptr() as *const c_char, ptr as *mut ::libc::c_void);
@@ -146,8 +148,7 @@ pub fn pointer(this: &Widget) -> *mut c_void {
     }
 }
 pub fn cast_control_to_gtkwidget(control: &controls::Control) -> GtkWidget {
-	let gtk_base: &GtkMemberControlBase = unsafe { mem::transmute(control.native_id()) };
-	gtk_base.widget.clone()
+	unsafe { control.native_id().into() }
 }
 
 /*pub fn cast_uicommon_to_gtkcommon_mut<'a>(control: &'a mut development::UiControlCommon) -> &'a mut GtkControlBase {

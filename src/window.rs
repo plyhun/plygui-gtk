@@ -1,7 +1,7 @@
 use super::*;
 
 use gtk::prelude::*;
-use gtk::{Window as GtkWindowSys, WindowType, ResizeMode, Fixed, Rectangle, Widget};
+use gtk::{Window as GtkWindowSys, WindowType, Fixed, Rectangle, Widget};
 
 use plygui_api::{development, ids, types, layout, controls, utils};
 use plygui_api::development::HasInner;
@@ -73,8 +73,7 @@ impl development::WindowInner for GtkWindow {
 	        window.window.connect_size_allocate(on_resize_move);
 	        window.window.show();
 	        window.frame.show();
-	        window.window.set_resize_mode(ResizeMode::Immediate);
-		}
+	    }
         window.set_label(title);
 	    window
 	}
