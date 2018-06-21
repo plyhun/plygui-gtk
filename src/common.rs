@@ -1,6 +1,6 @@
-use plygui_api::{development, controls};
+use plygui_api::{development, controls, layout};
 
-use gtk::{Widget, WidgetExt};
+use gtk::{Widget, WidgetExt, Orientation as GtkOrientation};
 use gtk_sys::GtkWidget as WidgetSys;
 use glib::translate::ToGlibPtr;
 
@@ -56,6 +56,12 @@ impl ops::Deref for GtkWidget {
 }
 impl ops::DerefMut for GtkWidget {
 	fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
+}
+impl AsRef<Widget> for GtkWidget {
+	fn as_ref(&self) -> &Widget { &self.0 }
+}
+impl AsMut<Widget> for GtkWidget {
+	fn as_mut(&mut self) -> &mut Widget { &mut self.0 }
 }
 impl development::NativeId for GtkWidget {}
 
@@ -192,5 +198,18 @@ pub fn cast_gtk_widget_to_base_mut<'a>(object: &'a mut Widget) -> Option<&'a mut
 }
 pub fn cast_gtk_widget_to_base<'a>(object: &'a Widget) -> Option<&'a development::MemberBase> {
 	cast_gtk_widget(object)
+}
+pub fn orientation_to_gtk(a: layout::Orientation) -> GtkOrientation {
+    match a {
+        layout::Orientation::Horizontal => GtkOrientation::Horizontal,
+        layout::Orientation::Vertical => GtkOrientation::Vertical,
+    }
+}
+pub fn gtk_to_orientation(a: GtkOrientation) -> layout::Orientation {
+    match a {
+        GtkOrientation::Horizontal => layout::Orientation::Horizontal,
+        GtkOrientation::Vertical => layout::Orientation::Vertical,
+        _ => panic!("Unsupported GtkOrientation")
+    }
 }
 
