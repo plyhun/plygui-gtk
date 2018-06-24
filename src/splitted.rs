@@ -437,8 +437,10 @@ fn on_property_position_notify(this: &::gtk::Paned) {
     	layout::Orientation::Vertical => size.1 as f32,
     	layout::Orientation::Horizontal => size.0 as f32,
 	};
-	println!("{} was / {} now", ll.as_inner_mut().as_inner_mut().as_inner_mut().splitter, splitter);
-	ll.as_inner_mut().as_inner_mut().as_inner_mut().splitter = splitter;
+	let old_splitter = ll.as_inner_mut().as_inner_mut().as_inner_mut().splitter;
+	if (old_splitter - splitter).abs() > 0.01 {
+	    ll.as_inner_mut().as_inner_mut().as_inner_mut().splitter = splitter;
+	}
 }
 
 impl_all_defaults!(Splitted);
