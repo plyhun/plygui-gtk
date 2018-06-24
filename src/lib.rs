@@ -23,11 +23,13 @@ mod application;
 mod window;
 mod button;
 mod layout_linear;
+mod splitted;
 
 pub use self::application::Application;
 pub use self::window::Window;
 pub use self::button::Button;
 pub use self::layout_linear::LinearLayout;
+pub use self::splitted::Splitted;
 
 #[cfg(feature = "markup")]
 pub fn register_members(registry: &mut plygui_api::markup::MarkupRegistry) {

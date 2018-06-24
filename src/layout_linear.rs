@@ -66,7 +66,9 @@ impl development::Drawable for GtkLinearLayout {
     		let orientation = self.orientation;
 			let (lp,tp,_,_) = base.control.layout.padding.into();
 	    	let (lm,tm,rm,bm) = base.control.layout.margin.into();
-	    	self.base.widget.get_parent().unwrap().downcast::<Fixed>().unwrap().move_::<Widget>(&(self.base.widget.clone().into()), x as i32 + lm, y as i32 + tm);
+	    	if let Ok(fixed) = self.base.widget.get_parent().unwrap().downcast::<Fixed>() {
+	    	    fixed.move_::<Widget>(&(self.base.widget.clone().into()), x as i32 + lm, y as i32 + tm);
+	    	}
 			self.base.widget.set_size_request(self.base.measured_size.0 as i32 - lm - rm, self.base.measured_size.1 as i32 - rm - bm);
 	        let mut x = x + lp + lm;
 	        let mut y = y + tp + tm;
