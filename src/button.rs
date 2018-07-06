@@ -142,8 +142,7 @@ impl development::Drawable for GtkButton {
     	}
     	if let Some(coords) = self.base.coords {
 			let (lm,tm,rm,bm) = base.control.layout.margin.into();
-	        self.base.widget.get_parent().unwrap().downcast::<Fixed>().unwrap().move_::<Widget>(&self.base.widget.clone().into(), coords.0 as i32 + lm, coords.1 as i32 + tm);
-			self.base.widget.set_size_request(self.base.measured_size.0 as i32 - lm - rm, self.base.measured_size.1 as i32 - rm - bm);
+	        self.base.widget.set_size_request(self.base.measured_size.0 as i32 - lm - rm, self.base.measured_size.1 as i32 - rm - bm);
 			if let types::Visibility::Visible = base.member.visibility {
 				self.base.widget.show();
 			} else {
