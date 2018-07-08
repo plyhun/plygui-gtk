@@ -1,9 +1,9 @@
 use super::*;
 
-use plygui_api::{layout, ids, types, development, controls};
+use plygui_api::{layout, ids, types, development, controls, utils};
 use plygui_api::development::{HasInner, Drawable, HasOrientationInner};
 
-use gtk::{Cast, Widget, WidgetExt, Box as GtkBox, Fixed, FixedExt, OrientableExt, ContainerExt};
+use gtk::{Cast, Widget, WidgetExt, Box as GtkBox, OrientableExt, ContainerExt};
 
 use std::mem;
 
@@ -57,15 +57,13 @@ impl development::MemberInner for GtkLinearLayout {
 
 impl development::Drawable for GtkLinearLayout {
 	fn draw(&mut self, base: &mut development::MemberControlBase, coords: Option<(i32, i32)>) {
-		if coords.is_some() {
-    		self.base.coords = coords;
-    	}
+		self.base.draw(base, coords);
     	if let Some((x, y)) = self.base.coords {
     		let orientation = self.layout_orientation();
 			let (lp,tp,_,_) = base.control.layout.padding.into();
-	    	let (lm,tm,rm,bm) = base.control.layout.margin.into();
-	    	self.base.widget.set_size_request(self.base.measured_size.0 as i32 - lm - rm, self.base.measured_size.1 as i32 - rm - bm);
-	        let mut x = x + lp + lm;
+	    	let (lm,tm,_,_) = base.control.layout.margin.into();
+	    	
+	    	let mut x = x + lp + lm;
 	        let mut y = y + tp + tm;
 	        for ref mut child in self.children.as_mut_slice() {
 	            child.draw(Some((x, y)));
@@ -76,12 +74,7 @@ impl development::Drawable for GtkLinearLayout {
 	            }
 	        }
 		}
-    	if let types::Visibility::Visible = base.member.visibility {
-			self.base.widget.show();
-		} else {
-			self.base.widget.hide();
-		}
-    	self.base.dirty = false;
+    	
 	}
     fn measure(&mut self, base: &mut development::MemberControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
     	use std::cmp::max;
@@ -275,16 +268,23 @@ impl development::MultiContainerInner for GtkLinearLayout {
 	fn len(&self) -> usize {
 		self.children.len()
 	}
-    fn set_child_to(&mut self, _: &mut development::MemberBase, index: usize, child: Box<controls::Control>) -> Option<Box<controls::Control>> {
-    	self.children.insert(index, child);
+    fn set_child_to(&mut self, base: &mut development::MemberBase, index: usize, child: Box<controls::Control>) -> Option<Box<controls::Control>> {
+    	let self2 = unsafe { utils::base_to_impl_mut::<LinearLayout>(base) };
+        
+        self.children.insert(index, child);
+        let old = if (index + 1) < self.children.len() {
+            let mut old = self.children.remove(index + 1);
+            old.on_removed_from_container(self2);
+            Some(old)
+        } else {
+            None
+        };
+        
         let widget = common::cast_control_to_gtkwidget(self.children.get_mut(index).unwrap().as_mut());
     	let self_widget: gtk::Widget = self.base.widget.clone().into();
     	self_widget.downcast::<GtkBox>().unwrap().add::<Widget>(&widget.into());
-    	
-    	if (index + 1) >= self.children.len() {
-            return None;
-        }
-        Some(self.children.remove(index + 1))
+    	self.children.get_mut(index).unwrap().on_added_to_container(self2, 0, 0);
+        old
     }
     fn remove_child_from(&mut self, _: &mut development::MemberBase, index: usize) -> Option<Box<controls::Control>> {
     	if index < self.children.len() {

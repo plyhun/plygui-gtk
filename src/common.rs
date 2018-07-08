@@ -1,4 +1,4 @@
-use plygui_api::{development, controls, layout};
+use plygui_api::{development, controls, layout, types};
 
 use gtk::{Widget, WidgetExt, Orientation as GtkOrientation};
 use gtk_sys::GtkWidget as WidgetSys;
@@ -141,6 +141,28 @@ impl <T: controls::Control + Sized> GtkControlBase<T> {
 			}
 		}
 	}
+    pub fn draw(&mut self, base: &mut development::MemberControlBase, coords: Option<(i32, i32)>) {
+        if coords.is_some() {
+    		self.coords = coords;
+    	}
+    	if self.coords.is_some() {
+			let (lm,tm,rm,bm) = base.control.layout.margin.into();
+	        self.widget.set_size_request(self.measured_size.0 as i32 - lm - rm, self.measured_size.1 as i32 - tm - bm);
+			if let types::Visibility::Gone = base.member.visibility {
+				self.widget.hide();
+			} else {
+				self.widget.show();
+			}
+			if let types::Visibility::Invisible = base.member.visibility {
+				self.widget.set_sensitive(false);
+				self.widget.set_opacity(0.0);
+			} else {
+				self.widget.set_sensitive(true);
+				self.widget.set_opacity(1.0);
+			}
+		}
+        self.dirty = false;
+    }
 }
 
 pub fn set_pointer(this: &mut Widget, ptr: *mut c_void) {

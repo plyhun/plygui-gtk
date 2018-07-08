@@ -1,6 +1,6 @@
 use super::*;
 
-use gtk::{Cast, Widget, WidgetExt, Button as GtkButtonSys, ButtonExt, Bin, BinExt, Label, LabelExt, Fixed, FixedExt, CssProvider, CssProviderExt, StyleContextExt};
+use gtk::{Cast, Widget, WidgetExt, Button as GtkButtonSys, ButtonExt, Bin, BinExt, Label, LabelExt, CssProvider, CssProviderExt, StyleContextExt};
 use pango::LayoutExt;
 
 use plygui_api::{layout, types, development, callbacks, controls, utils};
@@ -137,23 +137,10 @@ impl development::MemberInner for GtkButton {
 
 impl development::Drawable for GtkButton {
 	fn draw(&mut self, base: &mut development::MemberControlBase, coords: Option<(i32, i32)>) {
-		if coords.is_some() {
-    		self.base.coords = coords;
-    	}
-    	if let Some(coords) = self.base.coords {
-			let (lm,tm,rm,bm) = base.control.layout.margin.into();
-	        self.base.widget.set_size_request(self.base.measured_size.0 as i32 - lm - rm, self.base.measured_size.1 as i32 - rm - bm);
-			if let types::Visibility::Visible = base.member.visibility {
-				self.base.widget.show();
-			} else {
-				self.base.widget.hide();
-			}
-		}
-        self.base.dirty = false;
+		self.base.draw(base, coords);
 	}
     fn measure(&mut self, base: &mut development::MemberControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
     	let old_size = self.base.measured_size;
-    	println!("parent {} / {}", parent_width, parent_height);
     	self.base.measured_size = match base.member.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
@@ -198,7 +185,6 @@ impl development::Drawable for GtkButton {
                 (max(0, w) as u16, max(0, h) as u16)
             },
         };
-    	println!("{:?}", self.base.measured_size);
     	self.base.dirty = self.base.measured_size != old_size;
         (
             self.base.measured_size.0,
