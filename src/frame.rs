@@ -201,10 +201,19 @@ impl Drawable for GtkFrame {
 		    	let (lm,tm,rm,bm) = base.control.layout.margin.into();
 		    	    	
 		    	let mut label_size = (-1i32, -1i32);
+		    	let mut measured = false;
                 let w = match base.control.layout.width {
                     layout::Size::MatchParent => parent_width as i32,
                     layout::Size::Exact(w) => w as i32,
                     layout::Size::WrapContent => {
+                        if let Some(ref mut child) =  self.child {
+		                    let (cw, _, _) = child.measure(
+		                    	cmp::max(0, parent_width as i32 - lp - rp) as u16, 
+		                    	cmp::max(0, parent_height as i32 - tp - bp) as u16
+		                    );
+		                    label_size.0 += cw as i32;
+		                    measured = true;
+		                }	        			
                         if label_size.0 < 0 {
                         	let self_widget: gtk::Widget = self.base.widget.clone().into();
                             let mut frame_sys = self_widget.downcast::<GtkFrameSys>().unwrap();
@@ -222,6 +231,18 @@ impl Drawable for GtkFrame {
                     layout::Size::MatchParent => parent_height as i32,
                     layout::Size::Exact(h) => h as i32,
                     layout::Size::WrapContent => {
+                        if let Some(ref mut child) =  self.child {
+                            let ch = if measured {
+    	                    	child.size().1
+    	                    } else {
+    	                    	let (_, ch, _) = child.measure(
+    		                    	cmp::max(0, parent_width as i32 - lp - rp) as u16, 
+    		                    	cmp::max(0, parent_height as i32 - tp - bp) as u16
+    		                    );
+    	                    	ch
+    	                    };
+    	                    label_size.1 += ch as i32;
+                        }
                         if label_size.1 < 0 {
                         	let self_widget: gtk::Widget = self.base.widget.clone().into();
                             let mut frame_sys = self_widget.downcast::<GtkFrameSys>().unwrap();

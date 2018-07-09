@@ -97,6 +97,7 @@ impl development::SplittedInner for GtkSplitted {
         }
         ll.set_layout_padding(layout::BoundarySize::AllTheSame(DEFAULT_PADDING).into());
         ll.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.connect_size_allocate(on_size_allocate);
+        ll.as_inner_mut().as_inner_mut().as_inner_mut().update_splitter();
         ll
 	}
 	fn set_splitter(&mut self, _: &mut MemberControlBase, pos: f32) {
@@ -437,6 +438,10 @@ fn on_property_position_notify(this: &::gtk::Paned) {
     use plygui_api::controls::{HasOrientation, Member};
     
     let position = this.get_position();
+    if position < 1 {
+        return;
+    }
+    
     let mut ll = this.clone().upcast::<Widget>();
 	let ll = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut ll).unwrap();
 	let orientation = ll.layout_orientation();
@@ -445,6 +450,7 @@ fn on_property_position_notify(this: &::gtk::Paned) {
     	layout::Orientation::Vertical => if height > 0 {height as f32} else {position as f32 * 2.0},
     	layout::Orientation::Horizontal => if width > 0 {width as f32} else {position as f32 * 2.0},
 	};
+	println!("pos {} splitter {} for wh {}/{}", position, splitter, width, height);
 	let old_splitter = ll.as_inner_mut().as_inner_mut().as_inner_mut().splitter;
 	if (old_splitter - splitter).abs() > 0.01 {
 	    let ll = ll.as_inner_mut().as_inner_mut().as_inner_mut();
