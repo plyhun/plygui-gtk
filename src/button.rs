@@ -228,4 +228,3 @@ fn on_click(this: &GtkButtonSys) {
 }
 
 impl_all_defaults!(Button);
-
