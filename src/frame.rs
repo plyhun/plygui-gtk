@@ -67,8 +67,7 @@ impl SingleContainerInner for GtkFrame {
         }
         if let Some(new) = child.as_mut() {
         	let widget = common::cast_control_to_gtkwidget(new.as_ref());
-    		let widget: &Widget = &widget;
-    		frame_sys.add(widget);
+    		frame_sys.add(widget.as_ref());
             let self2 = unsafe { utils::base_to_impl_mut::<Frame>(base) };
             new.on_added_to_container(self2, 0, 0);
         } 
@@ -140,7 +139,6 @@ impl ControlInner for GtkFrame {
 	fn on_added_to_container(&mut self, base: &mut MemberControlBase, parent: &controls::Container, x: i32, y: i32) {
 		let (pw, ph) = parent.draw_area_size();
         self.measure(base, pw, ph);
-        self.base.dirty = false;
         self.draw(base, Some((x, y)));
 	}
     fn on_removed_from_container(&mut self, _: &mut MemberControlBase, _: &controls::Container) {}
@@ -240,11 +238,10 @@ impl Drawable for GtkFrame {
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)
             },
         };
-    	self.base.dirty = self.base.measured_size != old_size;
-        (
+    	(
             self.base.measured_size.0,
             self.base.measured_size.1,
-            self.base.dirty,
+            self.base.measured_size != old_size,
         )
     }
     fn invalidate(&mut self, _: &mut MemberControlBase) {

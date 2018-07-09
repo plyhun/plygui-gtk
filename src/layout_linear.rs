@@ -140,11 +140,10 @@ impl development::Drawable for GtkLinearLayout {
         		(w, h)
         	}
         };
-    	self.base.dirty = self.base.measured_size != old_size;
-        (
+    	(
             self.base.measured_size.0,
             self.base.measured_size.1,
-            self.base.dirty,
+            self.base.measured_size != old_size,
         )
     }
     fn invalidate(&mut self, _: &mut development::MemberControlBase) {
@@ -162,7 +161,6 @@ impl development::ControlInner for GtkLinearLayout {
 	fn on_added_to_container(&mut self, base: &mut development::MemberControlBase, parent: &controls::Container, x: i32, y: i32) {
 		let (pw, ph) = parent.draw_area_size();
         self.measure(base, pw, ph);
-        self.base.dirty = false;
         self.draw(base, Some((x, y)));
         
         let orientation = self.layout_orientation();
@@ -320,15 +318,12 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
 	let mut ll = this.clone().upcast::<Widget>();
 	let ll = common::cast_gtk_widget_to_member_mut::<LinearLayout>(&mut ll).unwrap();
 	
-	if ll.as_inner_mut().as_inner_mut().as_inner_mut().base.dirty {
-		ll.as_inner_mut().as_inner_mut().as_inner_mut().base.dirty = false;
-		let measured_size = ll.as_inner_mut().as_inner_mut().as_inner_mut().base.measured_size;
-		if let Some(ref mut cb) = ll.base_mut().handler_resize {
-            let mut w2 = this.clone().upcast::<Widget>();
-			let mut w2 = common::cast_gtk_widget_to_member_mut::<LinearLayout>(&mut w2).unwrap();
-			(cb.as_mut())(w2, measured_size.0 as u16, measured_size.1 as u16);
-        }
-	}
+	let measured_size = ll.as_inner_mut().as_inner_mut().as_inner_mut().base.measured_size;
+	if let Some(ref mut cb) = ll.base_mut().handler_resize {
+        let mut w2 = this.clone().upcast::<Widget>();
+		let mut w2 = common::cast_gtk_widget_to_member_mut::<LinearLayout>(&mut w2).unwrap();
+		(cb.as_mut())(w2, measured_size.0 as u16, measured_size.1 as u16);
+    }
 }
 
 impl_all_defaults!(LinearLayout);

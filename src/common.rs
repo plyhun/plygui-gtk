@@ -70,7 +70,7 @@ pub struct GtkControlBase<T: controls::Control + Sized> {
     pub widget: GtkWidget,
     pub coords: Option<(i32, i32)>,
     pub measured_size: (u16, u16),
-    pub dirty: bool,
+    //pub dirty: bool,
     _marker: PhantomData<T>,
 }
 
@@ -80,7 +80,7 @@ impl <T: controls::Control + Sized> GtkControlBase<T> {
         	widget: widget.into(),
         	coords: None,
             measured_size: (0, 0),
-            dirty: true,
+            //dirty: true,
             
             _marker: PhantomData,
         };
@@ -161,7 +161,6 @@ impl <T: controls::Control + Sized> GtkControlBase<T> {
 				self.widget.set_opacity(1.0);
 			}
 		}
-        self.dirty = false;
     }
 }
 

@@ -195,11 +195,10 @@ impl development::Drawable for GtkSplitted {
                 );
 			},
 		}
-    	self.base.dirty = self.base.measured_size != old_size;
-        (
+    	(
             self.base.measured_size.0,
             self.base.measured_size.1,
-            self.base.dirty,
+            self.base.measured_size != old_size,
         )
     }
     fn invalidate(&mut self, _: &mut development::MemberControlBase) {
@@ -221,7 +220,6 @@ impl development::ControlInner for GtkSplitted {
 		self.update_splitter();
         self.update_children_layout();
         self.measure(base, pw, ph);
-        self.base.dirty = false;
         self.draw(base, Some((x, y)));
         
         let orientation = self.layout_orientation();
@@ -427,15 +425,13 @@ fn on_size_allocate(this: &::gtk::Widget, _: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
 	let ll = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut ll).unwrap();
 	ll.as_inner_mut().as_inner_mut().as_inner_mut().update_splitter();
-	//if ll.as_inner_mut().as_inner_mut().as_inner_mut().base.dirty {
-		ll.as_inner_mut().as_inner_mut().as_inner_mut().base.dirty = false; //remove dirty flag!
-		let measured_size = ll.as_inner_mut().as_inner_mut().as_inner_mut().base.measured_size;
-		if let Some(ref mut cb) = ll.base_mut().handler_resize {
-            let mut w2 = this.clone().upcast::<Widget>();
-			let mut w2 = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut w2).unwrap();
-			(cb.as_mut())(w2, measured_size.0 as u16, measured_size.1 as u16);
-        }
-	//}
+	
+	let measured_size = ll.as_inner().as_inner().as_inner().base.measured_size;
+	if let Some(ref mut cb) = ll.base_mut().handler_resize {
+        let mut w2 = this.clone().upcast::<Widget>();
+		let mut w2 = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut w2).unwrap();
+		(cb.as_mut())(w2, measured_size.0 as u16, measured_size.1 as u16);
+    }
 }
 fn on_property_position_notify(this: &::gtk::Paned) {
     use plygui_api::controls::{HasOrientation, Member};
