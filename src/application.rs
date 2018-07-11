@@ -2,8 +2,8 @@ use super::*;
 
 use gtk::Widget;
 
-use plygui_api::{types, ids, controls, development};
-use plygui_api::development::HasInner;
+use plygui_api::{types, ids, controls};
+use plygui_api::development;
 
 pub struct GtkApplication {
 	name: String,
@@ -14,9 +14,10 @@ pub struct GtkApplication {
 pub type Application = development::Application<GtkApplication>;
 
 impl development::ApplicationInner for GtkApplication {
-	fn with_name(name: &str) -> Box<controls::Application> {
+	fn with_name(name: &str) -> Box<Application> {
 	    use std::ptr;
-	    
+	    use plygui_api::development::HasInner;
+		    
 		if gtk::init().is_err() {
 	        panic!("Failed to initialize GTK");
 	    }
@@ -36,6 +37,8 @@ impl development::ApplicationInner for GtkApplication {
 		let w = window::GtkWindow::with_params(title, size, menu);
 		let widget =  {
 		    use gtk::{Inhibit, WidgetExt};
+		    use plygui_api::controls::AsAny;
+		    use plygui_api::development::HasInner;
 		    
 		    let widget = unsafe { w.as_any().downcast_ref::<window::Window>().unwrap().as_inner().native_id().as_ref().clone() };
 		    let selfptr = self.selfptr.clone();

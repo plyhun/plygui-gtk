@@ -1,7 +1,7 @@
 use super::*;
 
-use plygui_api::{layout, ids, types, development, controls, utils};
-use plygui_api::development::{HasInner, Drawable, HasOrientationInner};
+use plygui_api::{layout, ids, types, controls, utils};
+use plygui_api::development::*;
 
 use gtk::{Cast, Widget, WidgetExt, Box as GtkBox, OrientableExt, ContainerExt};
 
@@ -9,7 +9,7 @@ use std::mem;
 
 const DEFAULT_PADDING: i32 = 0;
 
-pub type LinearLayout = development::Member<development::Control<development::MultiContainer<GtkLinearLayout>>>;
+pub type LinearLayout = Member<Control<MultiContainer<GtkLinearLayout>>>;
 
 #[repr(C)]
 pub struct GtkLinearLayout {
@@ -19,16 +19,16 @@ pub struct GtkLinearLayout {
     children: Vec<Box<controls::Control>>,
 }
 
-impl development::LinearLayoutInner for GtkLinearLayout {
-	fn with_orientation(orientation: layout::Orientation) -> Box<controls::LinearLayout> {
+impl LinearLayoutInner for GtkLinearLayout {
+	fn with_orientation(orientation: layout::Orientation) -> Box<LinearLayout> {
 		use plygui_api::controls::HasLayout;
 		
-		let mut ll = Box::new(development::Member::with_inner(development::Control::with_inner(development::MultiContainer::with_inner(GtkLinearLayout {
+		let mut ll = Box::new(Member::with_inner(Control::with_inner(MultiContainer::with_inner(GtkLinearLayout {
                      base: common::GtkControlBase::with_gtk_widget(GtkBox::new(common::orientation_to_gtk(orientation), 0).upcast::<Widget>()),
                      gravity_horizontal: layout::Gravity::default(),
 					    gravity_vertical: layout::Gravity::default(),
 					    children: Vec::new(),
-                 }, ()), ()), development::MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut)));
+                 }, ()), ()), MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut)));
         {
         	let ptr = ll.as_ref() as *const _ as *mut std::os::raw::c_void;
         	ll.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
@@ -39,14 +39,14 @@ impl development::LinearLayoutInner for GtkLinearLayout {
 	}
 }
 
-impl development::MemberInner for GtkLinearLayout {
+impl MemberInner for GtkLinearLayout {
 	type Id = common::GtkWidget;
 	
     fn size(&self) -> (u16, u16) {
     	self.base.measured_size
     }
     
-    fn on_set_visibility(&mut self, _: &mut development::MemberBase) {
+    fn on_set_visibility(&mut self, _: &mut MemberBase) {
     	self.base.invalidate()
     }
     
@@ -55,8 +55,8 @@ impl development::MemberInner for GtkLinearLayout {
     }
 }
 
-impl development::Drawable for GtkLinearLayout {
-	fn draw(&mut self, base: &mut development::MemberControlBase, coords: Option<(i32, i32)>) {
+impl Drawable for GtkLinearLayout {
+	fn draw(&mut self, base: &mut MemberControlBase, coords: Option<(i32, i32)>) {
 		self.base.draw(base, coords);
     	if let Some((x, y)) = self.base.coords {
     		let orientation = self.layout_orientation();
@@ -76,7 +76,7 @@ impl development::Drawable for GtkLinearLayout {
 		}
     	
 	}
-    fn measure(&mut self, base: &mut development::MemberControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
+    fn measure(&mut self, base: &mut MemberControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
     	use std::cmp::max;
     	
     	let orientation = self.layout_orientation();
@@ -146,19 +146,19 @@ impl development::Drawable for GtkLinearLayout {
             self.base.measured_size != old_size,
         )
     }
-    fn invalidate(&mut self, _: &mut development::MemberControlBase) {
+    fn invalidate(&mut self, _: &mut MemberControlBase) {
     	self.base.invalidate()
     }
 }
 
-impl development::HasLayoutInner for GtkLinearLayout {
-	fn on_layout_changed(&mut self, _: &mut development::MemberBase) {
+impl HasLayoutInner for GtkLinearLayout {
+	fn on_layout_changed(&mut self, _: &mut MemberBase) {
 		self.base.invalidate()
 	}
 }
 
-impl development::ControlInner for GtkLinearLayout {
-	fn on_added_to_container(&mut self, base: &mut development::MemberControlBase, parent: &controls::Container, x: i32, y: i32) {
+impl ControlInner for GtkLinearLayout {
+	fn on_added_to_container(&mut self, base: &mut MemberControlBase, parent: &controls::Container, x: i32, y: i32) {
 		let (pw, ph) = parent.draw_area_size();
         self.measure(base, pw, ph);
         self.draw(base, Some((x, y)));
@@ -178,7 +178,7 @@ impl development::ControlInner for GtkLinearLayout {
             }
         }
 	}
-    fn on_removed_from_container(&mut self, _: &mut development::MemberControlBase, _: &controls::Container) {
+    fn on_removed_from_container(&mut self, _: &mut MemberControlBase, _: &controls::Container) {
     	let self2 = common::cast_gtk_widget_to_member_mut::<LinearLayout>(&mut self.base.widget).unwrap();
         for mut child in self.children.drain(..) {
             child.on_removed_from_container(self2);
@@ -199,7 +199,7 @@ impl development::ControlInner for GtkLinearLayout {
     }
     
     #[cfg(feature = "markup")]
-    fn fill_from_markup(&mut self, base: &mut development::MemberControlBase, mberarkup: &super::markup::Markup, registry: &mut super::markup::MarkupRegistry) {
+    fn fill_from_markup(&mut self, base: &mut MemberControlBase, mberarkup: &super::markup::Markup, registry: &mut super::markup::MarkupRegistry) {
     	use plygui_api::markup::MEMBER_TYPE_LINEAR_LAYOUT;
     	
     	fill_from_markup_base!(self, markup, registry, LinearLayout, [MEMBER_TYPE_LINEAR_LAYOUT]);
@@ -207,13 +207,13 @@ impl development::ControlInner for GtkLinearLayout {
     }
 }
 
-impl development::HasOrientationInner for GtkLinearLayout {
+impl HasOrientationInner for GtkLinearLayout {
 	fn layout_orientation(&self) -> layout::Orientation {
 	    let widget: Widget = self.base.widget.clone().into();
 	    let gtk_self = widget.downcast::<GtkBox>().unwrap();
     	common::gtk_to_orientation(gtk_self.get_orientation())
     }
-    fn set_layout_orientation(&mut self, _: &mut development::MemberBase, orientation: layout::Orientation) {
+    fn set_layout_orientation(&mut self, _: &mut MemberBase, orientation: layout::Orientation) {
     	let widget: Widget = self.base.widget.clone().into();
 	    let gtk_self = widget.downcast::<GtkBox>().unwrap();
     	gtk_self.set_orientation(common::orientation_to_gtk(orientation));
@@ -221,7 +221,7 @@ impl development::HasOrientationInner for GtkLinearLayout {
     }
 }
 
-impl development::ContainerInner for GtkLinearLayout {
+impl ContainerInner for GtkLinearLayout {
 	fn find_control_by_id_mut(&mut self, id: ids::Id) -> Option<&mut controls::Control> {
 		for child in self.children.as_mut_slice() {
             if child.as_member().id() == id {
@@ -253,7 +253,7 @@ impl development::ContainerInner for GtkLinearLayout {
     fn gravity(&self) -> (layout::Gravity, layout::Gravity) {
     	(self.gravity_horizontal, self.gravity_vertical)
     }
-    fn set_gravity(&mut self, base: &mut development::MemberBase, w: layout::Gravity, h: layout::Gravity) {
+    fn set_gravity(&mut self, base: &mut MemberBase, w: layout::Gravity, h: layout::Gravity) {
     	if self.gravity_horizontal != w || self.gravity_vertical != h {
     		self.gravity_horizontal = w;
     		self.gravity_vertical = h;
@@ -262,11 +262,11 @@ impl development::ContainerInner for GtkLinearLayout {
     }
 }
 
-impl development::MultiContainerInner for GtkLinearLayout {
+impl MultiContainerInner for GtkLinearLayout {
 	fn len(&self) -> usize {
 		self.children.len()
 	}
-    fn set_child_to(&mut self, base: &mut development::MemberBase, index: usize, child: Box<controls::Control>) -> Option<Box<controls::Control>> {
+    fn set_child_to(&mut self, base: &mut MemberBase, index: usize, child: Box<controls::Control>) -> Option<Box<controls::Control>> {
     	let self2 = unsafe { utils::base_to_impl_mut::<LinearLayout>(base) };
         
         self.children.insert(index, child);
@@ -284,7 +284,7 @@ impl development::MultiContainerInner for GtkLinearLayout {
     	self.children.get_mut(index).unwrap().on_added_to_container(self2, 0, 0);
         old
     }
-    fn remove_child_from(&mut self, _: &mut development::MemberBase, index: usize) -> Option<Box<controls::Control>> {
+    fn remove_child_from(&mut self, _: &mut MemberBase, index: usize) -> Option<Box<controls::Control>> {
     	if index < self.children.len() {
         	let item = self.children.remove(index);
         	let widget = common::cast_control_to_gtkwidget(item.as_ref());					

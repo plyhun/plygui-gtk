@@ -4,14 +4,14 @@ use gtk::{Cast, Widget, WidgetExt, Button as GtkButtonSys, ButtonExt, Bin, BinEx
 use pango::LayoutExt;
 
 use plygui_api::{layout, types, development, callbacks, controls, utils};
-use plygui_api::development::{Drawable, HasInner};
+use plygui_api::development::*;
 
 use std::borrow::Cow;
 use std::cmp::max;
 
 const DEFAULT_PADDING: i32 = 6;
 
-pub type Button = development::Member<development::Control<GtkButton>>;
+pub type Button = Member<Control<GtkButton>>;
 
 #[repr(C)]
 pub struct GtkButton {
@@ -22,7 +22,7 @@ pub struct GtkButton {
 }
 
 impl development::ButtonInner for GtkButton {
-	fn with_label(label: &str) -> Box<controls::Button> {
+	fn with_label(label: &str) -> Box<Button> {
 		use plygui_api::controls::HasLayout;
 		
 		let mut btn = Box::new(development::Member::with_inner(development::Control::with_inner(GtkButton {

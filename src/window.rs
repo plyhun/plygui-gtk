@@ -3,8 +3,8 @@ use super::*;
 use gtk::prelude::*;
 use gtk::{Window as GtkWindowSys, WindowType, Fixed, Rectangle, Widget};
 
-use plygui_api::{development, ids, types, layout, controls, utils};
-use plygui_api::development::HasInner;
+use plygui_api::{ids, types, layout, controls, utils};
+use plygui_api::development::*;
 
 use std::borrow::Cow;
 
@@ -20,7 +20,7 @@ pub struct GtkWindow {
     child: Option<Box<controls::Control>>,
 }
 
-pub type Window = development::Member<development::SingleContainer<GtkWindow>>;
+pub type Window = Member<SingleContainer<GtkWindow>>;
 
 impl GtkWindow {
 	fn size_inner(&self) -> (u16, u16) {
@@ -36,12 +36,12 @@ impl GtkWindow {
     }
 }
 
-impl development::WindowInner for GtkWindow {
-	fn with_params(title: &str, start_size: types::WindowStartSize, menu: types::WindowMenu) -> Box<controls::Window> {
+impl WindowInner for GtkWindow {
+	fn with_params(title: &str, start_size: types::WindowStartSize, menu: types::WindowMenu) -> Box<Window> {
 		use plygui_api::controls::HasLabel;
 		
-		let mut window = Box::new(development::Member::with_inner(
-				development::SingleContainer::with_inner(GtkWindow {
+		let mut window = Box::new(Member::with_inner(
+				SingleContainer::with_inner(GtkWindow {
 					size: (0, 0),
 			        window: GtkWindowSys::new(WindowType::Toplevel),
 			        frame: reckless::RecklessFixed::new(),
@@ -49,7 +49,7 @@ impl development::WindowInner for GtkWindow {
 				    gravity_vertical: Default::default(),
 				    child: None,
 				}, ()), 
-				development::MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut
+				MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut
 		)));
 		
 		let ptr = window.as_ref() as *const _ as *mut std::os::raw::c_void;
@@ -79,18 +79,18 @@ impl development::WindowInner for GtkWindow {
 	}
 }
 
-impl development::HasLabelInner for GtkWindow {
+impl HasLabelInner for GtkWindow {
 	fn label(&self) -> ::std::borrow::Cow<str> {
 		Cow::Owned(self.window.get_title().unwrap_or(String::new()))
 	}
-    fn set_label(&mut self, _: &mut development::MemberBase, label: &str) {
+    fn set_label(&mut self, _: &mut MemberBase, label: &str) {
     	self.window.set_title(label);
     	self.redraw();
     }
 }
 
-impl development::SingleContainerInner for GtkWindow {
-	fn set_child(&mut self, base: &mut development::MemberBase, mut child: Option<Box<controls::Control>>) -> Option<Box<controls::Control>> {
+impl SingleContainerInner for GtkWindow {
+	fn set_child(&mut self, base: &mut MemberBase, mut child: Option<Box<controls::Control>>) -> Option<Box<controls::Control>> {
 		let mut old = self.child.take();
         if let Some(old) = old.as_mut() {
             for child in self.frame.get_children().as_slice() {
@@ -122,7 +122,7 @@ impl development::SingleContainerInner for GtkWindow {
     }
 }
 
-impl development::ContainerInner for GtkWindow {
+impl ContainerInner for GtkWindow {
 	fn find_control_by_id_mut(&mut self, id_: ids::Id) -> Option<&mut controls::Control> {
         if let Some(child) = self.child.as_mut() {
             if let Some(c) = child.is_container_mut() {
@@ -142,7 +142,7 @@ impl development::ContainerInner for GtkWindow {
     fn gravity(&self) -> (layout::Gravity, layout::Gravity) {
     	(self.gravity_horizontal, self.gravity_vertical)
     }
-    fn set_gravity(&mut self, _: &mut development::MemberBase, w: layout::Gravity, h: layout::Gravity) {
+    fn set_gravity(&mut self, _: &mut MemberBase, w: layout::Gravity, h: layout::Gravity) {
     	if self.gravity_horizontal != w || self.gravity_vertical != h {
     		self.gravity_horizontal = w;
     		self.gravity_vertical = h;
@@ -151,14 +151,14 @@ impl development::ContainerInner for GtkWindow {
     }
 }
 
-impl development::MemberInner for GtkWindow {
+impl MemberInner for GtkWindow {
 	type Id = common::GtkWidget;
 	
     fn size(&self) -> (u16, u16) {
     	self.size_inner()
     }
     
-    fn on_set_visibility(&mut self, base: &mut development::MemberBase) {
+    fn on_set_visibility(&mut self, base: &mut MemberBase) {
     	if types::Visibility::Visible == base.visibility {
             self.window.show();
         } else {

@@ -1,6 +1,6 @@
 use super::*;
 
-use plygui_api::{layout, ids, types, development, controls};
+use plygui_api::{layout, ids, types, controls};
 use plygui_api::development::*;
 
 use gtk::{Cast, Widget, WidgetExt, Paned, PanedExt, OrientableExt};
@@ -11,7 +11,7 @@ const DEFAULT_PADDING: i32 = 6;
 const DEFAULT_BOUND: i32 = DEFAULT_PADDING * 2;
 const HALF_BOUND: i32 = DEFAULT_BOUND / 2;
 
-pub type Splitted = development::Member<development::Control<development::MultiContainer<GtkSplitted>>>;
+pub type Splitted = Member<Control<MultiContainer<GtkSplitted>>>;
 
 #[repr(C)]
 pub struct GtkSplitted {
@@ -69,18 +69,18 @@ impl GtkSplitted {
 	}
 }
 
-impl development::SplittedInner for GtkSplitted {
-	fn with_content(first: Box<controls::Control>, second: Box<controls::Control>, orientation: layout::Orientation) -> Box<controls::Splitted> {
+impl SplittedInner for GtkSplitted {
+	fn with_content(first: Box<controls::Control>, second: Box<controls::Control>, orientation: layout::Orientation) -> Box<Splitted> {
 	    use plygui_api::controls::HasLayout;
 		
-		let mut ll = Box::new(development::Member::with_inner(development::Control::with_inner(development::MultiContainer::with_inner(GtkSplitted {
+		let mut ll = Box::new(Member::with_inner(Control::with_inner(MultiContainer::with_inner(GtkSplitted {
                      base: common::GtkControlBase::with_gtk_widget(Paned::new(common::orientation_to_gtk(orientation)).upcast::<Widget>()),
                      gravity_horizontal: layout::Gravity::default(),
 					    gravity_vertical: layout::Gravity::default(),
 					  first: first,
 					  splitter: 0.5,
 					  second: second,
-                 }, ()), ()), development::MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut)));
+                 }, ()), ()), MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut)));
         {
         	let ptr = ll.as_ref() as *const _ as *mut std::os::raw::c_void;
         	ll.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
@@ -115,14 +115,14 @@ impl development::SplittedInner for GtkSplitted {
 	fn second_mut(&mut self) -> &mut controls::Control { self.second.as_mut() }
 }
 
-impl development::MemberInner for GtkSplitted {
+impl MemberInner for GtkSplitted {
 	type Id = common::GtkWidget;
 	
     fn size(&self) -> (u16, u16) {
     	self.base.measured_size
     }
     
-    fn on_set_visibility(&mut self, _: &mut development::MemberBase) {
+    fn on_set_visibility(&mut self, _: &mut MemberBase) {
     	self.base.invalidate()
     }
     
@@ -131,8 +131,8 @@ impl development::MemberInner for GtkSplitted {
     }
 }
 
-impl development::Drawable for GtkSplitted {
-	fn draw(&mut self, base: &mut development::MemberControlBase, coords: Option<(i32, i32)>) {
+impl Drawable for GtkSplitted {
+	fn draw(&mut self, base: &mut MemberControlBase, coords: Option<(i32, i32)>) {
 		self.base.draw(base, coords);
     	if let Some((x, y)) = self.base.coords {
     	    let orientation = self.layout_orientation();
@@ -150,7 +150,7 @@ impl development::Drawable for GtkSplitted {
 	        }
 		}
 	}
-    fn measure(&mut self, base: &mut development::MemberControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
+    fn measure(&mut self, base: &mut MemberControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
         self.update_children_layout();
     	let orientation = self.layout_orientation();
     	let old_size = self.base.measured_size;
@@ -202,20 +202,20 @@ impl development::Drawable for GtkSplitted {
             self.base.measured_size != old_size,
         )
     }
-    fn invalidate(&mut self, _: &mut development::MemberControlBase) {
+    fn invalidate(&mut self, _: &mut MemberControlBase) {
     	self.base.invalidate()
     }
 }
 
-impl development::HasLayoutInner for GtkSplitted {
-	fn on_layout_changed(&mut self, _: &mut development::MemberBase) {
+impl HasLayoutInner for GtkSplitted {
+	fn on_layout_changed(&mut self, _: &mut MemberBase) {
 	    self.update_splitter();
 		self.base.invalidate()
 	}
 }
 
-impl development::ControlInner for GtkSplitted {
-	fn on_added_to_container(&mut self, base: &mut development::MemberControlBase, parent: &controls::Container, x: i32, y: i32) {
+impl ControlInner for GtkSplitted {
+	fn on_added_to_container(&mut self, base: &mut MemberControlBase, parent: &controls::Container, x: i32, y: i32) {
 		let (pw, ph) = parent.draw_area_size();
 		self.base.measured_size = (pw, ph); // for update_splitter only
 		self.update_splitter();
@@ -238,7 +238,7 @@ impl development::ControlInner for GtkSplitted {
             }
         }
 	}
-    fn on_removed_from_container(&mut self, _: &mut development::MemberControlBase, _: &controls::Container) {
+    fn on_removed_from_container(&mut self, _: &mut MemberControlBase, _: &controls::Container) {
     	let self2 = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut self.base.widget).unwrap();
         for mut child in [self.first.as_mut(), self.second.as_mut()].iter_mut() {
             child.on_removed_from_container(self2);
@@ -259,7 +259,7 @@ impl development::ControlInner for GtkSplitted {
     }
     
     #[cfg(feature = "markup")]
-    fn fill_from_markup(&mut self, base: &mut development::MemberControlBase, mberarkup: &super::markup::Markup, registry: &mut super::markup::MarkupRegistry) {
+    fn fill_from_markup(&mut self, base: &mut MemberControlBase, mberarkup: &super::markup::Markup, registry: &mut super::markup::MarkupRegistry) {
     	use plygui_api::markup::MEMBER_TYPE_LINEAR_LAYOUT;
     	
     	fill_from_markup_base!(self, markup, registry, Splitted, [MEMBER_TYPE_LINEAR_LAYOUT]);
@@ -267,13 +267,13 @@ impl development::ControlInner for GtkSplitted {
     }
 }
 
-impl development::HasOrientationInner for GtkSplitted {
+impl HasOrientationInner for GtkSplitted {
 	fn layout_orientation(&self) -> layout::Orientation {
 	    let widget: Widget = self.base.widget.clone().into();
 	    let gtk_self = widget.downcast::<Paned>().unwrap();
     	common::gtk_to_orientation(gtk_self.get_orientation())
     }
-    fn set_layout_orientation(&mut self, _: &mut development::MemberBase, orientation: layout::Orientation) {
+    fn set_layout_orientation(&mut self, _: &mut MemberBase, orientation: layout::Orientation) {
     	let widget: Widget = self.base.widget.clone().into();
 	    let gtk_self = widget.downcast::<Paned>().unwrap();
     	gtk_self.set_orientation(common::orientation_to_gtk(orientation));
@@ -281,10 +281,8 @@ impl development::HasOrientationInner for GtkSplitted {
     }
 }
 
-impl development::ContainerInner for GtkSplitted {
+impl ContainerInner for GtkSplitted {
 	fn find_control_by_id_mut(&mut self, id: ids::Id) -> Option<&mut controls::Control> {
-		use plygui_api::development::SplittedInner;
-		
 		if self.first().as_member().id() == id {
 			return Some(self.first_mut());
 		}
@@ -309,9 +307,7 @@ impl development::ContainerInner for GtkSplitted {
         None
 	}
     fn find_control_by_id(&self, id: ids::Id) -> Option<&controls::Control> {
-    	use plygui_api::development::SplittedInner;
-    	
-        if self.first().as_member().id() == id {
+    	if self.first().as_member().id() == id {
 			return Some(self.first());
 		}
 		if self.second().as_member().id() == id {
@@ -336,7 +332,7 @@ impl development::ContainerInner for GtkSplitted {
     fn gravity(&self) -> (layout::Gravity, layout::Gravity) {
     	(self.gravity_horizontal, self.gravity_vertical)
     }
-    fn set_gravity(&mut self, base: &mut development::MemberBase, w: layout::Gravity, h: layout::Gravity) {
+    fn set_gravity(&mut self, base: &mut MemberBase, w: layout::Gravity, h: layout::Gravity) {
     	if self.gravity_horizontal != w || self.gravity_vertical != h {
     		self.gravity_horizontal = w;
     		self.gravity_vertical = h;
@@ -345,11 +341,11 @@ impl development::ContainerInner for GtkSplitted {
     }
 }
 
-impl development::MultiContainerInner for GtkSplitted {
+impl MultiContainerInner for GtkSplitted {
 	fn len(&self) -> usize {
 		2
 	}
-    fn set_child_to(&mut self, _: &mut development::MemberBase, index: usize, mut child: Box<controls::Control>) -> Option<Box<controls::Control>> {
+    fn set_child_to(&mut self, _: &mut MemberBase, index: usize, mut child: Box<controls::Control>) -> Option<Box<controls::Control>> {
     	use plygui_api::controls::HasLayout;
     	
     	let orientation = self.layout_orientation();
@@ -394,12 +390,10 @@ impl development::MultiContainerInner for GtkSplitted {
     	
     	Some(child)
     }
-    fn remove_child_from(&mut self, _: &mut development::MemberBase, _: usize) -> Option<Box<controls::Control>> {
+    fn remove_child_from(&mut self, _: &mut MemberBase, _: usize) -> Option<Box<controls::Control>> {
     	None
     }
     fn child_at(&self, index: usize) -> Option<&controls::Control> {
-    	use plygui_api::development::SplittedInner;
-    	
     	match index {
     		0 => Some(self.first()),
     		1 => Some(self.second()),
@@ -407,8 +401,6 @@ impl development::MultiContainerInner for GtkSplitted {
     	}
     }
     fn child_at_mut(&mut self, index: usize) -> Option<&mut controls::Control> {
-    	use plygui_api::development::SplittedInner;
-    	
     	match index {
     		0 => Some(self.first_mut()),
     		1 => Some(self.second_mut()),

@@ -23,7 +23,7 @@ pub struct GtkFrame {
 }
 
 impl FrameInner for GtkFrame {
-	fn with_label(label: &str) -> Box<controls::Frame> {
+	fn with_label(label: &str) -> Box<Frame> {
 		use plygui_api::controls::HasLayout;
 		
 		let mut fr = Box::new(Member::with_inner(Control::with_inner(SingleContainer::with_inner(GtkFrame {
