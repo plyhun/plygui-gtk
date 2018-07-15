@@ -272,7 +272,9 @@ impl MultiContainerInner for GtkLinearLayout {
         self.children.insert(index, child);
         let old = if (index + 1) < self.children.len() {
             let mut old = self.children.remove(index + 1);
-            old.on_removed_from_container(self2);
+            if self.base.coords.is_some() {
+                old.on_removed_from_container(self2);
+            }
             Some(old)
         } else {
             None
@@ -281,7 +283,9 @@ impl MultiContainerInner for GtkLinearLayout {
         let widget = common::cast_control_to_gtkwidget(self.children.get_mut(index).unwrap().as_mut());
     	let self_widget: gtk::Widget = self.base.widget.clone().into();
     	self_widget.downcast::<GtkBox>().unwrap().add::<Widget>(&widget.into());
-    	self.children.get_mut(index).unwrap().on_added_to_container(self2, 0, 0);
+    	if self.base.coords.is_some() {
+    	    self.children.get_mut(index).unwrap().on_added_to_container(self2, 0, 0);
+    	}
         old
     }
     fn remove_child_from(&mut self, _: &mut MemberBase, index: usize) -> Option<Box<controls::Control>> {

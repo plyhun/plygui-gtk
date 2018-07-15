@@ -62,14 +62,18 @@ impl SingleContainerInner for GtkFrame {
         if let Some(old) = old.as_mut() {
             let old_sys: common::GtkWidget = unsafe { old.native_id() }.into();
             frame_sys.remove(old_sys.as_ref());
-    		let self2 = unsafe { utils::base_to_impl_mut::<Frame>(base) };
-            old.on_removed_from_container(self2);
+            if self.base.coords.is_some() {
+        		let self2 = unsafe { utils::base_to_impl_mut::<Frame>(base) };
+                old.on_removed_from_container(self2);
+            }
         }
         if let Some(new) = child.as_mut() {
         	let widget = common::cast_control_to_gtkwidget(new.as_ref());
     		frame_sys.add(widget.as_ref());
-            let self2 = unsafe { utils::base_to_impl_mut::<Frame>(base) };
-            new.on_added_to_container(self2, 0, 0);
+            if self.base.coords.is_some() {
+                let self2 = unsafe { utils::base_to_impl_mut::<Frame>(base) };
+                new.on_added_to_container(self2, 0, 0);
+            }
         } 
         self.child = child;
 
@@ -140,8 +144,17 @@ impl ControlInner for GtkFrame {
 		let (pw, ph) = parent.draw_area_size();
         self.measure(base, pw, ph);
         self.draw(base, Some((x, y)));
+        if let Some(ref mut child) = self.child {
+            let self2 = unsafe { utils::base_to_impl_mut::<Frame>(&mut base.member) };
+            child.on_added_to_container(self2, 0, 0);
+        }
 	}
-    fn on_removed_from_container(&mut self, _: &mut MemberControlBase, _: &controls::Container) {}
+    fn on_removed_from_container(&mut self, base: &mut MemberControlBase, _: &controls::Container) {
+        if let Some(ref mut child) = self.child {
+            let self2 = unsafe { utils::base_to_impl_mut::<Frame>(&mut base.member) };
+            child.on_removed_from_container(self2);
+        }
+    }
     
     fn parent(&self) -> Option<&controls::Member> {
     	self.base.parent().map(|m| m.as_member())

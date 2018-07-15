@@ -357,12 +357,12 @@ impl MultiContainerInner for GtkSplitted {
 		    
 	    match index {
 	    	0 => {
-	    	    self.first.on_removed_from_container(self2);
-			    child.on_added_to_container(self2, lp + lm, tp + tm);
-	    		mem::swap(&mut self.first, &mut child);
+	    	    mem::swap(&mut self.first, &mut child);
 	    		
 	    		let widget = common::cast_control_to_gtkwidget(self.first.as_mut());
 	    		gtk_self.add1(widget.as_ref());
+	    		child.on_removed_from_container(self2);
+			    self.first.on_added_to_container(self2, lp + lm, tp + tm);	    		
 	    	},
 	    	1 => {
 	    		let mut x = lp + lm;
@@ -378,12 +378,13 @@ impl MultiContainerInner for GtkSplitted {
 					},
 				} 
 		        
-	    		self.second.on_removed_from_container(self2);
-	    		child.on_added_to_container(self2, x, y);
 	    		mem::swap(&mut self.second, &mut child);
 	    		
 	    		let widget = common::cast_control_to_gtkwidget(self.first.as_mut());
 	    		gtk_self.downcast::<Paned>().unwrap().add2(widget.as_ref());
+	    		child.on_removed_from_container(self2);
+	    		self.second.on_added_to_container(self2, x, y);
+	    		
 	    	},
 	    	_ => return None,
     	}
