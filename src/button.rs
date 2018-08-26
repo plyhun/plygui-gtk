@@ -64,14 +64,10 @@ impl HasLayoutInner for GtkButton {
     fn on_layout_changed(&mut self, _base: &mut MemberBase) {
         self.base.invalidate();
     }
-    fn layout_margin(&self, _member: &MemberBase) -> layout::BoundarySize {
-        self.base.margin()
-    }
 }
 
 impl ControlInner for GtkButton {
-    fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, parent: &controls::Container, x: i32, y: i32) {
-        let (pw, ph) = parent.draw_area_size();
+    fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
         self.measure(member, control, pw, ph);
         self.draw(member, control, Some((x, y)));
     }
@@ -124,7 +120,6 @@ impl Drawable for GtkButton {
         self.base.measured_size = match member.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
-                let (lm, tm, rm, bm) = self.base.margin().into();
                 let mut label_size = (-1i32, -1i32);
 
                 let w = match control.layout.width {
@@ -137,11 +132,7 @@ impl Drawable for GtkButton {
                             let mut label = bin.get_child().unwrap().downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        // why the bloody hell I need these?
-                        label_size.0 += 4;
-                        label_size.1 += 4;
-
-                        label_size.0 + lm + rm
+                        label_size.0 + self.base.widget.get_margin_start() + self.base.widget.get_margin_end()
                     }
                 };
                 let h = match control.layout.height {
@@ -154,11 +145,7 @@ impl Drawable for GtkButton {
                             let mut label = bin.get_child().unwrap().downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        // why the bloody hell I need these?
-                        label_size.0 += 4;
-                        label_size.1 += 4;
-
-                        label_size.1 + tm + bm
+                        label_size.1 + self.base.widget.get_margin_top() + self.base.widget.get_margin_bottom()
                     }
                 };
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)

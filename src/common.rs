@@ -101,7 +101,7 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
     pub fn pointer(&self) -> *mut c_void {
         pointer(&self.widget)
     }
-    pub fn margin(&self) -> layout::BoundarySize {
+    pub fn margins(&self) -> layout::BoundarySize {
         layout::BoundarySize::Distinct(self.widget.get_margin_start(), self.widget.get_margin_top(), self.widget.get_margin_end(), self.widget.get_margin_bottom())
     }
     pub fn parent(&self) -> Option<&MemberBase> {
@@ -153,7 +153,7 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
             }
         }
     }
-    pub fn draw(&mut self, member: &mut MemberBase, control: &mut ControlBase, coords: Option<(i32, i32)>) {
+    pub fn draw(&mut self, member: &mut MemberBase, _control: &mut ControlBase, coords: Option<(i32, i32)>) {
         if coords.is_some() {
             self.coords = coords;
         }

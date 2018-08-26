@@ -96,8 +96,15 @@ impl SingleContainerInner for GtkWindow {
             let widget = common::cast_control_to_gtkwidget(new.as_ref());
             let widget: &Widget = &widget;
             self.window.get_child().unwrap().downcast::<Fixed>().unwrap().add(widget);
+            let (pw, ph) = self.size();
             let self2 = unsafe { utils::base_to_impl_mut::<Window>(base) };
-            new.on_added_to_container(self2, 0, 0);
+            new.on_added_to_container(
+                self2,
+                0,
+                0,
+                utils::coord_to_size(cmp::max(0, pw as i32 - self.window.get_margin_start() - self.window.get_margin_end())),
+                utils::coord_to_size(cmp::max(0, ph as i32 - self.window.get_margin_top() - self.window.get_margin_bottom())),
+            );
         }
         self.child = child;
 

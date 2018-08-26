@@ -41,6 +41,7 @@ impl FrameInner for GtkFrame {
 impl SingleContainerInner for GtkFrame {
     fn set_child(&mut self, base: &mut MemberBase, mut child: Option<Box<controls::Control>>) -> Option<Box<controls::Control>> {
         let mut old = self.child.take();
+        let (pw, ph) = self.size();
         let frame_sys: gtk::Widget = self.base.widget.clone().into();
         let frame_sys = frame_sys.downcast::<GtkFrameSys>().unwrap();
         if let Some(old) = old.as_mut() {
@@ -56,7 +57,7 @@ impl SingleContainerInner for GtkFrame {
             frame_sys.add(widget.as_ref());
             if self.base.coords.is_some() {
                 let self2 = unsafe { utils::base_to_impl_mut::<Frame>(base) };
-                new.on_added_to_container(self2, 0, 0);
+                new.on_added_to_container(self2, 0, 0, utils::coord_to_size(cmp::max(0, pw as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end())), utils::coord_to_size(cmp::max(0, ph as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom())));
             }
         }
         self.child = child;
@@ -106,25 +107,21 @@ impl HasLabelInner for GtkFrame {
 }
 
 impl HasLayoutInner for GtkFrame {
-    fn on_layout_changed(&mut self, base: &mut MemberBase) {
+    fn on_layout_changed(&mut self, _base: &mut MemberBase) {
         self.base.invalidate();
-    }
-    fn layout_margin(&self, _member: &MemberBase) -> layout::BoundarySize {
-        self.base.margin()
     }
 }
 
 impl ControlInner for GtkFrame {
-    fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, parent: &controls::Container, x: i32, y: i32) {
-        let (pw, ph) = parent.draw_area_size();
+    fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
         self.measure(member, control, pw, ph);
         self.draw(member, control, Some((x, y)));
         if let Some(ref mut child) = self.child {
             let self2 = unsafe { utils::base_to_impl_mut::<Frame>(member) };
-            child.on_added_to_container(self2, 0, 0);
+            child.on_added_to_container(self2, 0, 0, utils::coord_to_size(cmp::max(0, pw as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end())), utils::coord_to_size(cmp::max(0, ph as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom())));
         }
     }
-    fn on_removed_from_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _: &controls::Container) {
+    fn on_removed_from_container(&mut self, member: &mut MemberBase, _control: &mut ControlBase, _: &controls::Container) {
         if let Some(ref mut child) = self.child {
             let self2 = unsafe { utils::base_to_impl_mut::<Frame>(member) };
             child.on_removed_from_container(self2);
@@ -178,8 +175,6 @@ impl Drawable for GtkFrame {
         self.base.measured_size = match member.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
-                let (lm, tm, rm, bm) = self.base.margin().into();
-
                 let mut label_size = (-1i32, -1i32);
                 let mut measured = false;
                 let w = match control.layout.width {
@@ -197,11 +192,7 @@ impl Drawable for GtkFrame {
                             let mut label = frame_sys.get_label_widget().unwrap().downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        // why the bloody hell I need these?
-                        label_size.0 += 4;
-                        label_size.1 += 4;
-
-                        label_size.0 + lm + rm
+                        label_size.0 + self.base.widget.get_margin_start() + self.base.widget.get_margin_end()
                     }
                 };
                 let h = match control.layout.height {
@@ -223,11 +214,7 @@ impl Drawable for GtkFrame {
                             let mut label = frame_sys.get_label_widget().unwrap().downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        // why the bloody hell I need these?
-                        label_size.0 += 4;
-                        label_size.1 += 4;
-
-                        label_size.1 + tm + bm
+                        label_size.1 + self.base.widget.get_margin_top() + self.base.widget.get_margin_bottom()
                     }
                 };
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)

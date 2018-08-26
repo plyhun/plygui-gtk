@@ -54,20 +54,8 @@ impl MemberInner for GtkLinearLayout {
 impl Drawable for GtkLinearLayout {
     fn draw(&mut self, member: &mut MemberBase, control: &mut ControlBase, coords: Option<(i32, i32)>) {
         self.base.draw(member, control, coords);
-        if let Some((x, y)) = self.base.coords {
-            let orientation = self.layout_orientation();
-            let (lm, tm, _, _) = self.base.margin().into();
-
-            let mut x = x + lm;
-            let mut y = y + tm;
-            for ref mut child in self.children.as_mut_slice() {
-                child.draw(Some((x, y)));
-                let (xx, yy) = child.size();
-                match orientation {
-                    layout::Orientation::Horizontal => x += xx as i32,
-                    layout::Orientation::Vertical => y += yy as i32,
-                }
-            }
+        for ref mut child in self.children.as_mut_slice() {
+            child.draw(Some((0, 0)));
         }
     }
     fn measure(&mut self, member: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
@@ -75,7 +63,6 @@ impl Drawable for GtkLinearLayout {
 
         let orientation = self.layout_orientation();
         let old_size = self.base.measured_size;
-        let (lm, tm, rm, bm) = self.base.margin().into();
         self.base.measured_size = match member.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
@@ -86,7 +73,7 @@ impl Drawable for GtkLinearLayout {
                     layout::Size::WrapContent => {
                         let mut w = 0;
                         for ref mut child in self.children.as_mut_slice() {
-                            let (cw, _, _) = child.measure(max(0, parent_width as i32 - lm - rm) as u16, max(0, parent_height as i32 - tm - bm) as u16);
+                            let (cw, _, _) = child.measure(max(0, parent_width as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_start()) as u16, max(0, parent_height as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_end()) as u16);
                             match orientation {
                                 layout::Orientation::Horizontal => {
                                     w += cw;
@@ -97,7 +84,7 @@ impl Drawable for GtkLinearLayout {
                             }
                         }
                         measured = true;
-                        max(0, w as i32 + lm + rm) as u16
+                        max(0, w) as u16
                     }
                 };
                 let h = match control.layout.height {
@@ -109,7 +96,7 @@ impl Drawable for GtkLinearLayout {
                             let ch = if measured {
                                 child.size().1
                             } else {
-                                let (_, ch, _) = child.measure(max(0, parent_width as i32 - lm - rm) as u16, max(0, parent_height as i32 - tm - bm) as u16);
+                                let (_, ch, _) = child.measure(max(0, parent_width as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end()) as u16, max(0, parent_height as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom()) as u16);
                                 ch
                             };
                             match orientation {
@@ -121,7 +108,7 @@ impl Drawable for GtkLinearLayout {
                                 }
                             }
                         }
-                        max(0, h as i32 + tm + bm) as u16
+                        max(0, h) as u16
                     }
                 };
                 (w, h)
@@ -141,23 +128,13 @@ impl HasLayoutInner for GtkLinearLayout {
 }
 
 impl ControlInner for GtkLinearLayout {
-    fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, parent: &controls::Container, x: i32, y: i32) {
-        let (pw, ph) = parent.draw_area_size();
+    fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
         self.measure(member, control, pw, ph);
         self.draw(member, control, Some((x, y)));
-
-        let orientation = self.layout_orientation();
-        let (lm, tm, _, _) = self.base.margin().into();
+        let (lm, tm, rm, bm) = self.base.margins().into();
         let self2 = common::cast_gtk_widget_to_member_mut::<LinearLayout>(&mut self.base.widget).unwrap();
-        let mut x = x + lm;
-        let mut y = y + tm;
         for ref mut child in self.children.as_mut_slice() {
-            child.on_added_to_container(self2, x, y);
-            let (xx, yy) = child.size();
-            match orientation {
-                layout::Orientation::Horizontal => x += xx as i32,
-                layout::Orientation::Vertical => y += yy as i32,
-            }
+            child.on_added_to_container(self2, 0, 0, utils::coord_to_size(cmp::max(0, pw as i32 - lm - rm)), utils::coord_to_size(cmp::max(0, ph as i32 - tm - bm)));
         }
     }
     fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &controls::Container) {
@@ -256,7 +233,8 @@ impl MultiContainerInner for GtkLinearLayout {
         let self_widget: gtk::Widget = self.base.widget.clone().into();
         self_widget.downcast::<GtkBox>().unwrap().add::<Widget>(&widget.into());
         if self.base.coords.is_some() {
-            self.children.get_mut(index).unwrap().on_added_to_container(self2, 0, 0);
+            let (pw, ph) = self.size();
+            self.children.get_mut(index).unwrap().on_added_to_container(self2, 0, 0, utils::coord_to_size(cmp::max(0, pw as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end())), utils::coord_to_size(cmp::max(0, ph as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom())));
         }
         old
     }
