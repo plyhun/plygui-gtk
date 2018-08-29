@@ -73,7 +73,10 @@ impl Drawable for GtkLinearLayout {
                     layout::Size::WrapContent => {
                         let mut w = 0;
                         for ref mut child in self.children.as_mut_slice() {
-                            let (cw, _, _) = child.measure(max(0, parent_width as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_start()) as u16, max(0, parent_height as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_end()) as u16);
+                            let (cw, _, _) = child.measure(
+                                max(0, parent_width as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_start()) as u16,
+                                max(0, parent_height as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_end()) as u16,
+                            );
                             match orientation {
                                 layout::Orientation::Horizontal => {
                                     w += cw;
@@ -96,7 +99,10 @@ impl Drawable for GtkLinearLayout {
                             let ch = if measured {
                                 child.size().1
                             } else {
-                                let (_, ch, _) = child.measure(max(0, parent_width as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end()) as u16, max(0, parent_height as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom()) as u16);
+                                let (_, ch, _) = child.measure(
+                                    max(0, parent_width as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end()) as u16,
+                                    max(0, parent_height as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom()) as u16,
+                                );
                                 ch
                             };
                             match orientation {
@@ -234,7 +240,13 @@ impl MultiContainerInner for GtkLinearLayout {
         self_widget.downcast::<GtkBox>().unwrap().add::<Widget>(&widget.into());
         if self.base.coords.is_some() {
             let (pw, ph) = self.size();
-            self.children.get_mut(index).unwrap().on_added_to_container(self2, 0, 0, utils::coord_to_size(cmp::max(0, pw as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end())), utils::coord_to_size(cmp::max(0, ph as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom())));
+            self.children.get_mut(index).unwrap().on_added_to_container(
+                self2,
+                0,
+                0,
+                utils::coord_to_size(cmp::max(0, pw as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end())),
+                utils::coord_to_size(cmp::max(0, ph as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom())),
+            );
         }
         old
     }

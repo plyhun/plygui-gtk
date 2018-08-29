@@ -57,7 +57,13 @@ impl SingleContainerInner for GtkFrame {
             frame_sys.add(widget.as_ref());
             if self.base.coords.is_some() {
                 let self2 = unsafe { utils::base_to_impl_mut::<Frame>(base) };
-                new.on_added_to_container(self2, 0, 0, utils::coord_to_size(cmp::max(0, pw as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end())), utils::coord_to_size(cmp::max(0, ph as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom())));
+                new.on_added_to_container(
+                    self2,
+                    0,
+                    0,
+                    utils::coord_to_size(cmp::max(0, pw as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end())),
+                    utils::coord_to_size(cmp::max(0, ph as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom())),
+                );
             }
         }
         self.child = child;
@@ -118,7 +124,13 @@ impl ControlInner for GtkFrame {
         self.draw(member, control, Some((x, y)));
         if let Some(ref mut child) = self.child {
             let self2 = unsafe { utils::base_to_impl_mut::<Frame>(member) };
-            child.on_added_to_container(self2, 0, 0, utils::coord_to_size(cmp::max(0, pw as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end())), utils::coord_to_size(cmp::max(0, ph as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom())));
+            child.on_added_to_container(
+                self2,
+                0,
+                0,
+                utils::coord_to_size(cmp::max(0, pw as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end())),
+                utils::coord_to_size(cmp::max(0, ph as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom())),
+            );
         }
     }
     fn on_removed_from_container(&mut self, member: &mut MemberBase, _control: &mut ControlBase, _: &controls::Container) {

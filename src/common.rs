@@ -187,16 +187,6 @@ pub fn cast_control_to_gtkwidget(control: &controls::Control) -> GtkWidget {
     unsafe { control.native_id().into() }
 }
 
-/*pub fn cast_uicommon_to_gtkcommon_mut<'a>(control: &'a mut UiControlCommon) -> &'a mut GtkControlBase {
-	unsafe {
-		mem::transmute(control)
-	}
-}
-pub fn cast_uicommon_to_gtkcommon<'a>(control: &'a UiControlCommon) -> &'a GtkControlBase {
-	unsafe {
-		mem::transmute(control)
-	}
-}*/
 fn cast_gtk_widget_mut<'a, T>(this: &mut Widget) -> Option<&'a mut T>
 where
     T: Sized,
