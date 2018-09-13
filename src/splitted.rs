@@ -64,8 +64,8 @@ impl SplittedInner for GtkSplitted {
             let self_widget: gtk::Widget = ll.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone().into();
             let gtk_self = self_widget.downcast::<Paned>().unwrap();
             let paned = gtk_self.downcast::<Paned>().unwrap();
-            paned.pack1(common::cast_control_to_gtkwidget(ll.first()).as_ref(), false, true);
-            paned.pack2(common::cast_control_to_gtkwidget(ll.second()).as_ref(), false, true);
+            paned.pack1(common::cast_control_to_gtkwidget(ll.first()).as_ref(), false, false);
+            paned.pack2(common::cast_control_to_gtkwidget(ll.second()).as_ref(), false, false);
             paned.connect_property_position_notify(on_property_position_notify);
         }
         ll.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.connect_size_allocate(on_size_allocate);
@@ -318,10 +318,10 @@ impl MultiContainerInner for GtkSplitted {
                 child.on_removed_from_container(self2);
                 match orientation {
                     layout::Orientation::Horizontal => {
-                        self.first.on_added_to_container(self2, 0, 0, second, utils::coord_to_size(cmp::max(0, ph as i32 - tm - bm)));
+                        self.second.on_added_to_container(self2, 0, 0, second, utils::coord_to_size(cmp::max(0, ph as i32 - tm - bm)));
                     }
                     layout::Orientation::Vertical => {
-                        self.first.on_added_to_container(self2, 0, 0, utils::coord_to_size(cmp::max(0, pw as i32 - lm - rm)), second);
+                        self.second.on_added_to_container(self2, 0, 0, utils::coord_to_size(cmp::max(0, pw as i32 - lm - rm)), second);
                     }
                 }
             }
@@ -393,7 +393,7 @@ fn on_property_position_notify(this: &::gtk::Paned) {
     let old_splitter = ll.as_inner_mut().as_inner_mut().as_inner_mut().splitter;
     let member = unsafe { &mut *(ll.base_mut() as *mut MemberBase) };
     let control = unsafe { &mut *(ll.as_inner_mut().base_mut() as *mut ControlBase) };
-    if (old_splitter - splitter).abs() > 0.01 {
+    if (old_splitter - splitter).abs() > 0.001 {
         let ll = ll.as_inner_mut().as_inner_mut().as_inner_mut();
         ll.splitter = splitter;
         ll.measure(member, control, width, height);
