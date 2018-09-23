@@ -3,6 +3,7 @@ use super::*;
 
 use gtk::prelude::*;
 use gtk::{Fixed, Rectangle, Widget, Window as GtkWindowSys, WindowType};
+use glib::{self, Continue};
 
 #[repr(C)]
 pub struct GtkWindow {
@@ -69,6 +70,20 @@ impl WindowInner for GtkWindow {
         }
         window.set_label(title);
         window
+    }
+    fn on_frame(&mut self, cb: callbacks::Frame) {
+        let (id, cb) = cb.into();
+        let cb = Box::into_raw(Box::new(cb)) as usize;
+        let mut window = self.window.clone().upcast::<Widget>();
+        let selfptr = cast_gtk_widget_to_member_mut::<Window>(&mut window).unwrap() as *mut Window as usize;
+        glib::idle_add(move || unsafe {
+            let cb = *Box::from_raw(cb as *mut Box<FnMut(&mut dyn controls::Window) -> bool>);
+            let mut cb: callbacks::Frame = (id, cb).into();
+            Continue((cb.as_mut())(&mut *(selfptr as *mut Window)))
+        });
+    }
+    fn on_frame_async_feeder(&mut self) -> callbacks::AsyncFeeder<callbacks::Frame> {
+        unimplemented!()
     }
 }
 
