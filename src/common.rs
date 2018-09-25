@@ -1,5 +1,5 @@
 pub use plygui_api::development::*;
-pub use plygui_api::{callbacks, controls, ids, layout, types, utils};
+pub use plygui_api::{callbacks, defaults, controls, ids, layout, types, utils};
 
 pub use glib::translate::ToGlibPtr;
 pub use gtk::{Cast, Orientation as GtkOrientation, Widget, WidgetExt};
@@ -9,7 +9,7 @@ pub use std::borrow::Cow;
 pub use std::ffi::CString;
 pub use std::marker::PhantomData;
 pub use std::os::raw::{c_char, c_void};
-pub use std::{cmp, mem, ops};
+pub use std::{cmp, mem, ops, sync::mpsc};
 
 lazy_static! {
     pub static ref PROPERTY: CString = CString::new("plygui").unwrap();

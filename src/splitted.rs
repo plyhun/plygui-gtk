@@ -414,11 +414,7 @@ fn on_size_allocate(this: &::gtk::Widget, _: &::gtk::Rectangle) {
     ll.as_inner_mut().as_inner_mut().as_inner_mut().update_splitter();
 
     let measured_size = ll.as_inner().as_inner().as_inner().base.measured_size;
-    if let Some(ref mut cb) = ll.base_mut().handler_resize {
-        let mut w2 = this.clone().upcast::<Widget>();
-        let mut w2 = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut w2).unwrap();
-        (cb.as_mut())(w2, measured_size.0 as u16, measured_size.1 as u16);
-    }
+    ll.call_on_resize(measured_size.0 as u16, measured_size.1 as u16);
 }
 fn on_property_position_notify(this: &::gtk::Paned) {
     use plygui_api::controls::{HasOrientation, Member};

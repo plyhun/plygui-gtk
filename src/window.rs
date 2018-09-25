@@ -1,9 +1,9 @@
 use super::common::*;
 use super::*;
 
+use glib::{self, Continue};
 use gtk::prelude::*;
 use gtk::{Fixed, Rectangle, Widget, Window as GtkWindowSys, WindowType};
-use glib::{self, Continue};
 
 #[repr(C)]
 pub struct GtkWindow {
@@ -15,7 +15,7 @@ pub struct GtkWindow {
     child: Option<Box<controls::Control>>,
 }
 
-pub type Window = Member<SingleContainer<GtkWindow>>;
+pub type Window = Member<SingleContainer<::plygui_api::development::Window<GtkWindow>>>;
 
 impl GtkWindow {
     fn size_inner(&self) -> (u16, u16) {
@@ -32,17 +32,20 @@ impl GtkWindow {
 }
 
 impl WindowInner for GtkWindow {
-    fn with_params(title: &str, start_size: types::WindowStartSize, menu: types::WindowMenu) -> Box<Window> {
+    fn with_params(title: &str, start_size: types::WindowStartSize, _menu: types::WindowMenu) -> Box<Window> {
         use plygui_api::controls::HasLabel;
 
         let mut window = Box::new(Member::with_inner(
             SingleContainer::with_inner(
-                GtkWindow {
-                    size: (0, 0),
-                    window: GtkWindowSys::new(WindowType::Toplevel),
-                    frame: reckless::RecklessFixed::new(),
-                    child: None,
-                },
+                ::plygui_api::development::Window::with_inner(
+                    GtkWindow {
+                        size: (0, 0),
+                        window: GtkWindowSys::new(WindowType::Toplevel),
+                        frame: reckless::RecklessFixed::new(),
+                        child: None,
+                    },
+                    (),
+                ),
                 (),
             ),
             MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
@@ -51,7 +54,7 @@ impl WindowInner for GtkWindow {
         let ptr = window.as_ref() as *const _ as *mut std::os::raw::c_void;
 
         {
-            let window = window.as_inner_mut().as_inner_mut();
+            let window = window.as_inner_mut().as_inner_mut().as_inner_mut();
             common::set_pointer(&mut window.window.clone().upcast::<Widget>(), ptr);
 
             window.window.add(&window.frame);
@@ -68,22 +71,40 @@ impl WindowInner for GtkWindow {
             window.window.show();
             window.frame.show();
         }
+        {
+            let window = window.as_inner_mut().as_inner_mut().as_inner_mut();
+            let mut window = window.window.clone().upcast::<Widget>();
+            let selfptr = cast_gtk_widget_to_member_mut::<Window>(&mut window).unwrap() as *mut Window as usize;
+            glib::idle_add(move || unsafe {
+                let mut frame_callbacks = 0;
+                while frame_callbacks < defaults::MAX_FRAME_CALLBACKS {
+                    let w = (&mut *(selfptr as *mut Window)).as_inner_mut().as_inner_mut().base_mut();
+                    match w.queue().try_recv() {
+                        Ok(mut cmd) => {
+                            if (cmd.as_mut())(&mut *(selfptr as *mut Window)) {
+                                let _ = w.sender().send(cmd);
+                            }
+                            frame_callbacks += 1;
+                        }
+                        Err(e) => match e {
+                            mpsc::TryRecvError::Empty => break,
+                            mpsc::TryRecvError::Disconnected => unreachable!(),
+                        },
+                    }
+                }
+                Continue(true)
+            });
+        }
         window.set_label(title);
         window
     }
     fn on_frame(&mut self, cb: callbacks::Frame) {
-        let (id, cb) = cb.into();
-        let cb = Box::into_raw(Box::new(cb)) as usize;
         let mut window = self.window.clone().upcast::<Widget>();
-        let selfptr = cast_gtk_widget_to_member_mut::<Window>(&mut window).unwrap() as *mut Window as usize;
-        glib::idle_add(move || unsafe {
-            let cb = *Box::from_raw(cb as *mut Box<FnMut(&mut dyn controls::Window) -> bool>);
-            let mut cb: callbacks::Frame = (id, cb).into();
-            Continue((cb.as_mut())(&mut *(selfptr as *mut Window)))
-        });
+        let _ = cast_gtk_widget_to_member_mut::<Window>(&mut window).unwrap().as_inner_mut().as_inner_mut().base_mut().sender().send(cb);
     }
     fn on_frame_async_feeder(&mut self) -> callbacks::AsyncFeeder<callbacks::Frame> {
-        unimplemented!()
+        let mut window = self.window.clone().upcast::<Widget>();
+        cast_gtk_widget_to_member_mut::<Window>(&mut window).unwrap().as_inner_mut().as_inner_mut().base_mut().sender().clone().into()
     }
 }
 
@@ -180,20 +201,16 @@ fn on_resize_move(this: &GtkWindowSys, allo: &Rectangle) {
     let mut window = this.clone().upcast::<Widget>();
     let window = common::cast_gtk_widget_to_member_mut::<Window>(&mut window);
     if let Some(window) = window {
-        let (width, height) = window.as_inner().as_inner().size;
+        let (width, height) = window.as_inner().as_inner().as_inner().size;
         if width != allo.width || height != allo.height {
             use std::cmp::max;
 
-            window.as_inner_mut().as_inner_mut().size = (max(0, allo.width), max(0, allo.height));
-            if let Some(ref mut child) = window.as_inner_mut().as_inner_mut().child {
+            window.as_inner_mut().as_inner_mut().as_inner_mut().size = (max(0, allo.width), max(0, allo.height));
+            if let Some(ref mut child) = window.as_inner_mut().as_inner_mut().as_inner_mut().child {
                 child.measure(width as u16, height as u16);
                 child.draw(Some((0, 0)));
             }
-            if let Some(ref mut cb) = window.base_mut().handler_resize {
-                let mut w2 = this.clone().upcast::<Widget>();
-                let mut w2 = common::cast_gtk_widget_to_member_mut::<Window>(&mut w2).unwrap();
-                (cb.as_mut())(w2, width as u16, height as u16);
-            }
+            window.call_on_resize(width as u16, height as u16);
         }
     }
 }

@@ -168,11 +168,7 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let ll = common::cast_gtk_widget_to_member_mut::<Button>(&mut ll).unwrap();
 
     let measured_size = ll.as_inner().as_inner().base.measured_size;
-    if let Some(ref mut cb) = ll.base_mut().handler_resize {
-        let mut w2 = this.clone().upcast::<Widget>();
-        let mut w2 = common::cast_gtk_widget_to_member_mut::<Button>(&mut w2).unwrap();
-        (cb.as_mut())(w2, measured_size.0 as u16, measured_size.1 as u16);
-    }
+    ll.call_on_resize(measured_size.0 as u16, measured_size.1 as u16);
 }
 
 fn on_click(this: &GtkButtonSys) {
