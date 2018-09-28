@@ -85,19 +85,29 @@ impl SingleContainerInner for GtkFrame {
 impl ContainerInner for GtkFrame {
     fn find_control_by_id_mut(&mut self, id: ids::Id) -> Option<&mut controls::Control> {
         if let Some(child) = self.child.as_mut() {
-            if let Some(c) = child.is_container_mut() {
-                return c.find_control_by_id_mut(id);
+            if child.as_member().id() == id {
+                Some(child.as_mut())
+            } else if let Some(c) = child.is_container_mut() {
+                c.find_control_by_id_mut(id)
+            } else {
+                None
             }
+        } else {
+            None
         }
-        None
     }
     fn find_control_by_id(&self, id: ids::Id) -> Option<&controls::Control> {
         if let Some(child) = self.child.as_ref() {
-            if let Some(c) = child.is_container() {
-                return c.find_control_by_id(id);
+            if child.as_member().id() == id {
+                Some(child.as_ref())
+            } else if let Some(c) = child.is_container() {
+                c.find_control_by_id(id)
+            } else {
+                None
             }
+        } else {
+            None
         }
-        None
     }
 }
 
