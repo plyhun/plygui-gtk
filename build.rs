@@ -14,5 +14,14 @@ fn main() {
         cc_build.include(lib.to_str().unwrap());
     }
 
-    cc_build.include("ffi").define("STATIC_BUILD", None).opt_level(3).warnings(false).file("ffi/reckless_fixed.c").compile("gtk_reckless_fixed");
+    cc_build.include("ffi")
+        .define("STATIC_BUILD", None)
+        .opt_level(3)
+        .warnings(false)
+        .file("ffi/reckless_fixed.c")
+        .file("ffi/reckless_button.c")
+        .file("ffi/reckless_paned.c")
+        .file("ffi/reckless_frame.c")
+        .file("ffi/reckless_box.c")
+        .compile("gtk_reckless");
 }

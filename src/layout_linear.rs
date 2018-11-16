@@ -1,7 +1,7 @@
 use super::common::*;
 use super::*;
 
-use gtk::{Box as GtkBox, Cast, ContainerExt, OrientableExt, Widget, WidgetExt};
+use gtk::{Box as GtkBox, BoxExt, Cast, ContainerExt, OrientableExt, Widget, WidgetExt};
 
 pub type LinearLayout = Member<Control<MultiContainer<GtkLinearLayout>>>;
 
@@ -17,7 +17,7 @@ impl LinearLayoutInner for GtkLinearLayout {
             Control::with_inner(
                 MultiContainer::with_inner(
                     GtkLinearLayout {
-                        base: common::GtkControlBase::with_gtk_widget(GtkBox::new(common::orientation_to_gtk(orientation), 0).upcast::<Widget>()),
+                        base: common::GtkControlBase::with_gtk_widget(reckless::boxc::RecklessBox::new().upcast::<Widget>()),
                         children: Vec::new(),
                     },
                     (),
@@ -29,6 +29,12 @@ impl LinearLayoutInner for GtkLinearLayout {
         {
             let ptr = ll.as_ref() as *const _ as *mut std::os::raw::c_void;
             ll.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
+        }
+        {
+            let self_widget: gtk::Widget = ll.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone().into();
+            let boxc = self_widget.downcast::<GtkBox>().unwrap();
+            boxc.set_orientation(common::orientation_to_gtk(orientation));
+            boxc.set_spacing(0);
         }
         ll.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.connect_size_allocate(on_size_allocate);
         ll

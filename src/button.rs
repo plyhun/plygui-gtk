@@ -21,7 +21,7 @@ impl ButtonInner for GtkButton {
         let mut btn = Box::new(Member::with_inner(
             Control::with_inner(
                 GtkButton {
-                    base: common::GtkControlBase::with_gtk_widget(GtkButtonSys::new_with_label(label).upcast::<Widget>()),
+                    base: common::GtkControlBase::with_gtk_widget(reckless::button::RecklessButton::new().upcast::<Widget>()),
                     h_left_clicked: None,
                     h_right_clicked: None,
                 },
@@ -36,6 +36,7 @@ impl ButtonInner for GtkButton {
         {
             let self_widget: gtk::Widget = btn.as_inner_mut().as_inner_mut().base.widget.clone().into();
             let button = self_widget.downcast::<GtkButtonSys>().unwrap();
+            button.set_label(label);
             button.connect_clicked(on_click);
         }
         btn.as_inner_mut().as_inner_mut().base.widget.connect_size_allocate(on_size_allocate);

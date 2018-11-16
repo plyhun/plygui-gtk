@@ -8,7 +8,7 @@ use gtk::{Fixed, Rectangle, Widget, Window as GtkWindowSys, WindowType};
 #[repr(C)]
 pub struct GtkWindow {
     window: GtkWindowSys,
-    frame: reckless::RecklessFixed,
+    frame: reckless::fixed::RecklessFixed,
 
     size: (i32, i32),
 
@@ -41,7 +41,7 @@ impl WindowInner for GtkWindow {
                     GtkWindow {
                         size: (0, 0),
                         window: GtkWindowSys::new(WindowType::Toplevel),
-                        frame: reckless::RecklessFixed::new(),
+                        frame: reckless::fixed::RecklessFixed::new(),
                         child: None,
                     },
                     (),

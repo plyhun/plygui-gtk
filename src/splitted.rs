@@ -43,7 +43,7 @@ impl SplittedInner for GtkSplitted {
             Control::with_inner(
                 MultiContainer::with_inner(
                     GtkSplitted {
-                        base: common::GtkControlBase::with_gtk_widget(Paned::new(common::orientation_to_gtk(orientation)).upcast::<Widget>()),
+                        base: common::GtkControlBase::with_gtk_widget(reckless::paned::RecklessPaned::new().upcast::<Widget>()),
                         first: first,
                         splitter: 0.5,
                         second: second,
@@ -62,6 +62,7 @@ impl SplittedInner for GtkSplitted {
             let self_widget: gtk::Widget = ll.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone().into();
             let gtk_self = self_widget.downcast::<Paned>().unwrap();
             let paned = gtk_self.downcast::<Paned>().unwrap();
+            paned.set_orientation(common::orientation_to_gtk(orientation));
             paned.pack1(common::cast_control_to_gtkwidget(ll.as_inner_mut().as_inner_mut().as_inner_mut().first()).as_ref(), false, true);
             paned.pack2(common::cast_control_to_gtkwidget(ll.as_inner_mut().as_inner_mut().as_inner_mut().second()).as_ref(), false, true);
             paned.connect_property_position_notify(on_property_position_notify);
