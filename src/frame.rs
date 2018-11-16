@@ -20,7 +20,7 @@ impl FrameInner for GtkFrame {
             Control::with_inner(
                 SingleContainer::with_inner(
                     GtkFrame {
-                        base: common::GtkControlBase::with_gtk_widget(GtkFrameSys::new(label).upcast::<Widget>()),
+                        base: common::GtkControlBase::with_gtk_widget(reckless::frame::RecklessFrame::new().upcast::<Widget>()),
                         child: None,
                     },
                     (),
@@ -32,6 +32,11 @@ impl FrameInner for GtkFrame {
         {
             let ptr = fr.as_ref() as *const _ as *mut std::os::raw::c_void;
             fr.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
+        }
+        {
+            let self_widget: gtk::Widget = fr.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone().into();
+            let frame = self_widget.downcast::<GtkFrameSys>().unwrap();
+            frame.set_label(label);
         }
         fr.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.connect_size_allocate(on_size_allocate);
         fr
