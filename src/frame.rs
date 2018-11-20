@@ -160,10 +160,10 @@ impl ControlInner for GtkFrame {
 
     #[cfg(feature = "markup")]
     fn fill_from_markup(&mut self, member: &mut MemberBase, control: &mut ControlBase, mberarkup: &super::markup::Markup, registry: &mut super::markup::MarkupRegistry) {
-        use plygui_api::markup::MEMBER_TYPE_BUTTON;
-        fill_from_markup_base!(self, base, markup, registry, Frame, [MEMBER_TYPE_BUTTON]);
-        fill_from_markup_label!(self, &mut base.member, markup);
-        fill_from_markup_callbacks!(self, markup, registry, [on_click => plygui_api::callbacks::Click]);
+        use plygui_api::markup::MEMBER_TYPE_FRAME;
+        fill_from_markup_base!(self, member, markup, registry, Frame, [MEMBER_TYPE_FRAME]);
+        fill_from_markup_label!(self, member, markup);
+        fill_from_markup_child!(self, member, markup, registry);
     }
 }
 
@@ -198,9 +198,10 @@ impl Drawable for GtkFrame {
                     layout::Size::MatchParent => parent_width as i32,
                     layout::Size::Exact(w) => w as i32,
                     layout::Size::WrapContent => {
+                        let mut size = 0;
                         if let Some(ref mut child) = self.child {
                             let (cw, _, _) = child.measure(cmp::max(0, parent_width as i32) as u16, cmp::max(0, parent_height as i32) as u16);
-                            label_size.0 += cw as i32;
+                            size += cw as i32;
                             measured = true;
                         }
                         if label_size.0 < 0 {
@@ -209,13 +210,14 @@ impl Drawable for GtkFrame {
                             let mut label = frame_sys.get_label_widget().unwrap().downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        label_size.0 + self.base.widget.get_margin_start() + self.base.widget.get_margin_end()
+                        size + label_size.0 + self.base.widget.get_margin_start() + self.base.widget.get_margin_end()
                     }
                 };
                 let h = match control.layout.height {
                     layout::Size::MatchParent => parent_height as i32,
                     layout::Size::Exact(h) => h as i32,
                     layout::Size::WrapContent => {
+                        let mut size = 0;
                         if let Some(ref mut child) = self.child {
                             let ch = if measured {
                                 child.size().1
@@ -223,7 +225,7 @@ impl Drawable for GtkFrame {
                                 let (_, ch, _) = child.measure(cmp::max(0, parent_width as i32) as u16, cmp::max(0, parent_height as i32) as u16);
                                 ch
                             };
-                            label_size.1 += ch as i32;
+                            size += ch as i32;
                         }
                         if label_size.1 < 0 {
                             let self_widget: gtk::Widget = self.base.widget.clone().into();
@@ -231,7 +233,7 @@ impl Drawable for GtkFrame {
                             let mut label = frame_sys.get_label_widget().unwrap().downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        label_size.1 + self.base.widget.get_margin_top() + self.base.widget.get_margin_bottom()
+                        size + label_size.1 + self.base.widget.get_margin_top() + self.base.widget.get_margin_bottom() + 2 // TODO WHY???
                     }
                 };
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)
