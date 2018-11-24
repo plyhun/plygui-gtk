@@ -15,6 +15,8 @@ lazy_static! {
     pub static ref PROPERTY: CString = CString::new("plygui").unwrap();
 }
 
+pub const DEFAULT_PADDING: i32 = 6;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GtkWidget(Widget);
 

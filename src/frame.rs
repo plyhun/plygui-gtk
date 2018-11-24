@@ -72,6 +72,7 @@ impl SingleContainerInner for GtkFrame {
             }
         }
         self.child = child;
+        self.base.invalidate();
 
         old
     }
