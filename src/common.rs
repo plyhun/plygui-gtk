@@ -173,6 +173,31 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
             }
         }
     }
+    pub fn measure(&mut self, member: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
+        let old_size = self.measured_size;
+        self.measured_size = match member.visibility {
+            types::Visibility::Gone => (0, 0),
+            _ => {
+                let native_size = gtk_allocation_to_size(&self.widget);
+                let w = match control.layout.width {
+                    layout::Size::MatchParent => parent_width as i32,
+                    layout::Size::Exact(w) => w as i32,
+                    layout::Size::WrapContent => {
+                        native_size.0
+                    }
+                };
+                let h = match control.layout.height {
+                    layout::Size::MatchParent => parent_height as i32,
+                    layout::Size::Exact(h) => h as i32,
+                    layout::Size::WrapContent => {
+                        native_size.1
+                    }
+                };
+                (cmp::max(0, w) as u16, cmp::max(0, h) as u16)
+            }
+        };
+        (self.measured_size.0, self.measured_size.1, self.measured_size != old_size)
+    }
 }
 
 pub fn set_pointer(this: &mut Widget, ptr: *mut c_void) {
@@ -243,4 +268,9 @@ pub fn gtk_to_orientation(a: GtkOrientation) -> layout::Orientation {
         GtkOrientation::Vertical => layout::Orientation::Vertical,
         _ => panic!("Unsupported GtkOrientation"),
     }
+}
+pub fn gtk_allocation_to_size<'a>(object: &'a Widget) -> (i32, i32) {
+    object.queue_draw();
+    let alloc = object.get_allocation();
+    (alloc.width, alloc.height)
 }
