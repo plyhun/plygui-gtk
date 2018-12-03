@@ -4,11 +4,11 @@ extern crate plygui_api;
 extern crate lazy_static;
 
 #[macro_use]
-extern crate glib;
-extern crate gdk;
-extern crate gtk;
-extern crate libc;
-extern crate pango;
+pub extern crate glib;
+pub extern crate gdk;
+pub extern crate gtk;
+pub extern crate libc;
+pub extern crate pango;
 
 extern crate glib_sys;
 extern crate gobject_sys;

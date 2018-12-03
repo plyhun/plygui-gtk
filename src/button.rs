@@ -133,7 +133,7 @@ impl Drawable for GtkButton {
                             let mut label = bin.get_child().unwrap().downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        label_size.0 + self.base.widget.get_margin_start() + self.base.widget.get_margin_end()
+                        label_size.0 + self.base.widget.get_margin_start() + self.base.widget.get_margin_end() + DEFAULT_PADDING + DEFAULT_PADDING
                     }
                 };
                 let h = match control.layout.height {
@@ -146,7 +146,7 @@ impl Drawable for GtkButton {
                             let mut label = bin.get_child().unwrap().downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        label_size.1 + self.base.widget.get_margin_top() + self.base.widget.get_margin_bottom()
+                        label_size.1 + self.base.widget.get_margin_top() + self.base.widget.get_margin_bottom() + DEFAULT_PADDING + DEFAULT_PADDING
                     }
                 };
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)

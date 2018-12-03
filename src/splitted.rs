@@ -347,42 +347,44 @@ impl MultiContainerInner for GtkSplitted {
         let (lm, tm, rm, bm) = self.base.margins().into();
         let self_widget: gtk::Widget = self.base.widget.clone().into();
         let gtk_self = self_widget.downcast::<Paned>().unwrap();
-        let self2 = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut self.base.widget).unwrap();
+        {
+            let self2 = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut self.base.widget).unwrap();
 
-        match index {
-            0 => {
-                mem::swap(&mut self.first, &mut child);
-
-                let widget = common::cast_control_to_gtkwidget(self.first.as_mut());
-                gtk_self.add1(widget.as_ref());
-                child.on_removed_from_container(self2);
-                match orientation {
-                    layout::Orientation::Horizontal => {
-                        self.first.on_added_to_container(self2, 0, 0, first, utils::coord_to_size(ph as i32 - tm - bm));
-                    }
-                    layout::Orientation::Vertical => {
-                        self.first.on_added_to_container(self2, 0, 0, utils::coord_to_size(pw as i32 - lm - rm), first);
+            match index {
+                0 => {
+                    mem::swap(&mut self.first, &mut child);
+    
+                    let widget = common::cast_control_to_gtkwidget(self.first.as_mut());
+                    gtk_self.add1(widget.as_ref());
+                    child.on_removed_from_container(self2);
+                    match orientation {
+                        layout::Orientation::Horizontal => {
+                            self.first.on_added_to_container(self2, 0, 0, first, utils::coord_to_size(ph as i32 - tm - bm));
+                        }
+                        layout::Orientation::Vertical => {
+                            self.first.on_added_to_container(self2, 0, 0, utils::coord_to_size(pw as i32 - lm - rm), first);
+                        }
                     }
                 }
-            }
-            1 => {
-                mem::swap(&mut self.second, &mut child);
-
-                let widget = common::cast_control_to_gtkwidget(self.first.as_mut());
-                gtk_self.downcast::<Paned>().unwrap().add2(widget.as_ref());
-                child.on_removed_from_container(self2);
-                match orientation {
-                    layout::Orientation::Horizontal => {
-                        self.second.on_added_to_container(self2, 0, 0, second, utils::coord_to_size(ph as i32 - tm - bm));
-                    }
-                    layout::Orientation::Vertical => {
-                        self.second.on_added_to_container(self2, 0, 0, utils::coord_to_size(pw as i32 - lm - rm), second);
+                1 => {
+                    mem::swap(&mut self.second, &mut child);
+    
+                    let widget = common::cast_control_to_gtkwidget(self.first.as_mut());
+                    gtk_self.downcast::<Paned>().unwrap().add2(widget.as_ref());
+                    child.on_removed_from_container(self2);
+                    match orientation {
+                        layout::Orientation::Horizontal => {
+                            self.second.on_added_to_container(self2, 0, 0, second, utils::coord_to_size(ph as i32 - tm - bm));
+                        }
+                        layout::Orientation::Vertical => {
+                            self.second.on_added_to_container(self2, 0, 0, utils::coord_to_size(pw as i32 - lm - rm), second);
+                        }
                     }
                 }
+                _ => return None,
             }
-            _ => return None,
         }
-
+        self.base.invalidate();
         Some(child)
     }
     fn remove_child_from(&mut self, _: &mut MemberBase, _: usize) -> Option<Box<controls::Control>> {
