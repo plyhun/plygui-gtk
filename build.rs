@@ -23,5 +23,7 @@ fn main() {
         .file("ffi/reckless_paned.c")
         .file("ffi/reckless_frame.c")
         .file("ffi/reckless_box.c")
+        .file("ffi/reckless_text_view.c")
+        .file("ffi/reckless_label.c")
         .compile("gtk_reckless");
 }
