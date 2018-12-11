@@ -20,7 +20,7 @@ pub mod ffi {
         // /*Ignored*/field parent_class has incomplete type
     }
     impl ::std::fmt::Debug for GtkRecklessLabelClass {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
             f.debug_struct(&format!("GtkRecklessLabelClass @ {:?}", self as *const _)).finish()
         }
     }
@@ -31,7 +31,7 @@ pub mod ffi {
         pub container: ::gtk_sys::GtkLabel,
     }
     impl ::std::fmt::Debug for GtkRecklessLabel {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
             f.debug_struct(&format!("GtkRecklessLabel @ {:?}", self as *const _)).field("container", &self.container).finish()
         }
     }

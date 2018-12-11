@@ -9,8 +9,8 @@ pub type Splitted = Member<Control<MultiContainer<GtkSplitted>>>;
 pub struct GtkSplitted {
     base: common::GtkControlBase<Splitted>,
     splitter: f32,
-    first: Box<controls::Control>,
-    second: Box<controls::Control>,
+    first: Box<dyn controls::Control>,
+    second: Box<dyn controls::Control>,
 }
 
 impl GtkSplitted {
@@ -38,7 +38,7 @@ impl GtkSplitted {
 }
 
 impl SplittedInner for GtkSplitted {
-    fn with_content(first: Box<controls::Control>, second: Box<controls::Control>, orientation: layout::Orientation) -> Box<Splitted> {
+    fn with_content(first: Box<dyn controls::Control>, second: Box<dyn controls::Control>, orientation: layout::Orientation) -> Box<Splitted> {
         let mut ll = Box::new(Member::with_inner(
             Control::with_inner(
                 MultiContainer::with_inner(
@@ -80,16 +80,16 @@ impl SplittedInner for GtkSplitted {
         self.splitter
     }
 
-    fn first(&self) -> &controls::Control {
+    fn first(&self) -> &dyn controls::Control {
         self.first.as_ref()
     }
-    fn second(&self) -> &controls::Control {
+    fn second(&self) -> &dyn controls::Control {
         self.second.as_ref()
     }
-    fn first_mut(&mut self) -> &mut controls::Control {
+    fn first_mut(&mut self) -> &mut dyn controls::Control {
         self.first.as_mut()
     }
-    fn second_mut(&mut self) -> &mut controls::Control {
+    fn second_mut(&mut self) -> &mut dyn controls::Control {
         self.second.as_mut()
     }
 }
@@ -219,7 +219,7 @@ impl HasLayoutInner for GtkSplitted {
 }
 
 impl ControlInner for GtkSplitted {
-    fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
+    fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &dyn controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
         self.base.measured_size = (pw, ph); // for update_splitter only
         self.update_splitter();
         self.measure(member, control, pw, ph);
@@ -243,23 +243,23 @@ impl ControlInner for GtkSplitted {
             }
         }
     }
-    fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &controls::Container) {
+    fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &dyn controls::Container) {
         let self2 = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut self.base.widget).unwrap();
-        for mut child in [self.first.as_mut(), self.second.as_mut()].iter_mut() {
+        for child in [self.first.as_mut(), self.second.as_mut()].iter_mut() {
             child.on_removed_from_container(self2);
         }
     }
 
-    fn parent(&self) -> Option<&controls::Member> {
+    fn parent(&self) -> Option<&dyn controls::Member> {
         self.base.parent().map(|m| m.as_member())
     }
-    fn parent_mut(&mut self) -> Option<&mut controls::Member> {
+    fn parent_mut(&mut self) -> Option<&mut dyn controls::Member> {
         self.base.parent_mut().map(|m| m.as_member_mut())
     }
-    fn root(&self) -> Option<&controls::Member> {
+    fn root(&self) -> Option<&dyn controls::Member> {
         self.base.root().map(|m| m.as_member())
     }
-    fn root_mut(&mut self) -> Option<&mut controls::Member> {
+    fn root_mut(&mut self) -> Option<&mut dyn controls::Member> {
         self.base.root_mut().map(|m| m.as_member_mut())
     }
 
@@ -287,7 +287,7 @@ impl HasOrientationInner for GtkSplitted {
 }
 
 impl ContainerInner for GtkSplitted {
-    fn find_control_by_id_mut(&mut self, id: ids::Id) -> Option<&mut controls::Control> {
+    fn find_control_by_id_mut(&mut self, id: ids::Id) -> Option<&mut dyn controls::Control> {
         if self.first().as_member().id() == id {
             return Some(self.first_mut());
         }
@@ -311,7 +311,7 @@ impl ContainerInner for GtkSplitted {
 
         None
     }
-    fn find_control_by_id(&self, id: ids::Id) -> Option<&controls::Control> {
+    fn find_control_by_id(&self, id: ids::Id) -> Option<&dyn controls::Control> {
         if self.first().as_member().id() == id {
             return Some(self.first());
         }
@@ -340,7 +340,7 @@ impl MultiContainerInner for GtkSplitted {
     fn len(&self) -> usize {
         2
     }
-    fn set_child_to(&mut self, _: &mut MemberBase, index: usize, mut child: Box<controls::Control>) -> Option<Box<controls::Control>> {
+    fn set_child_to(&mut self, _: &mut MemberBase, index: usize, mut child: Box<dyn controls::Control>) -> Option<Box<dyn controls::Control>> {
         let (pw, ph) = self.size();
         let orientation = self.layout_orientation();
         let (first, second) = self.children_sizes();
@@ -387,17 +387,17 @@ impl MultiContainerInner for GtkSplitted {
         self.base.invalidate();
         Some(child)
     }
-    fn remove_child_from(&mut self, _: &mut MemberBase, _: usize) -> Option<Box<controls::Control>> {
+    fn remove_child_from(&mut self, _: &mut MemberBase, _: usize) -> Option<Box<dyn controls::Control>> {
         None
     }
-    fn child_at(&self, index: usize) -> Option<&controls::Control> {
+    fn child_at(&self, index: usize) -> Option<&dyn controls::Control> {
         match index {
             0 => Some(self.first()),
             1 => Some(self.second()),
             _ => None,
         }
     }
-    fn child_at_mut(&mut self, index: usize) -> Option<&mut controls::Control> {
+    fn child_at_mut(&mut self, index: usize) -> Option<&mut dyn controls::Control> {
         match index {
             0 => Some(self.first_mut()),
             1 => Some(self.second_mut()),

@@ -20,7 +20,7 @@ pub mod ffi {
         // /*Ignored*/field parent_class has incomplete type
     }
     impl ::std::fmt::Debug for GtkRecklessFixedClass {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
             f.debug_struct(&format!("GtkRecklessFixedClass @ {:?}", self as *const _)).finish()
         }
     }
@@ -31,7 +31,7 @@ pub mod ffi {
         pub container: ::gtk_sys::GtkFixed,
     }
     impl ::std::fmt::Debug for GtkRecklessFixed {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
             f.debug_struct(&format!("GtkRecklessFixed @ {:?}", self as *const _)).field("container", &self.container).finish()
         }
     }

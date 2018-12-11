@@ -32,7 +32,7 @@ impl development::ApplicationInner for GtkApplication {
         a.as_inner_mut().selfptr = a.as_mut() as *mut Application;
         a
     }
-    fn new_window(&mut self, title: &str, size: types::WindowStartSize, menu: types::WindowMenu) -> Box<controls::Window> {
+    fn new_window(&mut self, title: &str, size: types::WindowStartSize, menu: types::WindowMenu) -> Box<dyn controls::Window> {
         use plygui_api::development::{MemberInner, WindowInner};
 
         let w = window::GtkWindow::with_params(title, size, menu);
@@ -57,13 +57,13 @@ impl development::ApplicationInner for GtkApplication {
 
         w
     }
-    fn name(&self) -> ::std::borrow::Cow<str> {
+    fn name(&self) -> ::std::borrow::Cow<'_, str> {
         ::std::borrow::Cow::Borrowed(self.name.as_ref())
     }
     fn start(&mut self) {
         gtk::main()
     }
-    fn find_member_by_id_mut(&mut self, id: ids::Id) -> Option<&mut controls::Member> {
+    fn find_member_by_id_mut(&mut self, id: ids::Id) -> Option<&mut dyn controls::Member> {
         use plygui_api::controls::{Container, Member, SingleContainer};
 
         for window in self.windows.as_mut_slice() {
@@ -76,7 +76,7 @@ impl development::ApplicationInner for GtkApplication {
         }
         None
     }
-    fn find_member_by_id(&self, id: ids::Id) -> Option<&controls::Member> {
+    fn find_member_by_id(&self, id: ids::Id) -> Option<&dyn controls::Member> {
         use plygui_api::controls::{Container, Member, SingleContainer};
 
         for window in self.windows.as_slice() {

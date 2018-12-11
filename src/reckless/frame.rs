@@ -20,7 +20,7 @@ pub mod ffi {
         // /*Ignored*/field parent_class has incomplete type
     }
     impl ::std::fmt::Debug for GtkRecklessFrameClass {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
             f.debug_struct(&format!("GtkRecklessFrameClass @ {:?}", self as *const _)).finish()
         }
     }
@@ -31,7 +31,7 @@ pub mod ffi {
         pub container: ::gtk_sys::GtkFrame,
     }
     impl ::std::fmt::Debug for GtkRecklessFrame {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
             f.debug_struct(&format!("GtkRecklessFrame @ {:?}", self as *const _)).field("container", &self.container).finish()
         }
     }

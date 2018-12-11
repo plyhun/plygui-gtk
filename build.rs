@@ -1,5 +1,5 @@
-extern crate cc;
-extern crate pkg_config;
+use cc;
+use pkg_config;
 
 fn main() {
     let gtk_probe = pkg_config::Config::new().atleast_version("3.0").probe("gtk+-3.0").unwrap();

@@ -5,14 +5,10 @@ extern crate lazy_static;
 
 #[macro_use]
 pub extern crate glib;
-pub extern crate gdk;
-pub extern crate gtk;
-pub extern crate libc;
-pub extern crate pango;
-
-extern crate glib_sys;
-extern crate gobject_sys;
-extern crate gtk_sys;
+pub use gdk;
+pub use gtk;
+pub use libc;
+pub use pango;
 
 pub mod reckless;
 
@@ -43,12 +39,12 @@ pub mod prelude {
 	pub use plygui_api::utils; 
 	
 	pub mod imp {
-		pub use ::application::Application;
-		pub use ::window::Window;
-		pub use ::button::Button;
-		pub use ::layout_linear::LinearLayout;
-		pub use ::frame::Frame;
-		pub use ::splitted::Splitted;
-		pub use ::text::Text;
+		pub use crate::application::Application;
+		pub use crate::window::Window;
+		pub use crate::button::Button;
+		pub use crate::layout_linear::LinearLayout;
+		pub use crate::frame::Frame;
+		pub use crate::splitted::Splitted;
+		pub use crate::text::Text;
 	}
 }

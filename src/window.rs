@@ -12,7 +12,7 @@ pub struct GtkWindow {
 
     size: (i32, i32),
 
-    child: Option<Box<controls::Control>>,
+    child: Option<Box<dyn controls::Control>>,
 }
 
 pub type Window = Member<SingleContainer<::plygui_api::development::Window<GtkWindow>>>;
@@ -109,7 +109,7 @@ impl WindowInner for GtkWindow {
 }
 
 impl HasLabelInner for GtkWindow {
-    fn label(&self) -> ::std::borrow::Cow<str> {
+    fn label(&self) -> ::std::borrow::Cow<'_, str> {
         Cow::Owned(self.window.get_title().unwrap_or(String::new()))
     }
     fn set_label(&mut self, _: &mut MemberBase, label: &str) {
@@ -119,7 +119,7 @@ impl HasLabelInner for GtkWindow {
 }
 
 impl SingleContainerInner for GtkWindow {
-    fn set_child(&mut self, base: &mut MemberBase, mut child: Option<Box<controls::Control>>) -> Option<Box<controls::Control>> {
+    fn set_child(&mut self, base: &mut MemberBase, mut child: Option<Box<dyn controls::Control>>) -> Option<Box<dyn controls::Control>> {
         let mut old = self.child.take();
         if let Some(old) = old.as_mut() {
             for child in self.frame.get_children().as_slice() {
@@ -146,10 +146,10 @@ impl SingleContainerInner for GtkWindow {
 
         old
     }
-    fn child(&self) -> Option<&controls::Control> {
+    fn child(&self) -> Option<&dyn controls::Control> {
         self.child.as_ref().map(|c| c.as_ref())
     }
-    fn child_mut(&mut self) -> Option<&mut controls::Control> {
+    fn child_mut(&mut self) -> Option<&mut dyn controls::Control> {
         if let Some(child) = self.child.as_mut() {
             Some(child.as_mut())
         } else {
@@ -159,7 +159,7 @@ impl SingleContainerInner for GtkWindow {
 }
 
 impl ContainerInner for GtkWindow {
-    fn find_control_by_id_mut(&mut self, id_: ids::Id) -> Option<&mut controls::Control> {
+    fn find_control_by_id_mut(&mut self, id_: ids::Id) -> Option<&mut dyn controls::Control> {
         if let Some(child) = self.child.as_mut() {
             if let Some(c) = child.is_container_mut() {
                 return c.find_control_by_id_mut(id_);
@@ -167,7 +167,7 @@ impl ContainerInner for GtkWindow {
         }
         None
     }
-    fn find_control_by_id(&self, id_: ids::Id) -> Option<&controls::Control> {
+    fn find_control_by_id(&self, id_: ids::Id) -> Option<&dyn controls::Control> {
         if let Some(child) = self.child.as_ref() {
             if let Some(c) = child.is_container() {
                 return c.find_control_by_id(id_);

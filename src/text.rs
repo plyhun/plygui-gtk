@@ -56,22 +56,22 @@ impl HasLayoutInner for GtkText {
 }
 
 impl ControlInner for GtkText {
-    fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
+    fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &dyn controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
         self.measure(member, control, pw, ph);
         self.draw(member, control, Some((x, y)));
     }
-    fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &controls::Container) {}
+    fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &dyn controls::Container) {}
 
-    fn parent(&self) -> Option<&controls::Member> {
+    fn parent(&self) -> Option<&dyn controls::Member> {
         self.base.parent().map(|m| m.as_member())
     }
-    fn parent_mut(&mut self) -> Option<&mut controls::Member> {
+    fn parent_mut(&mut self) -> Option<&mut dyn controls::Member> {
         self.base.parent_mut().map(|m| m.as_member_mut())
     }
-    fn root(&self) -> Option<&controls::Member> {
+    fn root(&self) -> Option<&dyn controls::Member> {
         self.base.root().map(|m| m.as_member())
     }
-    fn root_mut(&mut self) -> Option<&mut controls::Member> {
+    fn root_mut(&mut self) -> Option<&mut dyn controls::Member> {
         self.base.root_mut().map(|m| m.as_member_mut())
     }
 
@@ -116,7 +116,7 @@ impl Drawable for GtkText {
                     layout::Size::WrapContent => {
                         if label_size.0 < 0 {
                             let self_widget: gtk::Widget = self.base.widget.clone().into();
-                            let mut label = self_widget.downcast::<Label>().unwrap();
+                            let label = self_widget.downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
                         label_size.0 + self.base.widget.get_margin_start() + self.base.widget.get_margin_end()
@@ -128,7 +128,7 @@ impl Drawable for GtkText {
                     layout::Size::WrapContent => {
                         if label_size.1 < 0 {
                             let self_widget: gtk::Widget = self.base.widget.clone().into();
-                            let mut label = self_widget.downcast::<Label>().unwrap();
+                            let label = self_widget.downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
                         label_size.1 + self.base.widget.get_margin_top() + self.base.widget.get_margin_bottom()
@@ -145,7 +145,7 @@ impl Drawable for GtkText {
 }
 
 #[allow(dead_code)]
-pub(crate) fn spawn() -> Box<controls::Control> {
+pub(crate) fn spawn() -> Box<dyn controls::Control> {
     Text::empty().into_control()
 }
 
