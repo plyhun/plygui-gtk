@@ -54,8 +54,10 @@ impl MessageInner for GtkMessage {
     fn severity(&self) -> types::MessageSeverity {
         message_type_to_severity(self.message.get_property_message_type())
     }
-    fn start(&mut self) -> Result<String, ()> {
-        self.actions.get(self.message.run() as usize).map(|(n, _)| n.clone()).ok_or(())
+    fn start(self) -> Result<String, ()> {
+        let pressed = self.message.run() as usize;
+        self.message.close();
+        self.actions.get(pressed).map(|(n, _)| n.clone()).ok_or(())
     }
 }
 
@@ -86,12 +88,6 @@ impl MemberInner for GtkMessage {
 
     unsafe fn native_id(&self) -> Self::Id {
         self.message.clone().upcast::<Widget>().into()
-    }
-}
-
-impl Drop for GtkMessage {
-    fn drop(&mut self) {
-        self.message.close();
     }
 }
 
