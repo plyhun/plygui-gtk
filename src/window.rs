@@ -9,10 +9,10 @@ use gtk::{Fixed, Rectangle, Widget, Window as GtkWindowSys, WindowType};
 pub struct GtkWindow {
     window: GtkWindowSys,
     frame: reckless::fixed::RecklessFixed,
-
     size: (i32, i32),
-
     child: Option<Box<dyn controls::Control>>,
+    on_close: Option<callbacks::Action>,
+    skip_callbacks: bool,
 }
 
 pub type Window = Member<SingleContainer<::plygui_api::development::Window<GtkWindow>>>;
@@ -31,6 +31,16 @@ impl GtkWindow {
     }
 }
 
+impl CloseableInner for GtkWindow {
+    fn close(&mut self, skip_callbacks: bool) {
+        self.skip_callbacks = skip_callbacks;
+        self.window.close();
+    }
+    fn on_close(&mut self, callback: Option<callbacks::Action>) {
+        self.on_close = callback;
+    }
+}
+
 impl WindowInner for GtkWindow {
     fn with_params(title: &str, start_size: types::WindowStartSize, _menu: types::WindowMenu) -> Box<Window> {
         use plygui_api::controls::HasLabel;
@@ -43,6 +53,8 @@ impl WindowInner for GtkWindow {
                         window: GtkWindowSys::new(WindowType::Toplevel),
                         frame: reckless::fixed::RecklessFixed::new(),
                         child: None,
+                        on_close: None,
+                        skip_callbacks: false,
                     },
                     (),
                 ),
@@ -68,6 +80,7 @@ impl WindowInner for GtkWindow {
             };
             window.window.set_default_size(window.size.0, window.size.1);
             window.window.connect_size_allocate(on_resize_move);
+            window.window.connect_delete_event(on_widget_deleted);
             window.window.show();
             window.frame.show();
         }
@@ -195,6 +208,25 @@ impl MemberInner for GtkWindow {
     unsafe fn native_id(&self) -> Self::Id {
         self.window.clone().upcast::<Widget>().into()
     }
+}
+
+fn on_widget_deleted<'t, 'e>(this: &'t GtkWindowSys, _: &'e gdk::Event) -> glib::signal::Inhibit {
+    let mut window = this.clone().upcast::<Widget>();
+    let window = common::cast_gtk_widget_to_member_mut::<Window>(&mut window);
+    if let Some(window) = window {
+        if !window.as_inner_mut().as_inner_mut().as_inner_mut().skip_callbacks {
+            let mut window2 = window.as_inner_mut().as_inner_mut().as_inner_mut().window.clone().upcast::<Widget>();
+            let window2 = common::cast_gtk_widget_to_member_mut::<Window>(&mut window2);
+            if let Some(window2) = window2 {
+                if let Some(ref mut on_close) = window.as_inner_mut().as_inner_mut().as_inner_mut().on_close {
+                    if !(on_close.as_mut())(window2) {
+                        return glib::signal::Inhibit(true);
+                    }
+                }
+            }
+        }
+    }
+    glib::signal::Inhibit(false)
 }
 
 fn on_resize_move(this: &GtkWindowSys, allo: &Rectangle) {

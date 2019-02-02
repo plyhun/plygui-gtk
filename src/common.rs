@@ -210,8 +210,11 @@ pub fn set_pointer(this: &mut Widget, ptr: *mut c_void) {
 pub fn pointer(this: &Widget) -> *mut c_void {
     unsafe { ::gobject_sys::g_object_get_data(this.to_glib_none().0, PROPERTY.as_ptr() as *const c_char) as *mut c_void }
 }
+pub fn cast_member_to_gtkwidget(member: &dyn controls::Member) -> GtkWidget {
+    unsafe { member.native_id().into() }
+}
 pub fn cast_control_to_gtkwidget(control: &dyn controls::Control) -> GtkWidget {
-    unsafe { control.native_id().into() }
+    cast_member_to_gtkwidget(control.as_member())
 }
 
 fn cast_gtk_widget_mut<'a, T>(this: &mut Widget) -> Option<&'a mut T>

@@ -13,8 +13,8 @@ pub struct GtkApplication {
 
 pub type Application = development::Application<GtkApplication>;
 
-impl development::ApplicationInner for GtkApplication {
-    fn with_name(name: &str) -> Box<Application> {
+impl development::NewApplication<GtkApplication> for GtkApplication {
+    fn init_with_name(name: &str) -> Box<Application> {
         use plygui_api::development::HasInner;
         use std::ptr;
 
@@ -32,6 +32,9 @@ impl development::ApplicationInner for GtkApplication {
         a.as_inner_mut().selfptr = a.as_mut() as *mut Application;
         a
     }
+}
+
+impl development::ApplicationInner for GtkApplication {
     fn new_window(&mut self, title: &str, size: types::WindowStartSize, menu: types::WindowMenu) -> Box<dyn controls::Window> {
         use plygui_api::development::{MemberInner, WindowInner};
 
