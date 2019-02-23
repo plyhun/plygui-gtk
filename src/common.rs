@@ -80,9 +80,6 @@ impl NativeId for GtkWidget {}
 #[repr(C)]
 pub struct GtkControlBase<T: controls::Control + Sized> {
     pub widget: GtkWidget,
-    pub coords: Option<(i32, i32)>,
-    pub measured_size: (u16, u16),
-    //pub dirty: bool,
     _marker: PhantomData<T>,
 }
 
@@ -90,9 +87,6 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
     pub fn with_gtk_widget(widget: Widget) -> GtkControlBase<T> {
         let base = GtkControlBase {
             widget: widget.into(),
-            coords: None,
-            measured_size: (0, 0),
-            //dirty: true,
             _marker: PhantomData,
         };
         base
@@ -134,7 +128,7 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
     pub fn root_mut(&mut self) -> Option<&mut MemberBase> {
         self.widget.get_toplevel().map(|mut w| cast_gtk_widget_mut(&mut w).unwrap())
     }
-    pub fn invalidate(&mut self) {
+    pub fn invalidate(&mut self) -> bool {
         use gtk::WidgetExt;
 
         if let Some(mut parent_widget) = self.widget.get_parent() {
@@ -142,7 +136,7 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
                 parent_widget = parent_widget.get_parent().unwrap();
             }
             if let Some(mparent) = cast_gtk_widget_to_base_mut(&mut parent_widget) {
-                let (pw, ph) = mparent.as_member().size();
+                let (pw, ph) = mparent.as_member().is_has_size().unwrap().size();
                 let this: &mut T = cast_gtk_widget_to_member_mut(&mut self.widget).unwrap();
                 let (_, _, changed) = this.measure(pw, ph);
                 this.draw(None);
@@ -153,20 +147,20 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
                     }
                 }
             }
+            true
+        } else {
+            false
         }
     }
-    pub fn draw(&mut self, member: &mut MemberBase, _control: &mut ControlBase, coords: Option<(i32, i32)>) {
-        if coords.is_some() {
-            self.coords = coords;
-        }
-        if self.coords.is_some() {
-            self.widget.set_size_request(self.measured_size.0 as i32, self.measured_size.1 as i32);
-            if let types::Visibility::Gone = member.visibility {
+    pub fn draw(&mut self, control: &mut ControlBase) {
+        if control.coords.is_some() {
+            self.widget.set_size_request(control.measured.0 as i32, control.measured.1 as i32);
+            if let types::Visibility::Gone = control.visibility {
                 self.widget.hide();
             } else {
                 self.widget.show();
             }
-            if let types::Visibility::Invisible = member.visibility {
+            if let types::Visibility::Invisible = control.visibility {
                 self.widget.set_sensitive(false);
                 self.widget.set_opacity(0.0);
             } else {
@@ -175,9 +169,9 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
             }
         }
     }
-    pub fn measure(&mut self, member: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
-        let old_size = self.measured_size;
-        self.measured_size = match member.visibility {
+    pub fn measure(&mut self, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
+        let old_size = control.measured;
+        control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
                 let native_size = gtk_allocation_to_size(&self.widget);
@@ -198,7 +192,7 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)
             }
         };
-        (self.measured_size.0, self.measured_size.1, self.measured_size != old_size)
+        (control.measured.0, control.measured.1, control.measured != old_size)
     }
 }
 

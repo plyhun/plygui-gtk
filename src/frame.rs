@@ -46,24 +46,23 @@ impl FrameInner for GtkFrame {
 impl SingleContainerInner for GtkFrame {
     fn set_child(&mut self, base: &mut MemberBase, mut child: Option<Box<dyn controls::Control>>) -> Option<Box<dyn controls::Control>> {
         let mut old = self.child.take();
-        let (pw, ph) = self.size();
+        let this = unsafe { utils::base_to_impl_mut::<Frame>(base) };
+        let (pw, ph) = this.as_inner().base().measured;
         let frame_sys: gtk::Widget = self.base.widget.clone().into();
         let frame_sys = frame_sys.downcast::<GtkFrameSys>().unwrap();
         if let Some(old) = old.as_mut() {
             let old_sys: common::GtkWidget = unsafe { old.native_id() }.into();
             frame_sys.remove(old_sys.as_ref());
-            if self.base.coords.is_some() {
-                let self2 = unsafe { utils::base_to_impl_mut::<Frame>(base) };
-                old.on_removed_from_container(self2);
+            if this.as_inner().base().coords.is_some() {
+                old.on_removed_from_container(this);
             }
         }
         if let Some(new) = child.as_mut() {
             let widget = common::cast_control_to_gtkwidget(new.as_ref());
             frame_sys.add(widget.as_ref());
-            if self.base.coords.is_some() {
-                let self2 = unsafe { utils::base_to_impl_mut::<Frame>(base) };
+            if this.as_inner().base().coords.is_some() {
                 new.on_added_to_container(
-                    self2,
+                    this,
                     0,
                     0,
                     utils::coord_to_size(cmp::max(0, pw as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end())),
@@ -137,7 +136,8 @@ impl HasLayoutInner for GtkFrame {
 impl ControlInner for GtkFrame {
     fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &dyn controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
         self.measure(member, control, pw, ph);
-        self.draw(member, control, Some((x, y)));
+        control.coords = Some((x, y));
+        self.draw(member, control);
         if let Some(ref mut child) = self.child {
             let self2 = unsafe { utils::base_to_impl_mut::<Frame>(member) };
             child.on_added_to_container(
@@ -178,29 +178,36 @@ impl ControlInner for GtkFrame {
     }
 }
 
-impl MemberInner for GtkFrame {
+impl HasNativeIdInner for GtkFrame {
     type Id = common::GtkWidget;
-
-    fn size(&self) -> (u16, u16) {
-        self.base.measured_size
-    }
-
-    fn on_set_visibility(&mut self, _: &mut MemberBase) {
-        self.base.invalidate()
-    }
 
     unsafe fn native_id(&self) -> Self::Id {
         self.base.widget.clone().into()
     }
 }
 
-impl Drawable for GtkFrame {
-    fn draw(&mut self, member: &mut MemberBase, control: &mut ControlBase, coords: Option<(i32, i32)>) {
-        self.base.draw(member, control, coords);
+impl HasSizeInner for GtkFrame {
+    fn on_size_set(&mut self, _: &mut MemberBase, (width, height): (u16, u16)) -> bool {
+        self.base.widget.set_size_request(width as i32, height as i32);
+        true
     }
-    fn measure(&mut self, member: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
-        let old_size = self.base.measured_size;
-        self.base.measured_size = match member.visibility {
+}
+
+impl HasVisibilityInner for GtkFrame {
+    fn on_visibility_set(&mut self, _: &mut MemberBase, _: types::Visibility) -> bool {
+        self.base.invalidate()
+    }
+}
+
+impl MemberInner for GtkFrame {}
+
+impl Drawable for GtkFrame {
+    fn draw(&mut self, _: &mut MemberBase, control: &mut ControlBase) {
+        self.base.draw(control);
+    }
+    fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
+        let old_size = control.measured;
+        control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
                 let mut label_size = (-1i32, -1i32);
@@ -250,10 +257,10 @@ impl Drawable for GtkFrame {
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)
             }
         };
-        (self.base.measured_size.0, self.base.measured_size.1, self.base.measured_size != old_size)
+        (control.measured.0, control.measured.1, control.measured != old_size)
     }
     fn invalidate(&mut self, _: &mut MemberBase, _: &mut ControlBase) {
-        self.base.invalidate()
+        self.base.invalidate();
     }
 }
 
@@ -266,8 +273,8 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<Frame>(&mut ll).unwrap();
 
-    let measured_size = ll.as_inner().as_inner().as_inner().base.measured_size;
-    ll.call_on_resize(measured_size.0 as u16, measured_size.1 as u16);
+    let measured_size = ll.as_inner().base().measured;
+    ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
 }
 
 impl_all_defaults!(Frame);

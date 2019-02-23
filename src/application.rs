@@ -13,8 +13,16 @@ pub struct GtkApplication {
 
 pub type Application = development::Application<GtkApplication>;
 
-impl development::NewApplication<GtkApplication> for GtkApplication {
-    fn init_with_name(name: &str) -> Box<Application> {
+impl development::HasNativeIdInner for GtkApplication {
+    type Id = common::GtkWidget;
+
+    unsafe fn native_id(&self) -> Self::Id {
+        common::GtkWidget::from(0usize)
+    }
+}
+
+impl development::ApplicationInner for GtkApplication {
+    fn get() -> Box<Application> {
         use plygui_api::development::HasInner;
         use std::ptr;
 
@@ -23,7 +31,7 @@ impl development::NewApplication<GtkApplication> for GtkApplication {
         }
         let mut a = Box::new(development::Application::with_inner(
             GtkApplication {
-                name: name.into(),
+                name: String::new(), // TODO later // name.into(),
                 windows: Vec::with_capacity(1),
                 selfptr: ptr::null_mut(),
             },
@@ -32,11 +40,8 @@ impl development::NewApplication<GtkApplication> for GtkApplication {
         a.as_inner_mut().selfptr = a.as_mut() as *mut Application;
         a
     }
-}
-
-impl development::ApplicationInner for GtkApplication {
-    fn new_window(&mut self, title: &str, size: types::WindowStartSize, menu: types::WindowMenu) -> Box<dyn controls::Window> {
-        use plygui_api::development::{MemberInner, WindowInner};
+    fn new_window(&mut self, title: &str, size: types::WindowStartSize, menu: types::Menu) -> Box<dyn controls::Window> {
+        use plygui_api::development::{HasNativeIdInner, WindowInner};
 
         let w = window::GtkWindow::with_params(title, size, menu);
         let widget = {
@@ -59,6 +64,9 @@ impl development::ApplicationInner for GtkApplication {
         self.windows.push(widget);
 
         w
+    }
+    fn new_tray(&mut self, title: &str, menu: types::Menu) -> Box<dyn controls::Tray> {
+        unimplemented!()
     }
     fn name(&self) -> ::std::borrow::Cow<'_, str> {
         ::std::borrow::Cow::Borrowed(self.name.as_ref())

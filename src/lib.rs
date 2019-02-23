@@ -3,6 +3,8 @@ extern crate plygui_api;
 #[macro_use]
 extern crate lazy_static;
 
+pub use plygui_api::external;
+
 #[macro_use]
 pub extern crate glib;
 pub use gdk;
@@ -23,6 +25,7 @@ mod splitted;
 mod window;
 mod text;
 mod message;
+mod image;
 
 #[cfg(feature = "markup")]
 pub fn register_members(registry: &mut plygui_api::markup::MarkupRegistry) {
@@ -48,5 +51,6 @@ pub mod prelude {
 		pub use crate::splitted::Splitted;
 		pub use crate::text::Text;
 		pub use crate::message::Message;
+		pub use crate::image::Image;
 	}
 }

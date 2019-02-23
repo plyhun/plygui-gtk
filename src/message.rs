@@ -2,7 +2,7 @@ use super::common::*;
 use super::*;
 
 use gtk::prelude::*;
-use gtk::{Rectangle, Widget, MessageDialog, DialogFlags, MessageType, MessageDialogExt, ButtonsType};
+use gtk::{Widget, MessageDialog, DialogFlags, MessageType, MessageDialogExt, ButtonsType};
 
 #[repr(C)]
 pub struct GtkMessage {
@@ -38,7 +38,6 @@ impl MessageInner for GtkMessage {
         {
             let message = message.as_inner_mut();
             common::set_pointer(&mut message.message.clone().upcast::<Widget>(), ptr);
-            message.message.connect_size_allocate(on_resize_move);
             message.message.connect_response(on_response);
             
             if let types::TextContent::LabelDescription(_, ref description) = content {
@@ -70,26 +69,15 @@ impl HasLabelInner for GtkMessage {
     }
 }
 
-impl MemberInner for GtkMessage {
+impl HasNativeIdInner for GtkMessage {
     type Id = common::GtkWidget;
-
-    fn size(&self) -> (u16, u16) {
-        let size = self.message.get_size();
-        (size.0 as u16, size.1 as u16)
-    }
-
-    fn on_set_visibility(&mut self, base: &mut MemberBase) {
-        if types::Visibility::Visible == base.visibility {
-            self.message.show();
-        } else {
-            self.message.hide();
-        }
-    }
 
     unsafe fn native_id(&self) -> Self::Id {
         self.message.clone().upcast::<Widget>().into()
     }
 }
+
+impl MemberInner for GtkMessage {}
 
 fn severity_to_message_type(severity: types::MessageSeverity) -> MessageType {
     match severity {
@@ -121,11 +109,4 @@ fn on_response(this: &MessageDialog, r: i32) {
     }
 }
 
-fn on_resize_move(this: &MessageDialog, allo: &Rectangle) {
-    let mut message = this.clone().upcast::<Widget>();
-    let message = common::cast_gtk_widget_to_member_mut::<Message>(&mut message);
-    if let Some(message) = message {
-        message.call_on_resize(allo.width as u16, allo.height as u16);
-    }
-}
 impl_all_defaults!(Message);

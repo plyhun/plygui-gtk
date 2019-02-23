@@ -42,7 +42,7 @@ impl CloseableInner for GtkWindow {
 }
 
 impl WindowInner for GtkWindow {
-    fn with_params(title: &str, start_size: types::WindowStartSize, _menu: types::WindowMenu) -> Box<Window> {
+    fn with_params(title: &str, start_size: types::WindowStartSize, _menu: types::Menu) -> Box<Window> {
         use plygui_api::controls::HasLabel;
 
         let mut window = Box::new(Member::with_inner(
@@ -111,13 +111,19 @@ impl WindowInner for GtkWindow {
         window.set_label(title);
         window
     }
-    fn on_frame(&mut self, cb: callbacks::Frame) {
+    fn on_frame(&mut self, cb: callbacks::OnFrame) {
         let mut window = self.window.clone().upcast::<Widget>();
         let _ = cast_gtk_widget_to_member_mut::<Window>(&mut window).unwrap().as_inner_mut().as_inner_mut().base_mut().sender().send(cb);
     }
-    fn on_frame_async_feeder(&mut self) -> callbacks::AsyncFeeder<callbacks::Frame> {
+    fn on_frame_async_feeder(&mut self) -> callbacks::AsyncFeeder<callbacks::OnFrame> {
         let mut window = self.window.clone().upcast::<Widget>();
         cast_gtk_widget_to_member_mut::<Window>(&mut window).unwrap().as_inner_mut().as_inner_mut().base_mut().sender().clone().into()
+    }
+    fn size(&self) -> (u16, u16) {
+        self.size_inner()
+    }
+    fn position(&self) -> (i32, i32) {
+        self.window.get_position()
     }
 }
 
@@ -190,25 +196,33 @@ impl ContainerInner for GtkWindow {
     }
 }
 
-impl MemberInner for GtkWindow {
-    type Id = common::GtkWidget;
-
-    fn size(&self) -> (u16, u16) {
-        self.size_inner()
+impl HasSizeInner for GtkWindow {
+    fn on_size_set(&mut self, _: &mut MemberBase, (width, height): (u16, u16)) -> bool {
+        self.window.set_default_size(width as i32, height as i32);
+        true
     }
+}
 
-    fn on_set_visibility(&mut self, base: &mut MemberBase) {
-        if types::Visibility::Visible == base.visibility {
+impl HasVisibilityInner for GtkWindow {
+    fn on_visibility_set(&mut self, _: &mut MemberBase, value: types::Visibility) -> bool {
+        if types::Visibility::Visible == value {
             self.window.show();
         } else {
             self.window.hide();
         }
+        true
     }
+}
+
+impl HasNativeIdInner for GtkWindow {
+    type Id = common::GtkWidget;
 
     unsafe fn native_id(&self) -> Self::Id {
         self.window.clone().upcast::<Widget>().into()
     }
 }
+
+impl MemberInner for GtkWindow {}
 
 fn on_widget_deleted<'t, 'e>(this: &'t GtkWindowSys, _: &'e gdk::Event) -> glib::signal::Inhibit {
     let mut window = this.clone().upcast::<Widget>();
@@ -242,7 +256,7 @@ fn on_resize_move(this: &GtkWindowSys, allo: &Rectangle) {
                 child.measure(width as u16, height as u16);
                 child.draw(Some((0, 0)));
             }
-            window.call_on_resize(width as u16, height as u16);
+            window.call_on_size(width as u16, height as u16);
         }
     }
 }

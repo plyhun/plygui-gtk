@@ -58,7 +58,8 @@ impl HasLayoutInner for GtkText {
 impl ControlInner for GtkText {
     fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &dyn controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
         self.measure(member, control, pw, ph);
-        self.draw(member, control, Some((x, y)));
+        control.coords = Some((x, y));
+        self.draw(member, control);
     }
     fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &dyn controls::Container) {}
 
@@ -83,29 +84,36 @@ impl ControlInner for GtkText {
     }
 }
 
-impl MemberInner for GtkText {
+impl HasNativeIdInner for GtkText {
     type Id = common::GtkWidget;
-
-    fn size(&self) -> (u16, u16) {
-        self.base.measured_size
-    }
-
-    fn on_set_visibility(&mut self, _: &mut MemberBase) {
-        self.base.invalidate()
-    }
 
     unsafe fn native_id(&self) -> Self::Id {
         self.base.widget.clone().into()
     }
 }
 
-impl Drawable for GtkText {
-    fn draw(&mut self, member: &mut MemberBase, control: &mut ControlBase, coords: Option<(i32, i32)>) {
-        self.base.draw(member, control, coords);
+impl HasSizeInner for GtkText {
+    fn on_size_set(&mut self, _: &mut MemberBase, (width, height): (u16, u16)) -> bool {
+        self.base.widget.set_size_request(width as i32, height as i32);
+        true
     }
-    fn measure(&mut self, member: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
-        let old_size = self.base.measured_size;
-        self.base.measured_size = match member.visibility {
+}
+
+impl HasVisibilityInner for GtkText {
+    fn on_visibility_set(&mut self, _: &mut MemberBase, _: types::Visibility) -> bool {
+        self.base.invalidate()
+    }
+}
+
+impl MemberInner for GtkText {}
+
+impl Drawable for GtkText {
+    fn draw(&mut self, _: &mut MemberBase, control: &mut ControlBase) {
+        self.base.draw(control);
+    }
+    fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
+        let old_size = control.measured;
+        control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
                 let mut label_size = (42i32, 42i32);
@@ -137,10 +145,10 @@ impl Drawable for GtkText {
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)
             }
         };
-        (self.base.measured_size.0, self.base.measured_size.1, self.base.measured_size != old_size)
+        (control.measured.0, control.measured.1, control.measured != old_size)
     }
     fn invalidate(&mut self, _: &mut MemberBase, _: &mut ControlBase) {
-        self.base.invalidate()
+        self.base.invalidate();
     }
 }
 
@@ -153,8 +161,8 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<Text>(&mut ll).unwrap();
 
-    let measured_size = ll.as_inner().as_inner().base.measured_size;
-    ll.call_on_resize(measured_size.0 as u16, measured_size.1 as u16);
+    let measured_size = ll.as_inner().base().measured;
+    ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
 }
 
 impl_all_defaults!(Text);

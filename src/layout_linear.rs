@@ -41,35 +41,42 @@ impl LinearLayoutInner for GtkLinearLayout {
     }
 }
 
-impl MemberInner for GtkLinearLayout {
+impl HasNativeIdInner for GtkLinearLayout {
     type Id = common::GtkWidget;
 
-    fn size(&self) -> (u16, u16) {
-        self.base.measured_size
-    }
-
-    fn on_set_visibility(&mut self, _: &mut MemberBase) {
-        self.base.invalidate()
-    }
-
     unsafe fn native_id(&self) -> Self::Id {
-        self.base.widget.clone()
+        self.base.widget.clone().into()
     }
 }
 
+impl HasSizeInner for GtkLinearLayout {
+    fn on_size_set(&mut self, _: &mut MemberBase, (width, height): (u16, u16)) -> bool {
+        self.base.widget.set_size_request(width as i32, height as i32);
+        true
+    }
+}
+
+impl HasVisibilityInner for GtkLinearLayout {
+    fn on_visibility_set(&mut self, _: &mut MemberBase, _: types::Visibility) -> bool {
+        self.base.invalidate()
+    }
+}
+
+impl MemberInner for GtkLinearLayout {}
+
 impl Drawable for GtkLinearLayout {
-    fn draw(&mut self, member: &mut MemberBase, control: &mut ControlBase, coords: Option<(i32, i32)>) {
-        self.base.draw(member, control, coords);
+    fn draw(&mut self, _: &mut MemberBase, control: &mut ControlBase) {
+        self.base.draw(control);
         for ref mut child in self.children.as_mut_slice() {
             child.draw(Some((0, 0)));
         }
     }
-    fn measure(&mut self, member: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
+    fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
         use std::cmp::max;
 
         let orientation = self.layout_orientation();
-        let old_size = self.base.measured_size;
-        self.base.measured_size = match member.visibility {
+        let old_size = control.measured;
+        control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
                 let mut measured = false;
@@ -126,23 +133,24 @@ impl Drawable for GtkLinearLayout {
                 (w, h)
             }
         };
-        (self.base.measured_size.0, self.base.measured_size.1, self.base.measured_size != old_size)
+        (control.measured.0, control.measured.1, control.measured != old_size)
     }
     fn invalidate(&mut self, _: &mut MemberBase, _: &mut ControlBase) {
-        self.base.invalidate()
+        self.base.invalidate();
     }
 }
 
 impl HasLayoutInner for GtkLinearLayout {
     fn on_layout_changed(&mut self, _: &mut MemberBase) {
-        self.base.invalidate()
+        self.base.invalidate();
     }
 }
 
 impl ControlInner for GtkLinearLayout {
     fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &dyn controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
         self.measure(member, control, pw, ph);
-        self.draw(member, control, Some((x, y)));
+        control.coords = Some((x, y));
+        self.draw(member, control);
         let (lm, tm, rm, bm) = self.base.margins().into();
         let self2 = common::cast_gtk_widget_to_member_mut::<LinearLayout>(&mut self.base.widget).unwrap();
         for ref mut child in self.children.as_mut_slice() {
@@ -233,7 +241,7 @@ impl MultiContainerInner for GtkLinearLayout {
         self.children.insert(index, child);
         let old = if (index + 1) < self.children.len() {
             let mut old = self.children.remove(index + 1);
-            if self.base.coords.is_some() {
+            if self2.as_inner().base().coords.is_some() {
                 old.on_removed_from_container(self2);
             }
             Some(old)
@@ -244,8 +252,8 @@ impl MultiContainerInner for GtkLinearLayout {
         let widget = common::cast_control_to_gtkwidget(self.children.get_mut(index).unwrap().as_mut());
         let self_widget: gtk::Widget = self.base.widget.clone().into();
         self_widget.downcast::<GtkBox>().unwrap().add::<Widget>(&widget.into());
-        if self.base.coords.is_some() {
-            let (pw, ph) = self.size();
+        if self2.as_inner().base().coords.is_some() {
+            let (pw, ph) = self2.as_inner().base().measured;
             self.children.get_mut(index).unwrap().on_added_to_container(
                 self2,
                 0,
@@ -293,8 +301,8 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<LinearLayout>(&mut ll).unwrap();
 
-    let measured_size = ll.as_inner_mut().as_inner_mut().as_inner_mut().base.measured_size;
-    ll.call_on_resize(measured_size.0 as u16, measured_size.1 as u16);
+    let measured_size = ll.as_inner_mut().base().measured;
+    ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
 }
 
 impl_all_defaults!(LinearLayout);

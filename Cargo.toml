@@ -20,6 +20,8 @@ gtk-sys = { version = "^0.6" }
 lazy_static = { version = "^1.0" }
 libc = { version = "^0.2" }
 pango = { version = "^0.4" }
+gdk-pixbuf = { version = "^0.4" }
+cairo-rs = { version = "^0.4"}
 
 [build-dependencies]
 cc = { version = "^1.0" }
