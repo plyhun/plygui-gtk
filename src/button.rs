@@ -34,23 +34,23 @@ impl ButtonInner for GtkButton {
             btn.as_inner_mut().as_inner_mut().base.set_pointer(ptr);
         }
         {
-            let self_widget: gtk::Widget = btn.as_inner_mut().as_inner_mut().base.widget.clone().into();
+            let self_widget: Object = Object::from(btn.as_inner_mut().as_inner_mut().base.widget.clone()).into();
             let button = self_widget.downcast::<GtkButtonSys>().unwrap();
             button.set_label(label);
             button.connect_clicked(on_click);
         }
-        btn.as_inner_mut().as_inner_mut().base.widget.connect_size_allocate(on_size_allocate);
+        Object::from(btn.as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<Widget>().unwrap().connect_size_allocate(on_size_allocate);
         btn
     }
 }
 
 impl HasLabelInner for GtkButton {
     fn label<'a>(&'a self) -> Cow<'a, str> {
-        let self_widget: gtk::Widget = self.base.widget.clone().into();
+        let self_widget: Object = Object::from(self.base.widget.clone()).into();
         Cow::Owned(self_widget.downcast::<GtkButtonSys>().unwrap().get_label().unwrap_or(String::new()))
     }
     fn set_label(&mut self, _: &mut MemberBase, label: &str) {
-        let self_widget: gtk::Widget = self.base.widget.clone().into();
+        let self_widget: Object = Object::from(self.base.widget.clone()).into();
         self_widget.downcast::<GtkButtonSys>().unwrap().set_label(label)
     }
 }
@@ -107,7 +107,7 @@ impl HasNativeIdInner for GtkButton {
 
 impl HasSizeInner for GtkButton {
     fn on_size_set(&mut self, _: &mut MemberBase, (width, height): (u16, u16)) -> bool {
-        self.base.widget.set_size_request(width as i32, height as i32);
+        self.base.widget().set_size_request(width as i32, height as i32);
         true
     }
 }
@@ -135,26 +135,28 @@ impl Drawable for GtkButton {
                     layout::Size::MatchParent => parent_width as i32,
                     layout::Size::Exact(w) => w as i32,
                     layout::Size::WrapContent => {
+                        let widget: Object = self.base.widget.clone().into();
                         if label_size.0 < 0 {
-                            let self_widget: gtk::Widget = self.base.widget.clone().into();
-                            let bin = self_widget.downcast::<Bin>().unwrap();
+                            let bin = widget.clone().downcast::<Bin>().unwrap();
                             let label = bin.get_child().unwrap().downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        label_size.0 + self.base.widget.get_margin_start() + self.base.widget.get_margin_end() + DEFAULT_PADDING + DEFAULT_PADDING
+                        let widget = widget.downcast::<Widget>().unwrap();
+                        label_size.0 + widget.get_margin_start() + widget.get_margin_end() + DEFAULT_PADDING + DEFAULT_PADDING
                     }
                 };
                 let h = match control.layout.height {
                     layout::Size::MatchParent => parent_height as i32,
                     layout::Size::Exact(h) => h as i32,
                     layout::Size::WrapContent => {
+                        let widget: Object = self.base.widget.clone().into();
                         if label_size.1 < 0 {
-                            let self_widget: gtk::Widget = self.base.widget.clone().into();
-                            let bin = self_widget.downcast::<Bin>().unwrap();
+                            let bin = widget.clone().downcast::<Bin>().unwrap();
                             let label = bin.get_child().unwrap().downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        label_size.1 + self.base.widget.get_margin_top() + self.base.widget.get_margin_bottom() + DEFAULT_PADDING + DEFAULT_PADDING
+                        let widget = widget.downcast::<Widget>().unwrap();
+                        label_size.1 + widget.get_margin_top() + widget.get_margin_bottom() + DEFAULT_PADDING + DEFAULT_PADDING
                     }
                 };
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)

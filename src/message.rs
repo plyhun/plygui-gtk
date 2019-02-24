@@ -14,7 +14,7 @@ pub type Message = Member<GtkMessage>;
 
 impl MessageInner for GtkMessage {
     fn with_actions(content: types::TextContent, severity: types::MessageSeverity, actions: Vec<(String, callbacks::Action)>, parent: Option<&dyn controls::Member>) -> Box<Message> {
-        let parent = parent.map(|parent| common::cast_member_to_gtkwidget(parent).get_toplevel().unwrap().downcast::<gtk::Window>().unwrap());
+        let parent = parent.map(|parent| Object::from(common::cast_member_to_gtkwidget(parent)).downcast::<Widget>().unwrap().get_toplevel().unwrap().downcast::<gtk::Window>().unwrap());
         
         let mut message = Box::new(Member::with_inner(
             GtkMessage {
@@ -37,7 +37,7 @@ impl MessageInner for GtkMessage {
 
         {
             let message = message.as_inner_mut();
-            common::set_pointer(&mut message.message.clone().upcast::<Widget>(), ptr);
+            common::set_pointer(&mut message.message.clone().upcast(), ptr);
             message.message.connect_response(on_response);
             
             if let types::TextContent::LabelDescription(_, ref description) = content {
@@ -73,7 +73,7 @@ impl HasNativeIdInner for GtkMessage {
     type Id = common::GtkWidget;
 
     unsafe fn native_id(&self) -> Self::Id {
-        self.message.clone().upcast::<Widget>().into()
+        self.message.clone().upcast::<Object>().into()
     }
 }
 

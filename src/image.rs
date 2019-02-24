@@ -32,9 +32,9 @@ impl ImageInner for GtkImage {
                 scale: types::ImageScalePolicy::FitCenter,  
                 orig: pixbuf,
             }, ()), MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut)));
-        
-        i.as_inner_mut().as_inner_mut().base.widget.connect_size_allocate(on_size_allocate);
-        i.as_inner_mut().as_inner_mut().base.widget.connect_show(on_show);
+        let self_widget = 
+        i.as_inner_mut().as_inner_mut().base.widget().connect_size_allocate(on_size_allocate);
+        i.as_inner_mut().as_inner_mut().base.widget().connect_show(on_show);
         {
         	let ptr = i.as_ref() as *const _ as *mut ::std::os::raw::c_void;
         	i.as_inner_mut().as_inner_mut().base.set_pointer(ptr);
@@ -88,8 +88,7 @@ impl GtkImage {
         		self.orig.new_subpixbuf(cmp::max(0, half_diff_h), cmp::max(0, half_diff_v), cmp::min(bm_width, inner_h), cmp::min(bm_height, inner_v)).unwrap()
     		}
     	};
-    	let image: Widget = self.base.widget.clone().into();
-    	image.downcast::<GtkImageSys>().unwrap().set_from_pixbuf(&scaled);
+    	Object::from(self.base.widget.clone()).downcast::<GtkImageSys>().unwrap().set_from_pixbuf(&scaled);
     }
 }
 
@@ -147,7 +146,7 @@ impl HasNativeIdInner for GtkImage {
 
 impl HasSizeInner for GtkImage {
     fn on_size_set(&mut self, _: &mut MemberBase, (width, height): (u16, u16)) -> bool {
-        self.base.widget.set_size_request(width as i32, height as i32);
+        self.base.widget().set_size_request(width as i32, height as i32);
         true
     }
 }

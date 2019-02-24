@@ -1,6 +1,8 @@
 pub use plygui_api::development::*;
 pub use plygui_api::{callbacks, defaults, controls, ids, layout, types, utils};
 
+pub use glib::Object;
+pub use gobject_sys::GObject;
 pub use glib::translate::ToGlibPtr;
 pub use gtk::{Cast, Orientation as GtkOrientation, Widget, WidgetExt};
 pub use gtk_sys::GtkWidget as WidgetSys;
@@ -18,21 +20,21 @@ lazy_static! {
 pub const DEFAULT_PADDING: i32 = 6;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct GtkWidget(Widget);
+pub struct GtkWidget(Object);
 
-impl From<Widget> for GtkWidget {
-    fn from(a: Widget) -> GtkWidget {
+impl From<Object> for GtkWidget {
+    fn from(a: Object) -> GtkWidget {
         GtkWidget(a)
     }
 }
-impl From<GtkWidget> for Widget {
-    fn from(a: GtkWidget) -> Widget {
+impl From<GtkWidget> for Object {
+    fn from(a: GtkWidget) -> Object {
         a.0
     }
 }
 impl From<GtkWidget> for usize {
     fn from(a: GtkWidget) -> usize {
-        let aa: *mut WidgetSys = a.0.to_glib_full();
+        let aa: *mut GObject = a.0.to_glib_full();
         aa as usize
     }
 }
@@ -40,7 +42,7 @@ impl From<usize> for GtkWidget {
     fn from(a: usize) -> GtkWidget {
         use glib::translate::FromGlibPtrFull;
 
-        unsafe { GtkWidget(Widget::from_glib_full(a as *mut WidgetSys)) }
+        unsafe { GtkWidget(Object::from_glib_full(a as *mut GObject)) }
     }
 }
 impl cmp::PartialOrd for GtkWidget {
@@ -54,7 +56,7 @@ impl cmp::Ord for GtkWidget {
     }
 }
 impl ops::Deref for GtkWidget {
-    type Target = Widget;
+    type Target = Object;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -65,13 +67,13 @@ impl ops::DerefMut for GtkWidget {
         &mut self.0
     }
 }
-impl AsRef<Widget> for GtkWidget {
-    fn as_ref(&self) -> &Widget {
+impl AsRef<Object> for GtkWidget {
+    fn as_ref(&self) -> &Object {
         &self.0
     }
 }
-impl AsMut<Widget> for GtkWidget {
-    fn as_mut(&mut self) -> &mut Widget {
+impl AsMut<Object> for GtkWidget {
+    fn as_mut(&mut self) -> &mut Object {
         &mut self.0
     }
 }
@@ -86,7 +88,7 @@ pub struct GtkControlBase<T: controls::Control + Sized> {
 impl<T: controls::Control + Sized> GtkControlBase<T> {
     pub fn with_gtk_widget(widget: Widget) -> GtkControlBase<T> {
         let base = GtkControlBase {
-            widget: widget.into(),
+            widget: widget.upcast::<Object>().into(),
             _marker: PhantomData,
         };
         base
@@ -98,46 +100,48 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
         pointer(&self.widget)
     }
     pub fn margins(&self) -> layout::BoundarySize {
-        layout::BoundarySize::Distinct(self.widget.get_margin_start(), self.widget.get_margin_top(), self.widget.get_margin_end(), self.widget.get_margin_bottom())
+        let widget = self.widget();
+        layout::BoundarySize::Distinct(widget.get_margin_start(), widget.get_margin_top(), widget.get_margin_end(), widget.get_margin_bottom())
     }
     pub fn parent(&self) -> Option<&MemberBase> {
-        if let Some(w) = self.widget.get_parent() {
-            if pointer(&w).is_null() {
-                w.get_parent().map(|w| cast_gtk_widget(&w).unwrap())
+        if let Some(w) = self.widget().get_parent() {
+            if pointer(&w.clone().upcast()).is_null() {
+                w.get_parent().map(|w| cast_gobject(&w.upcast()).unwrap())
             } else {
-                Some(cast_gtk_widget(&w).unwrap())
+                Some(cast_gobject(&w.upcast()).unwrap())
             }
         } else {
             None
         }
     }
     pub fn parent_mut(&mut self) -> Option<&mut MemberBase> {
-        if let Some(mut w) = self.widget.get_parent() {
-            if pointer(&w).is_null() {
-                w.get_parent().map(|mut w| cast_gtk_widget_mut(&mut w).unwrap())
+        if let Some(w) = self.widget().get_parent() {
+            if pointer(&w.clone().upcast()).is_null() {
+                w.get_parent().map(|w| cast_gobject_mut(&mut w.upcast()).unwrap())
             } else {
-                Some(cast_gtk_widget_mut(&mut w).unwrap())
+                Some(cast_gobject_mut(&mut w.upcast()).unwrap())
             }
         } else {
             None
         }
     }
     pub fn root(&self) -> Option<&MemberBase> {
-        self.widget.get_toplevel().map(|w| cast_gtk_widget(&w).unwrap())
+        self.widget().get_toplevel().map(|w| cast_gobject(&w.upcast()).unwrap())
     }
     pub fn root_mut(&mut self) -> Option<&mut MemberBase> {
-        self.widget.get_toplevel().map(|mut w| cast_gtk_widget_mut(&mut w).unwrap())
+        self.widget().get_toplevel().map(|w| cast_gobject_mut(&mut w.upcast()).unwrap())
     }
     pub fn invalidate(&mut self) -> bool {
         use gtk::WidgetExt;
 
-        if let Some(mut parent_widget) = self.widget.get_parent() {
-            if pointer(&parent_widget).is_null() {
+        let widget = self.widget();
+        if let Some(mut parent_widget) = widget.get_parent() {
+            if pointer(&parent_widget.clone().upcast()).is_null() {
                 parent_widget = parent_widget.get_parent().unwrap();
             }
             if let Some(mparent) = cast_gtk_widget_to_base_mut(&mut parent_widget) {
                 let (pw, ph) = mparent.as_member().is_has_size().unwrap().size();
-                let this: &mut T = cast_gtk_widget_to_member_mut(&mut self.widget).unwrap();
+                let this: &mut T = cast_gobject_mut(&mut self.widget).unwrap();
                 let (_, _, changed) = this.measure(pw, ph);
                 this.draw(None);
 
@@ -154,18 +158,19 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
     }
     pub fn draw(&mut self, control: &mut ControlBase) {
         if control.coords.is_some() {
-            self.widget.set_size_request(control.measured.0 as i32, control.measured.1 as i32);
+            let widget = self.widget();
+            widget.set_size_request(control.measured.0 as i32, control.measured.1 as i32);
             if let types::Visibility::Gone = control.visibility {
-                self.widget.hide();
+                widget.hide();
             } else {
-                self.widget.show();
+                widget.show();
             }
             if let types::Visibility::Invisible = control.visibility {
-                self.widget.set_sensitive(false);
-                self.widget.set_opacity(0.0);
+                widget.set_sensitive(false);
+                widget.set_opacity(0.0);
             } else {
-                self.widget.set_sensitive(true);
-                self.widget.set_opacity(1.0);
+                widget.set_sensitive(true);
+                widget.set_opacity(1.0);
             }
         }
     }
@@ -174,7 +179,8 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
         control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
-                let native_size = gtk_allocation_to_size(&self.widget);
+                let widget = self.widget();
+                let native_size = gtk_allocation_to_size(&widget);
                 let w = match control.layout.width {
                     layout::Size::MatchParent => parent_width as i32,
                     layout::Size::Exact(w) => w as i32,
@@ -194,14 +200,23 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
         };
         (control.measured.0, control.measured.1, control.measured != old_size)
     }
+    pub fn widget(&self) -> Widget {
+        Object::from(self.widget.clone()).downcast().unwrap()
+    }
+    pub fn as_control(&self) -> &T {
+        cast_gobject(&self.widget).unwrap()
+    }
+    pub fn as_control_mut(&mut self) -> &mut T {
+        cast_gobject_mut(&mut self.widget).unwrap()
+    }
 }
 
-pub fn set_pointer(this: &mut Widget, ptr: *mut c_void) {
+pub fn set_pointer(this: &mut Object, ptr: *mut c_void) {
     unsafe {
         ::gobject_sys::g_object_set_data(this.to_glib_none().0, PROPERTY.as_ptr() as *const c_char, ptr as *mut ::libc::c_void);
     }
 }
-pub fn pointer(this: &Widget) -> *mut c_void {
+pub fn pointer(this: &Object) -> *mut c_void {
     unsafe { ::gobject_sys::g_object_get_data(this.to_glib_none().0, PROPERTY.as_ptr() as *const c_char) as *mut c_void }
 }
 pub fn cast_member_to_gtkwidget(member: &dyn controls::Member) -> GtkWidget {
@@ -211,7 +226,7 @@ pub fn cast_control_to_gtkwidget(control: &dyn controls::Control) -> GtkWidget {
     cast_member_to_gtkwidget(control.as_member())
 }
 
-fn cast_gtk_widget_mut<'a, T>(this: &mut Widget) -> Option<&'a mut T>
+fn cast_gobject_mut<'a, T>(this: &mut Object) -> Option<&'a mut T>
 where
     T: Sized,
 {
@@ -224,7 +239,7 @@ where
         }
     }
 }
-fn cast_gtk_widget<'a, T>(this: &Widget) -> Option<&'a T>
+fn cast_gobject<'a, T>(this: &Object) -> Option<&'a T>
 where
     T: Sized,
 {
@@ -241,19 +256,23 @@ pub fn cast_gtk_widget_to_member_mut<'a, T>(object: &'a mut Widget) -> Option<&'
 where
     T: controls::Member + Sized,
 {
-    cast_gtk_widget_mut(object)
+    let mut object = object.clone().upcast::<Object>();
+    cast_gobject_mut(&mut object)
 }
 pub fn cast_gtk_widget_to_member<'a, T>(object: &'a Widget) -> Option<&'a T>
 where
     T: controls::Member + Sized,
 {
-    cast_gtk_widget(object)
+    let object = object.clone().upcast::<Object>();
+    cast_gobject(&object)
 }
 pub fn cast_gtk_widget_to_base_mut<'a>(object: &'a mut Widget) -> Option<&'a mut MemberBase> {
-    cast_gtk_widget_mut(object)
+    let mut object = object.clone().upcast::<Object>();
+    cast_gobject_mut(&mut object)
 }
 pub fn cast_gtk_widget_to_base<'a>(object: &'a Widget) -> Option<&'a MemberBase> {
-    cast_gtk_widget(object)
+    let object = object.clone().upcast::<Object>();
+    cast_gobject(&object)
 }
 pub fn orientation_to_gtk(a: layout::Orientation) -> GtkOrientation {
     match a {

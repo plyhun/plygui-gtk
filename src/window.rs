@@ -67,7 +67,7 @@ impl WindowInner for GtkWindow {
 
         {
             let window = window.as_inner_mut().as_inner_mut().as_inner_mut();
-            common::set_pointer(&mut window.window.clone().upcast::<Widget>(), ptr);
+            common::set_pointer(&mut window.window.clone().upcast::<Object>(), ptr);
 
             window.window.add(&window.frame);
             window.size = match start_size {
@@ -149,8 +149,7 @@ impl SingleContainerInner for GtkWindow {
         }
         if let Some(new) = child.as_mut() {
             let widget = common::cast_control_to_gtkwidget(new.as_ref());
-            let widget: &Widget = &widget;
-            self.window.get_child().unwrap().downcast::<Fixed>().unwrap().add(widget);
+            self.window.get_child().unwrap().downcast::<Fixed>().unwrap().add(&Object::from(widget).downcast::<Widget>().unwrap());
             let (pw, ph) = self.size();
             let self2 = unsafe { utils::base_to_impl_mut::<Window>(base) };
             new.on_added_to_container(
@@ -218,7 +217,7 @@ impl HasNativeIdInner for GtkWindow {
     type Id = common::GtkWidget;
 
     unsafe fn native_id(&self) -> Self::Id {
-        self.window.clone().upcast::<Widget>().into()
+        self.window.clone().upcast::<Object>().into()
     }
 }
 

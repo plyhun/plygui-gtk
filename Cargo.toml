@@ -22,6 +22,7 @@ libc = { version = "^0.2" }
 pango = { version = "^0.4" }
 gdk-pixbuf = { version = "^0.4" }
 cairo-rs = { version = "^0.4"}
+gio = { version = "^0.4"}
 
 [build-dependencies]
 cc = { version = "^1.0" }

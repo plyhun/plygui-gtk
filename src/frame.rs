@@ -34,11 +34,10 @@ impl FrameInner for GtkFrame {
             fr.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
         }
         {
-            let self_widget: gtk::Widget = fr.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone().into();
-            let frame = self_widget.downcast::<GtkFrameSys>().unwrap();
+            let frame = Object::from(fr.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<GtkFrameSys>().unwrap();
             frame.set_label(label);
         }
-        fr.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.connect_size_allocate(on_size_allocate);
+        Object::from(fr.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<Widget>().unwrap().connect_size_allocate(on_size_allocate);
         fr
     }
 }
@@ -48,25 +47,25 @@ impl SingleContainerInner for GtkFrame {
         let mut old = self.child.take();
         let this = unsafe { utils::base_to_impl_mut::<Frame>(base) };
         let (pw, ph) = this.as_inner().base().measured;
-        let frame_sys: gtk::Widget = self.base.widget.clone().into();
-        let frame_sys = frame_sys.downcast::<GtkFrameSys>().unwrap();
+        let frame_sys = Object::from(self.base.widget.clone()).downcast::<GtkFrameSys>().unwrap();
         if let Some(old) = old.as_mut() {
             let old_sys: common::GtkWidget = unsafe { old.native_id() }.into();
-            frame_sys.remove(old_sys.as_ref());
+            frame_sys.remove(&Object::from(old_sys).downcast::<Widget>().unwrap());
             if this.as_inner().base().coords.is_some() {
                 old.on_removed_from_container(this);
             }
         }
         if let Some(new) = child.as_mut() {
             let widget = common::cast_control_to_gtkwidget(new.as_ref());
-            frame_sys.add(widget.as_ref());
+            frame_sys.add(&Object::from(widget).downcast::<Widget>().unwrap());
+            let self_widget = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
             if this.as_inner().base().coords.is_some() {
                 new.on_added_to_container(
                     this,
                     0,
                     0,
-                    utils::coord_to_size(cmp::max(0, pw as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end())),
-                    utils::coord_to_size(cmp::max(0, ph as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom())),
+                    utils::coord_to_size(cmp::max(0, pw as i32 - self_widget.get_margin_start() - self_widget.get_margin_end())),
+                    utils::coord_to_size(cmp::max(0, ph as i32 - self_widget.get_margin_top() - self_widget.get_margin_bottom())),
                 );
             }
         }
@@ -118,12 +117,10 @@ impl ContainerInner for GtkFrame {
 
 impl HasLabelInner for GtkFrame {
     fn label<'a>(&'a self) -> Cow<'a, str> {
-        let self_widget: gtk::Widget = self.base.widget.clone().into();
-        Cow::Owned(self_widget.downcast::<GtkFrameSys>().unwrap().get_label().unwrap_or(String::new()))
+        Cow::Owned(Object::from(self.base.widget.clone()).downcast::<GtkFrameSys>().unwrap().get_label().unwrap_or(String::new()))
     }
     fn set_label(&mut self, _: &mut MemberBase, label: &str) {
-        let self_widget: gtk::Widget = self.base.widget.clone().into();
-        self_widget.downcast::<GtkFrameSys>().unwrap().set_label(label)
+        Object::from(self.base.widget.clone()).downcast::<GtkFrameSys>().unwrap().set_label(label)
     }
 }
 
@@ -140,12 +137,13 @@ impl ControlInner for GtkFrame {
         self.draw(member, control);
         if let Some(ref mut child) = self.child {
             let self2 = unsafe { utils::base_to_impl_mut::<Frame>(member) };
+            let self_widget = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
             child.on_added_to_container(
                 self2,
                 0,
                 0,
-                utils::coord_to_size(cmp::max(0, pw as i32 - self.base.widget.get_margin_start() - self.base.widget.get_margin_end())),
-                utils::coord_to_size(cmp::max(0, ph as i32 - self.base.widget.get_margin_top() - self.base.widget.get_margin_bottom())),
+                utils::coord_to_size(cmp::max(0, pw as i32 - self_widget.get_margin_start() - self_widget.get_margin_end())),
+                utils::coord_to_size(cmp::max(0, ph as i32 - self_widget.get_margin_top() - self_widget.get_margin_bottom())),
             );
         }
     }
@@ -188,7 +186,7 @@ impl HasNativeIdInner for GtkFrame {
 
 impl HasSizeInner for GtkFrame {
     fn on_size_set(&mut self, _: &mut MemberBase, (width, height): (u16, u16)) -> bool {
-        self.base.widget.set_size_request(width as i32, height as i32);
+        Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap().set_size_request(width as i32, height as i32);
         true
     }
 }
@@ -222,13 +220,13 @@ impl Drawable for GtkFrame {
                             size += cw as i32;
                             measured = true;
                         }
+                        let self_widget = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
                         if label_size.0 < 0 {
-                            let self_widget: gtk::Widget = self.base.widget.clone().into();
-                            let frame_sys = self_widget.downcast::<GtkFrameSys>().unwrap();
+                            let frame_sys = self_widget.clone().downcast::<GtkFrameSys>().unwrap();
                             let label = frame_sys.get_label_widget().unwrap().downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        size + label_size.0 + self.base.widget.get_margin_start() + self.base.widget.get_margin_end()
+                        size + label_size.0 + self_widget.get_margin_start() + self_widget.get_margin_end()
                     }
                 };
                 let h = match control.layout.height {
@@ -245,13 +243,13 @@ impl Drawable for GtkFrame {
                             };
                             size += ch as i32;
                         }
+                        let self_widget = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
                         if label_size.1 < 0 {
-                            let self_widget: gtk::Widget = self.base.widget.clone().into();
-                            let frame_sys = self_widget.downcast::<GtkFrameSys>().unwrap();
+                            let frame_sys = self_widget.clone().downcast::<GtkFrameSys>().unwrap();
                             let label = frame_sys.get_label_widget().unwrap().downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        size + label_size.1 + self.base.widget.get_margin_top() + self.base.widget.get_margin_bottom() + 2 // TODO WHY???
+                        size + label_size.1 + self_widget.get_margin_top() + self_widget.get_margin_bottom() + 2 // TODO WHY???
                     }
                 };
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)

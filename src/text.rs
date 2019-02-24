@@ -29,23 +29,20 @@ impl TextInner for GtkText {
             btn.as_inner_mut().as_inner_mut().base.set_pointer(ptr);
         }
         {
-            let self_widget: gtk::Widget = btn.as_inner_mut().as_inner_mut().base.widget.clone().into();
-            let text1 = self_widget.downcast::<Label>().unwrap();
+            let text1 = Object::from(btn.as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<Label>().unwrap();
             text1.set_text(text);
         }
-        btn.as_inner_mut().as_inner_mut().base.widget.connect_size_allocate(on_size_allocate);
+        btn.as_inner_mut().as_inner_mut().base.widget().connect_size_allocate(on_size_allocate);
         btn
     }
 }
 
 impl HasLabelInner for GtkText {
     fn label<'a>(&'a self) -> Cow<'a, str> {
-        let self_widget: gtk::Widget = self.base.widget.clone().into();
-        Cow::Owned(self_widget.downcast::<Label>().unwrap().get_text().unwrap_or(String::new()))
+        Cow::Owned(self.base.widget().downcast::<Label>().unwrap().get_text().unwrap_or(String::new()))
     }
     fn set_label(&mut self, _: &mut MemberBase, label: &str) {
-        let self_widget: gtk::Widget = self.base.widget.clone().into();
-        self_widget.downcast::<Label>().unwrap().set_text(label)
+        self.base.widget().downcast::<Label>().unwrap().set_text(label)
     }
 }
 
@@ -94,7 +91,7 @@ impl HasNativeIdInner for GtkText {
 
 impl HasSizeInner for GtkText {
     fn on_size_set(&mut self, _: &mut MemberBase, (width, height): (u16, u16)) -> bool {
-        self.base.widget.set_size_request(width as i32, height as i32);
+        self.base.widget().set_size_request(width as i32, height as i32);
         true
     }
 }
@@ -122,24 +119,24 @@ impl Drawable for GtkText {
                     layout::Size::MatchParent => parent_width as i32,
                     layout::Size::Exact(w) => w as i32,
                     layout::Size::WrapContent => {
+                        let self_widget = self.base.widget();
                         if label_size.0 < 0 {
-                            let self_widget: gtk::Widget = self.base.widget.clone().into();
-                            let label = self_widget.downcast::<Label>().unwrap();
+                            let label = Object::from(self.base.widget.clone()).downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        label_size.0 + self.base.widget.get_margin_start() + self.base.widget.get_margin_end()
+                        label_size.0 + self_widget.get_margin_start() + self_widget.get_margin_end()
                     }
                 };
                 let h = match control.layout.height {
                     layout::Size::MatchParent => parent_height as i32,
                     layout::Size::Exact(h) => h as i32,
                     layout::Size::WrapContent => {
+                        let self_widget = self.base.widget();
                         if label_size.1 < 0 {
-                            let self_widget: gtk::Widget = self.base.widget.clone().into();
-                            let label = self_widget.downcast::<Label>().unwrap();
+                            let label = Object::from(self.base.widget.clone()).downcast::<Label>().unwrap();
                             label_size = label.get_layout().unwrap().get_pixel_size();
                         }
-                        label_size.1 + self.base.widget.get_margin_top() + self.base.widget.get_margin_bottom()
+                        label_size.1 + self_widget.get_margin_top() + self_widget.get_margin_bottom()
                     }
                 };
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)
