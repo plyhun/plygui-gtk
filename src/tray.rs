@@ -3,8 +3,7 @@
 use super::common::*;
 use super::*;
 
-use gtk::prelude::*;
-use gtk::{Widget, StatusIcon, StatusIconExt};
+use gtk::{StatusIcon, StatusIconExt};
 
 #[repr(C)]
 pub struct GtkTray {

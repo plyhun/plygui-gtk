@@ -32,7 +32,6 @@ impl ImageInner for GtkImage {
                 scale: types::ImageScalePolicy::FitCenter,  
                 orig: pixbuf,
             }, ()), MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut)));
-        let self_widget = 
         i.as_inner_mut().as_inner_mut().base.widget().connect_size_allocate(on_size_allocate);
         i.as_inner_mut().as_inner_mut().base.widget().connect_show(on_show);
         {
