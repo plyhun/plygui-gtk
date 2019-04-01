@@ -1,7 +1,5 @@
-use super::*;
-use super::common::*;
-
-use external::image;
+use crate::common::{self, *};
+use crate::external::image;
 
 use gtk::{Cast, Widget, WidgetExt, Image as GtkImageSys, ImageExt};
 use gdk_pixbuf::{Pixbuf, PixbufExt, Colorspace, InterpType};
@@ -234,4 +232,4 @@ fn fmin(a: f32, b: f32) -> f32 {
 	if a < b { a } else { b }
 }
 
-impl_all_defaults!(Image);
+default_impls_as!(Image);

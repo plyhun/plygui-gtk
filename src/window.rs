@@ -1,9 +1,7 @@
-use super::common::*;
-use super::*;
+use crate::common::{self, *};
 
 use glib::{self, Continue};
-use gtk::prelude::*;
-use gtk::{Fixed, Rectangle, Widget, Window as GtkWindowSys, WindowType};
+use gtk::{Fixed, Rectangle, Widget, Window as GtkWindowSys, GtkWindowExt, WindowType, ContainerExt, BinExt};
 
 #[repr(C)]
 pub struct GtkWindow {
@@ -32,9 +30,10 @@ impl GtkWindow {
 }
 
 impl CloseableInner for GtkWindow {
-    fn close(&mut self, skip_callbacks: bool) {
+    fn close(&mut self, skip_callbacks: bool) -> bool {
         self.skip_callbacks = skip_callbacks;
         self.window.close();
+        true
     }
     fn on_close(&mut self, callback: Option<callbacks::Action>) {
         self.on_close = callback;
@@ -259,4 +258,4 @@ fn on_resize_move(this: &GtkWindowSys, allo: &Rectangle) {
         }
     }
 }
-impl_all_defaults!(Window);
+default_impls_as!(Window);

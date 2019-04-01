@@ -1,7 +1,6 @@
 #![allow(deprecated)]
 
-use super::common::*;
-use super::*;
+use crate::common::{self, *};
 
 use gtk::{StatusIcon, StatusIconExt};
 
@@ -24,10 +23,11 @@ impl HasLabelInner for GtkTray {
 }
 
 impl CloseableInner for GtkTray {
-    fn close(&mut self, skip_callbacks: bool) {
+    fn close(&mut self, skip_callbacks: bool) -> bool {
         self.skip_callbacks = skip_callbacks;
         
         self.tray.set_visible(false);
+        true
     }
     fn on_close(&mut self, callback: Option<callbacks::Action>) {
         self.on_close = callback;
@@ -61,4 +61,4 @@ impl HasNativeIdInner for GtkTray {
 
 impl MemberInner for GtkTray {}
 
-impl_all_defaults!(Tray);
+default_impls_as!(Tray);

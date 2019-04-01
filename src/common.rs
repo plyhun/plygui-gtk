@@ -13,6 +13,8 @@ pub use std::marker::PhantomData;
 pub use std::os::raw::{c_char, c_void};
 pub use std::{cmp, mem, ops, sync::mpsc};
 
+pub use crate::reckless;
+
 lazy_static! {
     pub static ref PROPERTY: CString = CString::new("plygui").unwrap();
 }
@@ -106,9 +108,9 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
     pub fn parent(&self) -> Option<&MemberBase> {
         if let Some(w) = self.widget().get_parent() {
             if pointer(&w.clone().upcast()).is_null() {
-                w.get_parent().map(|w| cast_gobject(&w.upcast()).unwrap())
+                w.get_parent().map(|w| unsafe { cast_gobject(&w.upcast()).unwrap() })
             } else {
-                Some(cast_gobject(&w.upcast()).unwrap())
+                Some(unsafe { cast_gobject(&w.upcast()).unwrap() })
             }
         } else {
             None
@@ -117,19 +119,19 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
     pub fn parent_mut(&mut self) -> Option<&mut MemberBase> {
         if let Some(w) = self.widget().get_parent() {
             if pointer(&w.clone().upcast()).is_null() {
-                w.get_parent().map(|w| cast_gobject_mut(&mut w.upcast()).unwrap())
+                w.get_parent().map(|w| unsafe { cast_gobject_mut(&mut w.upcast()).unwrap() })
             } else {
-                Some(cast_gobject_mut(&mut w.upcast()).unwrap())
+                Some(unsafe { cast_gobject_mut(&mut w.upcast()).unwrap() })
             }
         } else {
             None
         }
     }
     pub fn root(&self) -> Option<&MemberBase> {
-        self.widget().get_toplevel().map(|w| cast_gobject(&w.upcast()).unwrap())
+        self.widget().get_toplevel().map(|w| unsafe { cast_gobject(&w.upcast()).unwrap() })
     }
     pub fn root_mut(&mut self) -> Option<&mut MemberBase> {
-        self.widget().get_toplevel().map(|w| cast_gobject_mut(&mut w.upcast()).unwrap())
+        self.widget().get_toplevel().map(|w| unsafe { cast_gobject_mut(&mut w.upcast()).unwrap() })
     }
     pub fn invalidate(&mut self) -> bool {
         use gtk::WidgetExt;
@@ -141,7 +143,7 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
             }
             if let Some(mparent) = cast_gtk_widget_to_base_mut(&mut parent_widget) {
                 let (pw, ph) = mparent.as_member().is_has_size().unwrap().size();
-                let this: &mut T = cast_gobject_mut(&mut self.widget).unwrap();
+                let this: &mut T = unsafe { cast_gobject_mut(&mut self.widget).unwrap() };
                 let (_, _, changed) = this.measure(pw, ph);
                 this.draw(None);
 
@@ -204,10 +206,10 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
         Object::from(self.widget.clone()).downcast().unwrap()
     }
     pub fn as_control(&self) -> &T {
-        cast_gobject(&self.widget).unwrap()
+        unsafe { cast_gobject(&self.widget).unwrap() }
     }
     pub fn as_control_mut(&mut self) -> &mut T {
-        cast_gobject_mut(&mut self.widget).unwrap()
+        unsafe { cast_gobject_mut(&mut self.widget).unwrap() }
     }
 }
 
@@ -226,30 +228,26 @@ pub fn cast_control_to_gtkwidget(control: &dyn controls::Control) -> GtkWidget {
     cast_member_to_gtkwidget(control.as_member())
 }
 
-fn cast_gobject_mut<'a, T>(this: &mut Object) -> Option<&'a mut T>
+pub unsafe fn cast_gobject_mut<'a, T>(this: &mut Object) -> Option<&'a mut T>
 where
     T: Sized,
 {
-    unsafe {
-        let ptr = pointer(this);
-        if !ptr.is_null() {
-            Some(::std::mem::transmute(ptr))
-        } else {
-            None
-        }
+    let ptr = pointer(this);
+    if !ptr.is_null() {
+        Some(::std::mem::transmute(ptr))
+    } else {
+        None
     }
 }
-fn cast_gobject<'a, T>(this: &Object) -> Option<&'a T>
+pub unsafe fn cast_gobject<'a, T>(this: &Object) -> Option<&'a T>
 where
     T: Sized,
 {
-    unsafe {
-        let ptr = pointer(this);
-        if !ptr.is_null() {
-            Some(::std::mem::transmute(ptr))
-        } else {
-            None
-        }
+    let ptr = pointer(this);
+    if !ptr.is_null() {
+        Some(::std::mem::transmute(ptr))
+    } else {
+        None
     }
 }
 pub fn cast_gtk_widget_to_member_mut<'a, T>(object: &'a mut Widget) -> Option<&'a mut T>
@@ -257,22 +255,22 @@ where
     T: controls::Member + Sized,
 {
     let mut object = object.clone().upcast::<Object>();
-    cast_gobject_mut(&mut object)
+    unsafe { cast_gobject_mut(&mut object) }
 }
 pub fn cast_gtk_widget_to_member<'a, T>(object: &'a Widget) -> Option<&'a T>
 where
     T: controls::Member + Sized,
 {
     let object = object.clone().upcast::<Object>();
-    cast_gobject(&object)
+    unsafe { cast_gobject(&object) }
 }
 pub fn cast_gtk_widget_to_base_mut<'a>(object: &'a mut Widget) -> Option<&'a mut MemberBase> {
     let mut object = object.clone().upcast::<Object>();
-    cast_gobject_mut(&mut object)
+    unsafe { cast_gobject_mut(&mut object) }
 }
 pub fn cast_gtk_widget_to_base<'a>(object: &'a Widget) -> Option<&'a MemberBase> {
     let object = object.clone().upcast::<Object>();
-    cast_gobject(&object)
+    unsafe { cast_gobject(&object) }
 }
 pub fn orientation_to_gtk(a: layout::Orientation) -> GtkOrientation {
     match a {

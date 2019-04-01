@@ -1,5 +1,4 @@
-use super::common::*;
-use super::*;
+use crate::common::{self, *};
 
 use gtk::{Cast, ContainerExt, Frame as GtkFrameSys, FrameExt, Label, LabelExt, Widget, WidgetExt};
 use pango::LayoutExt;
@@ -275,4 +274,4 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
 }
 
-impl_all_defaults!(Frame);
+default_impls_as!(Frame);

@@ -1,5 +1,4 @@
-use super::common::*;
-use super::*;
+use crate::common::{self, *};
 
 use gtk::{Cast, OrientableExt, Paned, PanedExt, Widget, WidgetExt};
 
@@ -464,4 +463,4 @@ fn on_property_position_notify(this: &::gtk::Paned) {
     ll.second.draw(Some((0, 0)));
 }
 
-impl_all_defaults!(Splitted);
+default_impls_as!(Splitted);

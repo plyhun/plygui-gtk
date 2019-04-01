@@ -1,5 +1,6 @@
-use super::*;
-use super::common::*;
+use crate::common::{self, *};
+use crate::window::Window;
+use crate::tray::Tray;
 
 use gtk::{Application as GtkApplicationSys};
 use gio::ApplicationFlags;
@@ -11,6 +12,7 @@ pub struct GtkApplication {
     app: GtkApplicationSys,
     name: String,
     windows: Vec<Widget>,
+    trays: Vec<Object>,
     selfptr: *mut Application,
 }
 
@@ -37,6 +39,7 @@ impl development::ApplicationInner for GtkApplication {
                 app: GtkApplicationSys::new("application.plygui", ApplicationFlags::FLAGS_NONE).unwrap(),
                 name: String::new(), // TODO later // name.into(),
                 windows: Vec::with_capacity(1),
+                trays: Vec::with_capacity(0),
                 selfptr: ptr::null_mut(),
             },
             (),
@@ -47,14 +50,13 @@ impl development::ApplicationInner for GtkApplication {
     fn new_window(&mut self, title: &str, size: types::WindowStartSize, menu: types::Menu) -> Box<dyn controls::Window> {
         use plygui_api::development::{HasNativeIdInner, WindowInner};
 
-        let w = window::GtkWindow::with_params(title, size, menu);
+        let w = super::window::GtkWindow::with_params(title, size, menu);
         let widget = {
-            use gtk::{Inhibit, WidgetExt};
             use plygui_api::controls::AsAny;
             use plygui_api::development::HasInner;
 
-            let widget: Widget = unsafe { w.as_any().downcast_ref::<window::Window>().unwrap().as_inner().native_id().as_ref().clone().downcast().unwrap() };
-            let selfptr = self.selfptr.clone();
+            let widget: Widget = unsafe { w.as_any().downcast_ref::<Window>().unwrap().as_inner().native_id().as_ref().clone().downcast().unwrap() };
+            /*let selfptr = self.selfptr.clone();
             widget.connect_delete_event(move |window, _| {
                 let a = unsafe { &mut *selfptr }.as_inner_mut();
                 a.windows.iter().position(|item| item == window).map(|e| a.windows.remove(e));
@@ -62,7 +64,7 @@ impl development::ApplicationInner for GtkApplication {
                     gtk::main_quit();
                 }
                 Inhibit(false)
-            });
+            });*/
             widget
         };
         self.windows.push(widget);
@@ -70,8 +72,22 @@ impl development::ApplicationInner for GtkApplication {
         w
     }
     fn new_tray(&mut self, title: &str, menu: types::Menu) -> Box<dyn controls::Tray> {
-        let t = tray::GtkTray::with_params(title, menu);
+        let t = super::tray::GtkTray::with_params(title, menu);
+        let o = {
+            use plygui_api::controls::AsAny;
+            use plygui_api::development::HasInner;
+
+            let o: Object = unsafe { t.as_any().downcast_ref::<Tray>().unwrap().as_inner().native_id().as_ref().clone() };
+            o
+        };
+        self.trays.push(o);
         t
+    }
+    fn remove_window(&mut self, id: Self::Id) {
+        self.windows.retain(|w| GtkWidget::from(w.clone().upcast::<Object>()) != id);
+    }
+    fn remove_tray(&mut self, id: Self::Id) {
+        self.trays.retain(|t| GtkWidget::from(t.clone()) != id);
     }
     fn name(&self) -> ::std::borrow::Cow<'_, str> {
         ::std::borrow::Cow::Borrowed(self.name.as_ref())
@@ -79,11 +95,41 @@ impl development::ApplicationInner for GtkApplication {
     fn start(&mut self) {
         gtk::main()
     }
+    fn exit(&mut self, skip_on_close: bool) -> bool {
+        use crate::plygui_api::controls::Closeable;
+
+        let mut n = self.windows.len() as isize;
+        let mut i = n - 1;
+        while i >= 0 {
+            let window = &mut self.windows[i as usize];
+            if let Some(window) = common::cast_gtk_widget_to_member_mut::<Window>(window) {
+                if !window.close(skip_on_close) {
+                    return false;
+                }
+            }
+            i -= 1;
+        }
+
+        n = self.trays.len() as isize;
+        i = n - 1;
+        while i >= 0 {
+            let tray = &mut self.trays[i as usize];
+            if let Some(tray) = unsafe { common::cast_gobject_mut::<Tray>(tray) } {
+                if !tray.close(skip_on_close) {
+                    return false;
+                }
+            }
+            i -= 1;
+        }
+        
+        gtk::main_quit();
+        true
+    }
     fn find_member_by_id_mut(&mut self, id: ids::Id) -> Option<&mut dyn controls::Member> {
         use plygui_api::controls::{Container, Member, SingleContainer};
 
         for window in self.windows.as_mut_slice() {
-            let window: &mut window::Window = common::cast_gtk_widget_to_member_mut(window).unwrap();
+            let window: &mut Window = common::cast_gtk_widget_to_member_mut(window).unwrap();
             if window.id() == id {
                 return Some(window.as_single_container_mut().as_container_mut().as_member_mut());
             } else {
@@ -96,7 +142,7 @@ impl development::ApplicationInner for GtkApplication {
         use plygui_api::controls::{Container, Member, SingleContainer};
 
         for window in self.windows.as_slice() {
-            let window: &window::Window = common::cast_gtk_widget_to_member(window).unwrap();
+            let window: &Window = common::cast_gtk_widget_to_member(window).unwrap();
             if window.id() == id {
                 return Some(window.as_single_container().as_container().as_member());
             } else {

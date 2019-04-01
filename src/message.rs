@@ -1,5 +1,4 @@
-use super::common::*;
-use super::*;
+use crate::common::{self, *};
 
 use gtk::prelude::*;
 use gtk::{Widget, MessageDialog, DialogFlags, MessageType, MessageDialogExt, ButtonsType};
@@ -109,4 +108,4 @@ fn on_response(this: &MessageDialog, r: i32) {
     }
 }
 
-impl_all_defaults!(Message);
+default_impls_as!(Message);

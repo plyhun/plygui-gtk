@@ -1,5 +1,4 @@
-use super::common::*;
-use super::*;
+use crate::common::{self, *};
 
 use gtk::{Bin, BinExt, Button as GtkButtonSys, ButtonExt, Label, LabelExt};
 use pango::LayoutExt;
@@ -192,4 +191,4 @@ fn on_click(this: &GtkButtonSys) {
     }
 }
 
-impl_all_defaults!(Button);
+default_impls_as!(Button);
