@@ -4,7 +4,14 @@ pub use plygui_api::{callbacks, defaults, controls, ids, layout, types, utils};
 pub use glib::Object;
 pub use gobject_sys::GObject;
 pub use glib::translate::ToGlibPtr;
-pub use gtk::{Cast, Orientation as GtkOrientation, Widget, WidgetExt};
+pub use gtk::{Cast, 
+        Orientation as GtkOrientation, 
+        Widget, WidgetExt, 
+        Menu as GtkMenu, 
+        MenuItem as GtkMenuItem, MenuItemExt,
+        MenuShell as GtkMenuShell, MenuShellExt, 
+        SeparatorMenuItem as GtkSeparatorMenuItem
+};
 pub use gtk_sys::GtkWidget as WidgetSys;
 
 pub use std::borrow::Cow;
@@ -290,3 +297,74 @@ pub fn gtk_allocation_to_size<'a>(object: &'a Widget) -> (i32, i32) {
     let alloc = object.get_allocation();
     (alloc.width, alloc.height)
 }
+pub fn make_menu(menu: GtkMenuShell, mut items: Vec<types::MenuItem>, storage: &mut Vec<callbacks::Action>) {
+    let mut options = Vec::new();
+    let mut help = Vec::new();
+
+    let append_item = |menu: GtkMenuShell, label: String, action, storage: &mut Vec<callbacks::Action>| {
+        //let wlabel = str_to_wchar(label);
+        let mi = GtkMenuItem::new_with_label(label.as_str());
+        let id = storage.len();
+        storage.push(action);
+        menu.append(&mi);
+        //winuser::AppendMenuW(menu, winuser::MF_STRING, id, wlabel.as_ptr());
+    };
+    let append_level = |menu: GtkMenuShell, label: String, items, storage: &mut Vec<callbacks::Action>| {
+        //let wlabel = str_to_wchar(label);
+        let mi = GtkMenuItem::new_with_label(label.as_str());
+        let submenu = GtkMenu::new();
+        make_menu(submenu.clone().upcast(), items, storage);
+        mi.set_submenu(&submenu);
+        menu.append(&mi);
+        //winuser::AppendMenuW(menu, winuser::MF_POPUP, submenu as usize, wlabel.as_ptr());
+    };
+    let make_special = |menu: GtkMenuShell, mut special: Vec<types::MenuItem>, storage: &mut Vec<callbacks::Action>| {
+        for item in special.drain(..) {
+            match item {
+                types::MenuItem::Action(label, action, _) => {
+                    append_item(menu.clone(), label, action, storage);
+                }
+                types::MenuItem::Sub(label, items, _) => {
+                    append_level(menu.clone(), label, items, storage);
+                }
+                types::MenuItem::Delimiter => {
+                    menu.append(&GtkSeparatorMenuItem::new());
+                }
+            }
+        }
+    };
+
+    for item in items.drain(..) {
+        match item {
+            types::MenuItem::Action(label, action, role) => match role {
+                types::MenuItemRole::None => {
+                    append_item(menu.clone(), label, action, storage);
+                }
+                types::MenuItemRole::Options => {
+                    options.push(types::MenuItem::Action(label, action, role));
+                }
+                types::MenuItemRole::Help => {
+                    help.push(types::MenuItem::Action(label, action, role));
+                }
+            },
+            types::MenuItem::Sub(label, items, role) => match role {
+                types::MenuItemRole::None => {
+                    append_level(menu.clone(), label, items, storage);
+                }
+                types::MenuItemRole::Options => {
+                    options.push(types::MenuItem::Sub(label, items, role));
+                }
+                types::MenuItemRole::Help => {
+                    help.push(types::MenuItem::Sub(label, items, role));
+                }
+            },
+            types::MenuItem::Delimiter => {
+                menu.append(&GtkSeparatorMenuItem::new());
+            }
+        }
+    }
+
+    make_special(menu.clone(), options, storage);
+    make_special(menu.clone(), help, storage);
+}
+
