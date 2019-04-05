@@ -9,7 +9,8 @@ pub struct GtkWindow {
     container: reckless::boxc::RecklessBox,
     size: (i32, i32),
     child: Option<Box<dyn controls::Control>>,
-    menu: Option<GtkMenuBar>,
+    menu_bar: Option<GtkMenuBar>,
+    menu: Vec<callbacks::Action>,
     on_close: Option<callbacks::Action>,
     skip_callbacks: bool,
 }
@@ -53,7 +54,8 @@ impl WindowInner for GtkWindow {
                         window: GtkWindowSys::new(WindowType::Toplevel),
                         container: reckless::boxc::RecklessBox::new(),
                         child: None,
-                        menu: if menu.is_some() { Some(GtkMenuBar::new()) } else { None },
+                        menu_bar: if menu.is_some() { Some(GtkMenuBar::new()) } else { None },
+                        menu: if menu.is_some() { Vec::new() } else { Vec::with_capacity(0) },
                         on_close: None,
                         skip_callbacks: false,
                     },
@@ -64,15 +66,29 @@ impl WindowInner for GtkWindow {
             MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
         ));
 
-        let ptr = window.as_ref() as *const _ as *mut std::os::raw::c_void;
+        let selfptr = window.as_mut() as *mut Window;
 
         {
             let window = window.as_inner_mut().as_inner_mut().as_inner_mut();
-            common::set_pointer(&mut window.window.clone().upcast::<Object>(), ptr);
+            common::set_pointer(&mut window.window.clone().upcast::<Object>(), selfptr as *mut std::os::raw::c_void);
             
             if let Some(menu) = menu {
-                let menu_bar = window.menu.as_ref().unwrap();
-                common::make_menu(menu_bar.clone().upcast(), menu, &mut vec![]);
+                fn item_spawn(id: usize, selfptr: *mut Window) -> GtkMenuItem {
+                    let mi = GtkMenuItem::new();
+                    common::set_pointer(&mut mi.clone().upcast(), selfptr as *mut std::os::raw::c_void);
+                    mi.connect_activate(move |this| {
+                        let mut w = this.clone().upcast::<Widget>();
+                        let w = common::cast_gtk_widget_to_member_mut::<Window>(&mut w).unwrap();
+                        if let Some(a) = w.as_inner_mut().as_inner_mut().as_inner_mut().menu.get_mut(id) {
+                            let w = unsafe {&mut *selfptr};
+                            (a.as_mut())(w);
+                        }
+                    });
+                    mi
+                }; 
+                
+                let menu_bar = window.menu_bar.as_ref().unwrap();
+                common::make_menu(menu_bar.clone().upcast(), menu, &mut window.menu, item_spawn, selfptr);
                 window.container.add(menu_bar);
                 menu_bar.show_all();
             }

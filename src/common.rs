@@ -18,7 +18,7 @@ pub use std::borrow::Cow;
 pub use std::ffi::CString;
 pub use std::marker::PhantomData;
 pub use std::os::raw::{c_char, c_void};
-pub use std::{cmp, mem, ops, sync::mpsc};
+pub use std::{cmp, mem, ops, sync::mpsc, ptr};
 
 pub use crate::reckless;
 
@@ -297,35 +297,33 @@ pub fn gtk_allocation_to_size<'a>(object: &'a Widget) -> (i32, i32) {
     let alloc = object.get_allocation();
     (alloc.width, alloc.height)
 }
-pub fn make_menu(menu: GtkMenuShell, mut items: Vec<types::MenuItem>, storage: &mut Vec<callbacks::Action>) {
+
+fn append_item<T: controls::Member>(menu: GtkMenuShell, label: String, action: callbacks::Action, storage: &mut Vec<callbacks::Action>, item_spawn: fn(id: usize, selfptr: *mut T) -> GtkMenuItem, selfptr: *mut T) {
+    let id = storage.len();
+    let mi = item_spawn(id, selfptr);
+    mi.set_label(label.as_str());
+    storage.push(action);
+    menu.append(&mi);
+}
+fn append_level<T: controls::Member>(menu: GtkMenuShell, label: String, items: Vec<types::MenuItem>, storage: &mut Vec<callbacks::Action>, item_spawn: fn(id: usize, selfptr: *mut T) -> GtkMenuItem, selfptr: *mut T) {
+    let mi = GtkMenuItem::new_with_label(label.as_str());
+    let submenu = GtkMenu::new();
+    make_menu(submenu.clone().upcast(), items, storage, item_spawn, selfptr);
+    mi.set_submenu(&submenu);
+    menu.append(&mi);
+}
+pub fn make_menu<T: controls::Member>(menu: GtkMenuShell, mut items: Vec<types::MenuItem>, storage: &mut Vec<callbacks::Action>, item_spawn: fn(id: usize, selfptr: *mut T) -> GtkMenuItem, selfptr: *mut T) {
     let mut options = Vec::new();
     let mut help = Vec::new();
 
-    let append_item = |menu: GtkMenuShell, label: String, action, storage: &mut Vec<callbacks::Action>| {
-        //let wlabel = str_to_wchar(label);
-        let mi = GtkMenuItem::new_with_label(label.as_str());
-        let id = storage.len();
-        storage.push(action);
-        menu.append(&mi);
-        //winuser::AppendMenuW(menu, winuser::MF_STRING, id, wlabel.as_ptr());
-    };
-    let append_level = |menu: GtkMenuShell, label: String, items, storage: &mut Vec<callbacks::Action>| {
-        //let wlabel = str_to_wchar(label);
-        let mi = GtkMenuItem::new_with_label(label.as_str());
-        let submenu = GtkMenu::new();
-        make_menu(submenu.clone().upcast(), items, storage);
-        mi.set_submenu(&submenu);
-        menu.append(&mi);
-        //winuser::AppendMenuW(menu, winuser::MF_POPUP, submenu as usize, wlabel.as_ptr());
-    };
     let make_special = |menu: GtkMenuShell, mut special: Vec<types::MenuItem>, storage: &mut Vec<callbacks::Action>| {
         for item in special.drain(..) {
             match item {
                 types::MenuItem::Action(label, action, _) => {
-                    append_item(menu.clone(), label, action, storage);
+                    append_item(menu.clone(), label, action, storage, item_spawn, selfptr);
                 }
                 types::MenuItem::Sub(label, items, _) => {
-                    append_level(menu.clone(), label, items, storage);
+                    append_level(menu.clone(), label, items, storage, item_spawn, selfptr);
                 }
                 types::MenuItem::Delimiter => {
                     menu.append(&GtkSeparatorMenuItem::new());
@@ -338,7 +336,7 @@ pub fn make_menu(menu: GtkMenuShell, mut items: Vec<types::MenuItem>, storage: &
         match item {
             types::MenuItem::Action(label, action, role) => match role {
                 types::MenuItemRole::None => {
-                    append_item(menu.clone(), label, action, storage);
+                    append_item(menu.clone(), label, action, storage, item_spawn, selfptr);
                 }
                 types::MenuItemRole::Options => {
                     options.push(types::MenuItem::Action(label, action, role));
@@ -349,7 +347,7 @@ pub fn make_menu(menu: GtkMenuShell, mut items: Vec<types::MenuItem>, storage: &
             },
             types::MenuItem::Sub(label, items, role) => match role {
                 types::MenuItemRole::None => {
-                    append_level(menu.clone(), label, items, storage);
+                    append_level(menu.clone(), label, items, storage, item_spawn, selfptr);
                 }
                 types::MenuItemRole::Options => {
                     options.push(types::MenuItem::Sub(label, items, role));
