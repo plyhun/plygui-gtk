@@ -5,10 +5,11 @@ pub use glib::Object;
 pub use gobject_sys::GObject;
 pub use glib::translate::ToGlibPtr;
 pub use gtk::{Cast, 
+        ResponseType,
         Orientation as GtkOrientation, 
         Widget, WidgetExt, 
         Menu as GtkMenu, 
-        MenuItem as GtkMenuItem, MenuItemExt,
+        MenuItem as GtkMenuItem, GtkMenuItemExt,
         MenuShell as GtkMenuShell, MenuShellExt, 
         SeparatorMenuItem as GtkSeparatorMenuItem
 };

@@ -1,4 +1,4 @@
-use glib::object::{Downcast, IsA};
+use glib::object::{Cast, IsA};
 use glib::translate::*;
 use gtk::{Buildable, Container, Button, Widget};
 
@@ -38,12 +38,7 @@ pub mod ffi {
 }
 
 glib_wrapper! {
-    pub struct RecklessButton(Object<ffi::GtkRecklessButton, ffi::GtkRecklessButtonClass>): [
-         Button => gtk_ffi::GtkButton,
-         Container => gtk_ffi::GtkContainer,
-         Widget => gtk_ffi::GtkWidget,
-         Buildable => gtk_ffi::GtkBuildable,
-    ];
+    pub struct RecklessButton(Object<ffi::GtkRecklessButton, ffi::GtkRecklessButtonClass, RecklessButtonClass>) @extends Button, Container, Widget, @implements Buildable;
 
     match fn {
         get_type => || ffi::reckless_button_get_type(),
@@ -60,7 +55,7 @@ impl RecklessButton {
                 panic!("GTK has not been initialized. Call `gtk::init` first.");
             }
         }
-        unsafe { Widget::from_glib_none(ffi::reckless_button_new()).downcast_unchecked() }
+        unsafe { Widget::from_glib_none(ffi::reckless_button_new()).unsafe_cast() }
     }
 }
 impl Default for RecklessButton {

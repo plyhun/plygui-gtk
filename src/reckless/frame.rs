@@ -1,4 +1,4 @@
-use glib::object::{Downcast, IsA};
+use glib::object::{Cast, IsA};
 use glib::translate::*;
 use gtk::{Buildable, Container, Frame, Widget};
 
@@ -38,12 +38,7 @@ pub mod ffi {
 }
 
 glib_wrapper! {
-    pub struct RecklessFrame(Object<ffi::GtkRecklessFrame, ffi::GtkRecklessFrameClass>): [
-         Frame => gtk_ffi::GtkFrame,
-         Container => gtk_ffi::GtkContainer,
-         Widget => gtk_ffi::GtkWidget,
-         Buildable => gtk_ffi::GtkBuildable,
-    ];
+    pub struct RecklessFrame(Object<ffi::GtkRecklessFrame, ffi::GtkRecklessFrameClass, RecklessFrameClass>) @extends Frame, Container, Widget, @implements Buildable;
 
     match fn {
         get_type => || ffi::reckless_frame_get_type(),
@@ -60,7 +55,7 @@ impl RecklessFrame {
                 panic!("GTK has not been initialized. Call `gtk::init` first.");
             }
         }
-        unsafe { Widget::from_glib_none(ffi::reckless_frame_new()).downcast_unchecked() }
+        unsafe { Widget::from_glib_none(ffi::reckless_frame_new()).unsafe_cast() }
     }
 }
 impl Default for RecklessFrame {

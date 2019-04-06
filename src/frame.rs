@@ -116,7 +116,7 @@ impl ContainerInner for GtkFrame {
 
 impl HasLabelInner for GtkFrame {
     fn label<'a>(&'a self) -> Cow<'a, str> {
-        Cow::Owned(Object::from(self.base.widget.clone()).downcast::<GtkFrameSys>().unwrap().get_label().unwrap_or(String::new()))
+        Cow::Owned(Object::from(self.base.widget.clone()).downcast::<GtkFrameSys>().unwrap().get_label().map(|s|s.into()).unwrap_or(String::new()))
     }
     fn set_label(&mut self, _: &mut MemberBase, label: &str) {
         Object::from(self.base.widget.clone()).downcast::<GtkFrameSys>().unwrap().set_label(label)

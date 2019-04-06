@@ -35,7 +35,8 @@ impl CloseableInner for GtkWindow {
     fn close(&mut self, skip_callbacks: bool) -> bool {
         self.skip_callbacks = skip_callbacks;
         self.window.close();
-        true
+        let glib::signal::Inhibit(inhibit) = on_widget_deleted(&self.window, &gdk::Event::new(gdk::EventType::Nothing));
+        !inhibit
     }
     fn on_close(&mut self, callback: Option<callbacks::Action>) {
         self.on_close = callback;
@@ -98,7 +99,6 @@ impl WindowInner for GtkWindow {
             window.size = match start_size {
                 types::WindowStartSize::Exact(w, h) => (w as i32, h as i32),
                 types::WindowStartSize::Fullscreen => {
-                    use gdk::ScreenExt;
                     let screen = window.window.get_screen().unwrap();
                     (screen.get_width(), screen.get_height())
                 }
@@ -155,7 +155,7 @@ impl WindowInner for GtkWindow {
 
 impl HasLabelInner for GtkWindow {
     fn label(&self) -> ::std::borrow::Cow<'_, str> {
-        Cow::Owned(self.window.get_title().unwrap_or(String::new()))
+        Cow::Owned(self.window.get_title().map(|s| s.into()).unwrap_or(String::new()))
     }
     fn set_label(&mut self, _: &mut MemberBase, label: &str) {
         self.window.set_title(label);

@@ -2,7 +2,7 @@ use crate::common::{self, *};
 use crate::external::image;
 
 use gtk::{Cast, Widget, WidgetExt, Image as GtkImageSys, ImageExt};
-use gdk_pixbuf::{Pixbuf, PixbufExt, Colorspace, InterpType};
+use gdk_pixbuf::{Pixbuf, Colorspace, InterpType};
 use cairo::Format;
 
 pub type Image = Member<Control<GtkImage>>;
@@ -23,7 +23,7 @@ impl ImageInner for GtkImage {
 		let raw = content.to_rgba().into_raw();
 		let stride = Format::ARgb32.stride_for_width(w).unwrap();
 		
-		let pixbuf = Pixbuf::new_from_vec(raw, Colorspace::Rgb, true, 8, w as i32, h as i32, stride);        
+		let pixbuf = Pixbuf::new_from_mut_slice(raw, Colorspace::Rgb, true, 8, w as i32, h as i32, stride);        
         
         let mut i = Box::new(Member::with_inner(Control::with_inner(GtkImage {
                 base: GtkControlBase::with_gtk_widget(GtkImageSys::new_from_pixbuf(Some(&pixbuf)).upcast::<Widget>()),
@@ -75,7 +75,7 @@ impl GtkImage {
         		let alpha = self.orig.get_has_alpha();
             	let bits = self.orig.get_bits_per_sample();
     	
-        		let scaled = Pixbuf::new(Colorspace::Rgb, alpha, bits, bm_h, bm_v);
+        		let scaled = Pixbuf::new(Colorspace::Rgb, alpha, bits, bm_h, bm_v).unwrap();
             	self.orig.scale(&scaled, 0, 0, bm_h, bm_v, 0f64, 0f64, less_rate as f64, less_rate as f64, InterpType::Hyper);
                 scaled
     		},

@@ -1,4 +1,4 @@
-use glib::object::{Downcast, IsA};
+use glib::object::{Cast, IsA};
 use glib::translate::*;
 use gtk::{Buildable, Container, Fixed, Widget};
 
@@ -38,12 +38,7 @@ pub mod ffi {
 }
 
 glib_wrapper! {
-    pub struct RecklessFixed(Object<ffi::GtkRecklessFixed, ffi::GtkRecklessFixedClass>): [
-         Fixed => gtk_ffi::GtkFixed,
-         Container => gtk_ffi::GtkContainer,
-         Widget => gtk_ffi::GtkWidget,
-         Buildable => gtk_ffi::GtkBuildable,
-    ];
+    pub struct RecklessFixed(Object<ffi::GtkRecklessFixed, ffi::GtkRecklessFixedClass, RecklessFixedClass>) @extends Fixed, Container, Widget, Buildable;
 
     match fn {
         get_type => || ffi::reckless_fixed_get_type(),
@@ -60,7 +55,7 @@ impl RecklessFixed {
                 panic!("GTK has not been initialized. Call `gtk::init` first.");
             }
         }
-        unsafe { Widget::from_glib_none(ffi::reckless_fixed_new()).downcast_unchecked() }
+        unsafe { Widget::from_glib_none(ffi::reckless_fixed_new()).unsafe_cast() }
     }
 }
 impl Default for RecklessFixed {

@@ -46,7 +46,7 @@ impl ButtonInner for GtkButton {
 impl HasLabelInner for GtkButton {
     fn label<'a>(&'a self) -> Cow<'a, str> {
         let self_widget: Object = Object::from(self.base.widget.clone()).into();
-        Cow::Owned(self_widget.downcast::<GtkButtonSys>().unwrap().get_label().unwrap_or(String::new()))
+        Cow::Owned(self_widget.downcast::<GtkButtonSys>().unwrap().get_label().map(|s| s.into()).unwrap_or(String::new()))
     }
     fn set_label(&mut self, _: &mut MemberBase, label: &str) {
         let self_widget: Object = Object::from(self.base.widget.clone()).into();

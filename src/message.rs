@@ -44,7 +44,7 @@ impl MessageInner for GtkMessage {
             }
             
             message.actions.iter().enumerate().for_each(|(i, (n, _))| {
-                message.message.add_button(n, i as i32);
+                message.message.add_button(n, ResponseType::Other(i as u16));
             });
         }
         message
@@ -61,7 +61,7 @@ impl MessageInner for GtkMessage {
 
 impl HasLabelInner for GtkMessage {
     fn label(&self) -> ::std::borrow::Cow<'_, str> {
-        Cow::Owned(self.message.get_title().unwrap_or(String::new()))
+        Cow::Owned(self.message.get_title().map(|s| s.into()).unwrap_or(String::new()))
     }
     fn set_label(&mut self, _: &mut MemberBase, label: &str) {
         self.message.set_title(label);
@@ -94,15 +94,17 @@ fn message_type_to_severity(ty: MessageType) -> types::MessageSeverity {
     }
 }
 
-fn on_response(this: &MessageDialog, r: i32) {
+fn on_response(this: &MessageDialog, r: gtk::ResponseType) {
     let mut message = this.clone().upcast::<Widget>();
     let message = common::cast_gtk_widget_to_member_mut::<Message>(&mut message);
     if let Some(message) = message {
         let mut message2 = message.as_inner_mut().message.clone().upcast::<Widget>();
         let message2 = common::cast_gtk_widget_to_member_mut::<Message>(&mut message2);
-        if let Some(action) = message.as_inner_mut().actions.get_mut(r as usize) {
-            if let Some(message2) = message2 {
-                (action.1.as_mut())(message2);
+        if let ResponseType::Other(r) = r {
+            if let Some(action) = message.as_inner_mut().actions.get_mut(r as usize) {
+                if let Some(message2) = message2 {
+                    (action.1.as_mut())(message2);
+                }
             }
         }
     }

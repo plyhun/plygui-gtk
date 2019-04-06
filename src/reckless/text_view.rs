@@ -1,4 +1,4 @@
-use glib::object::{Downcast, IsA};
+use glib::object::{Cast, IsA};
 use glib::translate::*;
 use gtk::{Buildable, Container, TextView, Widget};
 
@@ -38,12 +38,7 @@ pub mod ffi {
 }
 
 glib_wrapper! {
-    pub struct RecklessTextView(Object<ffi::GtkRecklessTextView, ffi::GtkRecklessTextViewClass>): [
-         TextView => gtk_ffi::GtkTextView,
-         Container => gtk_ffi::GtkContainer,
-         Widget => gtk_ffi::GtkWidget,
-         Buildable => gtk_ffi::GtkBuildable,
-    ];
+    pub struct RecklessTextView(Object<ffi::GtkRecklessTextView, ffi::GtkRecklessTextViewClass, RecklessTextViewClass>) @extends TextView, Container, Widget, @implements Buildable;
 
     match fn {
         get_type => || ffi::reckless_text_view_get_type(),
@@ -60,7 +55,7 @@ impl RecklessTextView {
                 panic!("GTK has not been initialized. Call `gtk::init` first.");
             }
         }
-        unsafe { Widget::from_glib_none(ffi::reckless_text_view_new()).downcast_unchecked() }
+        unsafe { Widget::from_glib_none(ffi::reckless_text_view_new()).unsafe_cast() }
     }
 }
 impl Default for RecklessTextView {

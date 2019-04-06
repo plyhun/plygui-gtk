@@ -11,18 +11,18 @@ path = "src/lib.rs"
 
 [dependencies]
 plygui-api = {version = "0.0.1", path = "../plygui-api"}
-gtk = { version = "^0.4", features = ["v3_18"] }
-gdk = { version = "^0.8", features = ["v3_18"] }
-glib = { version = "^0.5" }
-glib-sys = { version = "^0.6" }
-gobject-sys = { version = "^0.6" }
-gtk-sys = { version = "^0.6" }
+gtk = { version = "^0.6", features = ["v3_18"] }
+gdk = { version = "^0.10", features = ["v3_18"] }
+glib = { version = "^0.7" }
+glib-sys = { version = "^0.8" }
+gobject-sys = { version = "^0.8" }
+gtk-sys = { version = "^0.8" }
 lazy_static = { version = "^1.0" }
 libc = { version = "^0.2" }
-pango = { version = "^0.4" }
-gdk-pixbuf = { version = "^0.4" }
-cairo-rs = { version = "^0.4"}
-gio = { version = "^0.4"}
+pango = { version = "^0.6" }
+gdk-pixbuf = { version = "^0.6" }
+cairo-rs = { version = "^0.6"}
+gio = { version = "^0.6"}
 
 [build-dependencies]
 cc = { version = "^1.0" }

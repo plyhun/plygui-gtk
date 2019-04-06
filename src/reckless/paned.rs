@@ -1,4 +1,4 @@
-use glib::object::{Downcast, IsA};
+use glib::object::{Cast, IsA};
 use glib::translate::*;
 use gtk::{Buildable, Container, Paned, Widget};
 
@@ -38,12 +38,7 @@ pub mod ffi {
 }
 
 glib_wrapper! {
-    pub struct RecklessPaned(Object<ffi::GtkRecklessPaned, ffi::GtkRecklessPanedClass>): [
-         Paned => gtk_ffi::GtkPaned,
-         Container => gtk_ffi::GtkContainer,
-         Widget => gtk_ffi::GtkWidget,
-         Buildable => gtk_ffi::GtkBuildable,
-    ];
+    pub struct RecklessPaned(Object<ffi::GtkRecklessPaned, ffi::GtkRecklessPanedClass, RecklessPanelClass>) @extends Paned, Container, Widget, @implements Buildable;
 
     match fn {
         get_type => || ffi::reckless_paned_get_type(),
@@ -60,7 +55,7 @@ impl RecklessPaned {
                 panic!("GTK has not been initialized. Call `gtk::init` first.");
             }
         }
-        unsafe { Widget::from_glib_none(ffi::reckless_paned_new()).downcast_unchecked() }
+        unsafe { Widget::from_glib_none(ffi::reckless_paned_new()).unsafe_cast() }
     }
 }
 impl Default for RecklessPaned {
