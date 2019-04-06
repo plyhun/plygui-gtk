@@ -28,9 +28,6 @@ impl development::HasNativeIdInner for GtkApplication {
 
 impl development::ApplicationInner for GtkApplication {
     fn get() -> Box<Application> {
-        use plygui_api::development::HasInner;
-        use std::ptr;
-
         if gtk::init().is_err() {
             panic!("Failed to initialize GTK");
         }
@@ -48,23 +45,10 @@ impl development::ApplicationInner for GtkApplication {
         a
     }
     fn new_window(&mut self, title: &str, size: types::WindowStartSize, menu: types::Menu) -> Box<dyn controls::Window> {
-        use plygui_api::development::{HasNativeIdInner, WindowInner};
-
         let w = super::window::GtkWindow::with_params(title, size, menu);
         let widget = {
             use plygui_api::controls::AsAny;
-            use plygui_api::development::HasInner;
-
             let widget: Widget = unsafe { w.as_any().downcast_ref::<Window>().unwrap().as_inner().native_id().as_ref().clone().downcast().unwrap() };
-            /*let selfptr = self.selfptr.clone();
-            widget.connect_delete_event(move |window, _| {
-                let a = unsafe { &mut *selfptr }.as_inner_mut();
-                a.windows.iter().position(|item| item == window).map(|e| a.windows.remove(e));
-                if a.windows.len() < 1 {
-                    gtk::main_quit();
-                }
-                Inhibit(false)
-            });*/
             widget
         };
         self.windows.push(widget);
@@ -75,8 +59,7 @@ impl development::ApplicationInner for GtkApplication {
         let t = super::tray::GtkTray::with_params(title, menu);
         let o = {
             use plygui_api::controls::AsAny;
-            use plygui_api::development::HasInner;
-
+            
             let o: Object = unsafe { t.as_any().downcast_ref::<Tray>().unwrap().as_inner().native_id().as_ref().clone() };
             o
         };

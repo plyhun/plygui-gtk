@@ -141,8 +141,6 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
         self.widget().get_toplevel().map(|w| unsafe { cast_gobject_mut(&mut w.upcast()).unwrap() })
     }
     pub fn invalidate(&mut self) -> bool {
-        use gtk::WidgetExt;
-
         let widget = self.widget();
         if let Some(mut parent_widget) = widget.get_parent() {
             if pointer(&parent_widget.clone().upcast()).is_null() {
