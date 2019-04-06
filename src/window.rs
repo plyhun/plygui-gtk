@@ -34,8 +34,13 @@ impl GtkWindow {
 impl CloseableInner for GtkWindow {
     fn close(&mut self, skip_callbacks: bool) -> bool {
         self.skip_callbacks = skip_callbacks;
-        self.window.close();
-        true
+        let glib::signal::Inhibit(inhibit) = on_widget_deleted(&self.window, unsafe { &mem::zeroed() });
+        if inhibit {
+            false
+        } else {
+            self.window.destroy();
+            true
+        }
     }
     fn on_close(&mut self, callback: Option<callbacks::Action>) {
         self.on_close = callback;

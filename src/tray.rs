@@ -92,11 +92,12 @@ impl HasNativeIdInner for GtkTray {
 
 impl MemberInner for GtkTray {}
 
-fn popup_menu<'a>(this: &'a GtkStatusIcon, button: u32, user_data: u32) {
+fn popup_menu<'a>(this: &'a GtkStatusIcon, user_data: u32, button: u32) {
     let mut t = this.clone().upcast::<Object>();
     let this: &'static GtkStatusIcon = unsafe { mem::transmute(this) };
     let t = unsafe { common::cast_gobject_mut::<Tray>(&mut t).unwrap() };
     if let Some(ref mut menu) = t.as_inner_mut().context_menu {
+        menu.show_all();
         menu.popup(Option::<&GtkMenu>::None, Option::<&GtkMenu>::None, move |menu, x, y| {
                 GtkStatusIcon::position_menu(menu, x, y, this)
             }, user_data, button);
