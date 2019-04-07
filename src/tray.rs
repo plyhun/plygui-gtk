@@ -10,7 +10,6 @@ pub struct GtkTray {
     context_menu: Option<GtkMenu>,
     menu: Vec<callbacks::Action>,
     on_close: Option<callbacks::Action>,
-    skip_callbacks: bool,
 }
 
 pub type Tray = Member<GtkTray>;
@@ -26,7 +25,15 @@ impl HasLabelInner for GtkTray {
 
 impl CloseableInner for GtkTray {
     fn close(&mut self, skip_callbacks: bool) -> bool {
-        self.skip_callbacks = skip_callbacks;
+        if !skip_callbacks {
+            let mut tray2 = self.tray.clone().upcast::<Object>();
+            let tray2 = unsafe { common::cast_gobject_mut::<Tray>(&mut tray2).unwrap() };
+            if let Some(ref mut on_close) = self.on_close {
+                if !(on_close.as_mut())(tray2) {
+                    return false
+                }
+            }
+        }
         
         self.tray.set_visible(false);
         true
@@ -46,7 +53,6 @@ impl TrayInner for GtkTray {
                 context_menu: if menu.is_some() { Some(GtkMenu::new()) } else { None },
                 menu: if menu.is_some() { Vec::new() } else { Vec::with_capacity(0) },
                 on_close: None,
-                skip_callbacks: false,
             },
             MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
         ));
