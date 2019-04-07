@@ -110,6 +110,9 @@ impl WindowInner for GtkWindow {
             };
             window.window.set_default_size(window.size.0, window.size.1);
             window.window.connect_size_allocate(on_resize_move);
+            window.window.connect_destroy(move |this| {
+                super::application::Application::get().as_any_mut().downcast_mut::<super::application::Application>().unwrap().as_inner_mut().remove_window(this.clone().upcast::<Object>().into());
+            });
             window.window.connect_delete_event(on_widget_deleted);
             window.window.show();
             window.container.show();

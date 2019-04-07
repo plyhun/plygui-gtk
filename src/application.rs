@@ -26,6 +26,17 @@ impl development::HasNativeIdInner for GtkApplication {
     }
 }
 
+impl GtkApplication {
+    fn maybe_exit(&mut self) -> bool {
+        if self.windows.len() < 1 && self.trays.len() < 1 {
+            gtk::main_quit();
+            true
+        } else {
+            false
+        }
+    }
+}
+
 impl development::ApplicationInner for GtkApplication {
     fn get() -> Box<Application> {
         if gtk::init().is_err() {
@@ -68,9 +79,11 @@ impl development::ApplicationInner for GtkApplication {
     }
     fn remove_window(&mut self, id: Self::Id) {
         self.windows.retain(|w| GtkWidget::from(w.clone().upcast::<Object>()) != id);
+        self.maybe_exit();
     }
     fn remove_tray(&mut self, id: Self::Id) {
         self.trays.retain(|t| GtkWidget::from(t.clone()) != id);
+        self.maybe_exit();
     }
     fn name(&self) -> ::std::borrow::Cow<'_, str> {
         ::std::borrow::Cow::Borrowed(self.name.as_ref())
@@ -104,9 +117,7 @@ impl development::ApplicationInner for GtkApplication {
             }
             i -= 1;
         }
-        
-        gtk::main_quit();
-        true
+        self.maybe_exit()
     }
     fn find_member_by_id_mut(&mut self, id: ids::Id) -> Option<&mut dyn controls::Member> {
         use plygui_api::controls::{Container, Member, SingleContainer};

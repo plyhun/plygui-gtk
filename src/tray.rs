@@ -36,6 +36,7 @@ impl CloseableInner for GtkTray {
         }
         
         self.tray.set_visible(false);
+        super::application::Application::get().as_any_mut().downcast_mut::<super::application::Application>().unwrap().as_inner_mut().remove_tray(self.tray.clone().upcast::<Object>().into());
         true
     }
     fn on_close(&mut self, callback: Option<callbacks::Action>) {
