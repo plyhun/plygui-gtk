@@ -1,9 +1,9 @@
 use crate::common::{self, *};
-use crate::window::Window;
 use crate::tray::Tray;
+use crate::window::Window;
 
-use gtk::{Application as GtkApplicationSys};
 use gio::ApplicationFlags;
+use gtk::Application as GtkApplicationSys;
 
 use plygui_api::development;
 use plygui_api::{controls, ids, types};
@@ -70,7 +70,7 @@ impl development::ApplicationInner for GtkApplication {
         let t = super::tray::GtkTray::with_params(title, menu);
         let o = {
             use plygui_api::controls::AsAny;
-            
+
             let o: Object = unsafe { t.as_any().downcast_ref::<Tray>().unwrap().as_inner().native_id().as_ref().clone() };
             o
         };

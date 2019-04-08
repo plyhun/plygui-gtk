@@ -1,7 +1,7 @@
 use crate::common::{self, *};
 
 use gtk::prelude::*;
-use gtk::{Widget, MessageDialog, DialogFlags, MessageType, MessageDialogExt, ButtonsType};
+use gtk::{ButtonsType, DialogFlags, MessageDialog, MessageDialogExt, MessageType, Widget};
 
 #[repr(C)]
 pub struct GtkMessage {
@@ -14,7 +14,7 @@ pub type Message = Member<GtkMessage>;
 impl MessageInner for GtkMessage {
     fn with_actions(content: types::TextContent, severity: types::MessageSeverity, actions: Vec<(String, callbacks::Action)>, parent: Option<&dyn controls::Member>) -> Box<Message> {
         let parent = parent.map(|parent| Object::from(common::cast_member_to_gtkwidget(parent)).downcast::<Widget>().unwrap().get_toplevel().unwrap().downcast::<gtk::Window>().unwrap());
-        
+
         let mut message = Box::new(Member::with_inner(
             GtkMessage {
                 message: MessageDialog::new(
@@ -31,18 +31,18 @@ impl MessageInner for GtkMessage {
             },
             MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
         ));
-        
+
         let ptr = message.as_ref() as *const _ as *mut std::os::raw::c_void;
 
         {
             let message = message.as_inner_mut();
             common::set_pointer(&mut message.message.clone().upcast(), ptr);
             message.message.connect_response(on_response);
-            
+
             if let types::TextContent::LabelDescription(_, ref description) = content {
                 message.message.set_property_secondary_text(Some(description.as_str()));
             }
-            
+
             message.actions.iter().enumerate().for_each(|(i, (n, _))| {
                 message.message.add_button(n, i as i32);
             });

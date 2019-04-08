@@ -1,7 +1,7 @@
 use crate::common::{self, *};
 
 use glib::{self, Continue};
-use gtk::{Box as GtkBox, Rectangle, Widget, Window as GtkWindowSys, GtkWindowExt, WindowType, ContainerExt, BinExt, OrientableExt, MenuBar as GtkMenuBar};
+use gtk::{BinExt, Box as GtkBox, ContainerExt, GtkWindowExt, MenuBar as GtkMenuBar, OrientableExt, Rectangle, Widget, Window as GtkWindowSys, WindowType};
 
 #[repr(C)]
 pub struct GtkWindow {
@@ -76,7 +76,7 @@ impl WindowInner for GtkWindow {
         {
             let window = window.as_inner_mut().as_inner_mut().as_inner_mut();
             common::set_pointer(&mut window.window.clone().upcast::<Object>(), selfptr as *mut std::os::raw::c_void);
-            
+
             if let Some(menu) = menu {
                 fn item_spawn(id: usize, selfptr: *mut Window) -> GtkMenuItem {
                     let mi = GtkMenuItem::new();
@@ -85,19 +85,19 @@ impl WindowInner for GtkWindow {
                         let mut w = this.clone().upcast::<Widget>();
                         let w = common::cast_gtk_widget_to_member_mut::<Window>(&mut w).unwrap();
                         if let Some(a) = w.as_inner_mut().as_inner_mut().as_inner_mut().menu.get_mut(id) {
-                            let w = unsafe {&mut *selfptr};
+                            let w = unsafe { &mut *selfptr };
                             (a.as_mut())(w);
                         }
                     });
                     mi
-                }; 
-                
+                };
+
                 let menu_bar = window.menu_bar.as_ref().unwrap();
                 common::make_menu(menu_bar.clone().upcast(), menu, &mut window.menu, item_spawn, selfptr);
                 window.container.add(menu_bar);
                 menu_bar.show_all();
             }
-            
+
             window.container.clone().upcast::<GtkBox>().set_orientation(GtkOrientation::Vertical);
             window.window.add(&window.container);
             window.size = match start_size {
@@ -111,7 +111,12 @@ impl WindowInner for GtkWindow {
             window.window.set_default_size(window.size.0, window.size.1);
             window.window.connect_size_allocate(on_resize_move);
             window.window.connect_destroy(move |this| {
-                super::application::Application::get().as_any_mut().downcast_mut::<super::application::Application>().unwrap().as_inner_mut().remove_window(this.clone().upcast::<Object>().into());
+                super::application::Application::get()
+                    .as_any_mut()
+                    .downcast_mut::<super::application::Application>()
+                    .unwrap()
+                    .as_inner_mut()
+                    .remove_window(this.clone().upcast::<Object>().into());
             });
             window.window.connect_delete_event(on_widget_deleted);
             window.window.show();

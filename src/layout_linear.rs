@@ -261,7 +261,7 @@ impl MultiContainerInner for GtkLinearLayout {
             );
         }
         self.base.invalidate();
-        
+
         old
     }
     fn remove_child_from(&mut self, _: &mut MemberBase, index: usize) -> Option<Box<dyn controls::Control>> {
@@ -270,7 +270,7 @@ impl MultiContainerInner for GtkLinearLayout {
             let widget = common::cast_control_to_gtkwidget(item.as_ref());
             Object::from(self.base.widget.clone()).downcast::<GtkBox>().unwrap().remove::<Widget>(&Object::from(widget).downcast().unwrap());
             self.base.invalidate();
-            
+
             Some(item)
         } else {
             None

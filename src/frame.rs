@@ -36,7 +36,10 @@ impl FrameInner for GtkFrame {
             let frame = Object::from(fr.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<GtkFrameSys>().unwrap();
             frame.set_label(label);
         }
-        Object::from(fr.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<Widget>().unwrap().connect_size_allocate(on_size_allocate);
+        Object::from(fr.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone())
+            .downcast::<Widget>()
+            .unwrap()
+            .connect_size_allocate(on_size_allocate);
         fr
     }
 }

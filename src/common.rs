@@ -1,24 +1,17 @@
 pub use plygui_api::development::*;
-pub use plygui_api::{callbacks, defaults, controls, ids, layout, types, utils};
+pub use plygui_api::{callbacks, controls, defaults, ids, layout, types, utils};
 
+pub use glib::translate::ToGlibPtr;
 pub use glib::Object;
 pub use gobject_sys::GObject;
-pub use glib::translate::ToGlibPtr;
-pub use gtk::{Cast, 
-        Orientation as GtkOrientation, 
-        Widget, WidgetExt, 
-        Menu as GtkMenu, 
-        MenuItem as GtkMenuItem, MenuItemExt,
-        MenuShell as GtkMenuShell, MenuShellExt, 
-        SeparatorMenuItem as GtkSeparatorMenuItem
-};
+pub use gtk::{Cast, Menu as GtkMenu, MenuItem as GtkMenuItem, MenuItemExt, MenuShell as GtkMenuShell, MenuShellExt, Orientation as GtkOrientation, SeparatorMenuItem as GtkSeparatorMenuItem, Widget, WidgetExt};
 pub use gtk_sys::GtkWidget as WidgetSys;
 
 pub use std::borrow::Cow;
 pub use std::ffi::CString;
 pub use std::marker::PhantomData;
 pub use std::os::raw::{c_char, c_void};
-pub use std::{cmp, mem, ops, sync::mpsc, ptr};
+pub use std::{cmp, mem, ops, ptr, sync::mpsc};
 
 pub use crate::reckless;
 
@@ -191,16 +184,12 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
                 let w = match control.layout.width {
                     layout::Size::MatchParent => parent_width as i32,
                     layout::Size::Exact(w) => w as i32,
-                    layout::Size::WrapContent => {
-                        native_size.0
-                    }
+                    layout::Size::WrapContent => native_size.0,
                 };
                 let h = match control.layout.height {
                     layout::Size::MatchParent => parent_height as i32,
                     layout::Size::Exact(h) => h as i32,
-                    layout::Size::WrapContent => {
-                        native_size.1
-                    }
+                    layout::Size::WrapContent => native_size.1,
                 };
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)
             }
@@ -363,4 +352,3 @@ pub fn make_menu<T: controls::Member>(menu: GtkMenuShell, mut items: Vec<types::
     make_special(menu.clone(), options, storage);
     make_special(menu.clone(), help, storage);
 }
-

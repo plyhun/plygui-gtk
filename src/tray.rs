@@ -2,7 +2,7 @@
 
 use crate::common::{self, *};
 
-use gtk::{StatusIcon as GtkStatusIcon, StatusIconExt, MenuExtManual};
+use gtk::{MenuExtManual, StatusIcon as GtkStatusIcon, StatusIconExt};
 
 #[repr(C)]
 pub struct GtkTray {
@@ -19,7 +19,7 @@ impl HasLabelInner for GtkTray {
         Cow::Owned(self.tray.get_title().unwrap_or(String::new()))
     }
     fn set_label(&mut self, _: &mut MemberBase, label: &str) {
-        self.tray.set_title(label);    
+        self.tray.set_title(label);
     }
 }
 
@@ -30,13 +30,18 @@ impl CloseableInner for GtkTray {
             let tray2 = unsafe { common::cast_gobject_mut::<Tray>(&mut tray2).unwrap() };
             if let Some(ref mut on_close) = self.on_close {
                 if !(on_close.as_mut())(tray2) {
-                    return false
+                    return false;
                 }
             }
         }
-        
+
         self.tray.set_visible(false);
-        super::application::Application::get().as_any_mut().downcast_mut::<super::application::Application>().unwrap().as_inner_mut().remove_tray(self.tray.clone().upcast::<Object>().into());
+        super::application::Application::get()
+            .as_any_mut()
+            .downcast_mut::<super::application::Application>()
+            .unwrap()
+            .as_inner_mut()
+            .remove_tray(self.tray.clone().upcast::<Object>().into());
         true
     }
     fn on_close(&mut self, callback: Option<callbacks::Action>) {
@@ -46,8 +51,8 @@ impl CloseableInner for GtkTray {
 
 impl TrayInner for GtkTray {
     fn with_params(title: &str, menu: types::Menu) -> Box<Member<Self>> {
-        use plygui_api::controls::HasLabel; 
-        
+        use plygui_api::controls::HasLabel;
+
         let mut tray = Box::new(Member::with_inner(
             GtkTray {
                 tray: GtkStatusIcon::new_from_icon_name(title),
@@ -57,12 +62,12 @@ impl TrayInner for GtkTray {
             },
             MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
         ));
-        
+
         let selfptr = tray.as_mut() as *mut Tray;
         {
             let tray = tray.as_inner_mut();
             common::set_pointer(&mut tray.tray.clone().upcast::<Object>(), selfptr as *mut std::os::raw::c_void);
-            
+
             if let Some(menu) = menu {
                 fn item_spawn(id: usize, selfptr: *mut Tray) -> GtkMenuItem {
                     let mi = GtkMenuItem::new();
@@ -71,19 +76,19 @@ impl TrayInner for GtkTray {
                         let mut t = this.clone().upcast::<Widget>();
                         let t = common::cast_gtk_widget_to_member_mut::<Tray>(&mut t).unwrap();
                         if let Some(a) = t.as_inner_mut().menu.get_mut(id) {
-                            let t = unsafe {&mut *selfptr};
+                            let t = unsafe { &mut *selfptr };
                             (a.as_mut())(t);
                         }
                     });
                     mi
-                }; 
-                
+                };
+
                 let context_menu = tray.context_menu.as_ref().unwrap();
                 common::make_menu(context_menu.clone().upcast(), menu, &mut tray.menu, item_spawn, selfptr);
             }
             tray.tray.connect_popup_menu(popup_menu);
         }
-        
+
         tray.set_label(title);
         tray
     }
@@ -105,9 +110,7 @@ fn popup_menu<'a>(this: &'a GtkStatusIcon, user_data: u32, button: u32) {
     let t = unsafe { common::cast_gobject_mut::<Tray>(&mut t).unwrap() };
     if let Some(ref mut menu) = t.as_inner_mut().context_menu {
         menu.show_all();
-        menu.popup(Option::<&GtkMenu>::None, Option::<&GtkMenu>::None, move |menu, x, y| {
-                GtkStatusIcon::position_menu(menu, x, y, this)
-            }, user_data, button);
+        menu.popup(Option::<&GtkMenu>::None, Option::<&GtkMenu>::None, move |menu, x, y| GtkStatusIcon::position_menu(menu, x, y, this), user_data, button);
     }
 }
 

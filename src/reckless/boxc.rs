@@ -1,6 +1,6 @@
 use glib::object::{Downcast, IsA};
 use glib::translate::*;
-use gtk::{Buildable, Container, Box, Widget};
+use gtk::{Box, Buildable, Container, Widget};
 
 use glib_sys as glib_ffi;
 use gobject_sys as gobject_ffi;
