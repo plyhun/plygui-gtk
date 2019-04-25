@@ -72,8 +72,6 @@ impl GtkImage {
         let (wrate, hrate) = (inner_h as f32 / bm_width as f32, inner_v as f32 / bm_height as f32);
         let less_rate = fmin(wrate, hrate);
 
-        println!("{}, {}, {}, {}, {}", aw, ah, hoffs, voffs, less_rate);
-
         let scaled = match self.scale {
             types::ImageScalePolicy::FitCenter => {
                 let bm_h = (bm_width as f32 * less_rate) as i32;
@@ -126,10 +124,8 @@ impl ControlInner for GtkImage {
 
     #[cfg(feature = "markup")]
     fn fill_from_markup(&mut self, member: &mut MemberBase, control: &mut ControlBase, mberarkup: &super::markup::Markup, registry: &mut super::markup::MarkupRegistry) {
-        use plygui_api::markup::MEMBER_TYPE_BUTTON;
-        fill_from_markup_base!(self, base, markup, registry, Image, [MEMBER_TYPE_BUTTON]);
-        fill_from_markup_label!(self, &mut base.member, markup);
-        fill_from_markup_callbacks!(self, markup, registry, [on_click => plygui_api::callbacks::Click]);
+        use plygui_api::markup::MEMBER_TYPE_IMAGE;
+        fill_from_markup_base!(self, base, markup, registry, Image, [MEMBER_TYPE_IMAGE]);
     }
 }
 impl HasNativeIdInner for GtkImage {

@@ -58,6 +58,10 @@ impl ClickableInner for GtkButton {
     fn on_click(&mut self, cb: Option<callbacks::OnClick>) {
         self.h_left_clicked = cb;
     }
+    fn click(&mut self) {
+        let self_widget: Object = Object::from(self.base.widget.clone()).into();
+        self_widget.downcast::<GtkButtonSys>().unwrap();
+    }
 }
 
 impl HasLayoutInner for GtkButton {
