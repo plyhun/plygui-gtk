@@ -143,7 +143,7 @@ impl WindowInner for GtkWindow {
                         },
                     }
                 }
-                glib::usleep(100);
+                glib::usleep(10);
                 Continue(true)
             });
         }
