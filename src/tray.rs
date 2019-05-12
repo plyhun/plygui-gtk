@@ -9,17 +9,17 @@ pub struct GtkTray {
     tray: GtkStatusIcon,
     context_menu: Option<GtkMenu>,
     menu: Vec<callbacks::Action>,
-    on_close: Option<callbacks::Action>,
+    on_close: Option<callbacks::OnClose>,
 }
 
 pub type Tray = Member<GtkTray>;
 
 impl HasLabelInner for GtkTray {
-    fn label(&self) -> ::std::borrow::Cow<'_, str> {
+    fn label(&self, _: &MemberBase) -> Cow<str> {
         Cow::Owned(self.tray.get_title().unwrap_or(String::new()))
     }
-    fn set_label(&mut self, _: &mut MemberBase, label: &str) {
-        self.tray.set_title(label);
+    fn set_label(&mut self, _: &mut MemberBase, label: Cow<str>) {
+        self.tray.set_title(&label);
     }
 }
 
@@ -37,6 +37,7 @@ impl CloseableInner for GtkTray {
 
         self.tray.set_visible(false);
         super::application::Application::get()
+            .unwrap()
             .as_any_mut()
             .downcast_mut::<super::application::Application>()
             .unwrap()
@@ -44,7 +45,7 @@ impl CloseableInner for GtkTray {
             .remove_tray(self.tray.clone().upcast::<Object>().into());
         true
     }
-    fn on_close(&mut self, callback: Option<callbacks::Action>) {
+    fn on_close(&mut self, callback: Option<callbacks::OnClose>) {
         self.on_close = callback;
     }
 }
@@ -88,8 +89,7 @@ impl TrayInner for GtkTray {
             }
             tray.tray.connect_popup_menu(popup_menu);
         }
-
-        tray.set_label(title);
+        tray.set_label(title.into());
         tray
     }
 }

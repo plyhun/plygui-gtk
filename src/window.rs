@@ -1,6 +1,5 @@
 use crate::common::{self, *};
 
-use glib::{self, Continue};
 use gtk::{BinExt, Box as GtkBox, ContainerExt, GtkWindowExt, MenuBar as GtkMenuBar, OrientableExt, Rectangle, Widget, Window as GtkWindowSys, WindowType};
 
 #[repr(C)]
@@ -11,7 +10,7 @@ pub struct GtkWindow {
     child: Option<Box<dyn controls::Control>>,
     menu_bar: Option<GtkMenuBar>,
     menu: Vec<callbacks::Action>,
-    on_close: Option<callbacks::Action>,
+    on_close: Option<callbacks::OnClose>,
     skip_callbacks: bool,
 }
 
@@ -42,7 +41,7 @@ impl CloseableInner for GtkWindow {
             true
         }
     }
-    fn on_close(&mut self, callback: Option<callbacks::Action>) {
+    fn on_close(&mut self, callback: Option<callbacks::OnClose>) {
         self.on_close = callback;
     }
 }
@@ -112,6 +111,7 @@ impl WindowInner for GtkWindow {
             window.window.connect_size_allocate(on_resize_move);
             window.window.connect_destroy(move |this| {
                 super::application::Application::get()
+                    .unwrap()
                     .as_any_mut()
                     .downcast_mut::<super::application::Application>()
                     .unwrap()
@@ -122,41 +122,9 @@ impl WindowInner for GtkWindow {
             window.window.show();
             window.container.show();
         }
-        {
-            let window = window.as_inner_mut().as_inner_mut().as_inner_mut();
-            let mut window = window.window.clone().upcast::<Widget>();
-            let selfptr = cast_gtk_widget_to_member_mut::<Window>(&mut window).unwrap() as *mut Window as usize;
-            glib::idle_add(move || unsafe {
-                let mut frame_callbacks = 0;
-                while frame_callbacks < defaults::MAX_FRAME_CALLBACKS {
-                    let w = (&mut *(selfptr as *mut Window)).as_inner_mut().as_inner_mut().base_mut();
-                    match w.queue().try_recv() {
-                        Ok(mut cmd) => {
-                            if (cmd.as_mut())(&mut *(selfptr as *mut Window)) {
-                                let _ = w.sender().send(cmd);
-                            }
-                            frame_callbacks += 1;
-                        }
-                        Err(e) => match e {
-                            mpsc::TryRecvError::Empty => break,
-                            mpsc::TryRecvError::Disconnected => unreachable!(),
-                        },
-                    }
-                }
-                glib::usleep(10);
-                Continue(true)
-            });
-        }
-        window.set_label(title);
+        
+        window.set_label(title.into());
         window
-    }
-    fn on_frame(&mut self, cb: callbacks::OnFrame) {
-        let mut window = self.window.clone().upcast::<Widget>();
-        let _ = cast_gtk_widget_to_member_mut::<Window>(&mut window).unwrap().as_inner_mut().as_inner_mut().base_mut().sender().send(cb);
-    }
-    fn on_frame_async_feeder(&mut self) -> callbacks::AsyncFeeder<callbacks::OnFrame> {
-        let mut window = self.window.clone().upcast::<Widget>();
-        cast_gtk_widget_to_member_mut::<Window>(&mut window).unwrap().as_inner_mut().as_inner_mut().base_mut().sender().clone().into()
     }
     fn size(&self) -> (u16, u16) {
         self.size_inner()
@@ -167,11 +135,11 @@ impl WindowInner for GtkWindow {
 }
 
 impl HasLabelInner for GtkWindow {
-    fn label(&self) -> ::std::borrow::Cow<'_, str> {
+    fn label(&self, _: &MemberBase) -> ::std::borrow::Cow<str> {
         Cow::Owned(self.window.get_title().unwrap_or(String::new()))
     }
-    fn set_label(&mut self, _: &mut MemberBase, label: &str) {
-        self.window.set_title(label);
+    fn set_label(&mut self, _: &mut MemberBase, label: Cow<str>) {
+        self.window.set_title(&label);
         self.redraw();
     }
 }
@@ -216,18 +184,18 @@ impl SingleContainerInner for GtkWindow {
 }
 
 impl ContainerInner for GtkWindow {
-    fn find_control_by_id_mut(&mut self, id_: ids::Id) -> Option<&mut dyn controls::Control> {
+    fn find_control_mut(&mut self, arg: types::FindBy) -> Option<&mut dyn controls::Control> {
         if let Some(child) = self.child.as_mut() {
             if let Some(c) = child.is_container_mut() {
-                return c.find_control_by_id_mut(id_);
+                return c.find_control_mut(arg);
             }
         }
         None
     }
-    fn find_control_by_id(&self, id_: ids::Id) -> Option<&dyn controls::Control> {
+    fn find_control(&self, arg: types::FindBy) -> Option<&dyn controls::Control> {
         if let Some(child) = self.child.as_ref() {
             if let Some(c) = child.is_container() {
-                return c.find_control_by_id(id_);
+                return c.find_control(arg);
             }
         }
         None

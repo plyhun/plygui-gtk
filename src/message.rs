@@ -60,11 +60,11 @@ impl MessageInner for GtkMessage {
 }
 
 impl HasLabelInner for GtkMessage {
-    fn label(&self) -> ::std::borrow::Cow<'_, str> {
+    fn label(&self, _: &MemberBase) -> Cow<str> {
         Cow::Owned(self.message.get_title().unwrap_or(String::new()))
     }
-    fn set_label(&mut self, _: &mut MemberBase, label: &str) {
-        self.message.set_title(label);
+    fn set_label(&mut self, _: &mut MemberBase, label: Cow<str>) {
+        self.message.set_title(&label);
     }
 }
 

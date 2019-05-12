@@ -37,11 +37,11 @@ impl TextInner for GtkText {
 }
 
 impl HasLabelInner for GtkText {
-    fn label<'a>(&'a self) -> Cow<'a, str> {
+    fn label<'a>(&'a self, _: &MemberBase) -> Cow<str> {
         Cow::Owned(self.base.widget().downcast::<Label>().unwrap().get_text().unwrap_or(String::new()))
     }
-    fn set_label(&mut self, _: &mut MemberBase, label: &str) {
-        self.base.widget().downcast::<Label>().unwrap().set_text(label)
+    fn set_label(&mut self, _: &mut MemberBase, label: Cow<str>) {
+        self.base.widget().downcast::<Label>().unwrap().set_text(&label)
     }
 }
 

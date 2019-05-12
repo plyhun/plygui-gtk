@@ -244,14 +244,14 @@ where
         None
     }
 }
-pub fn cast_gtk_widget_to_member_mut<'a, T>(object: &'a mut Widget) -> Option<&'a mut T>
+pub fn cast_gtk_widget_to_member_mut<'a, T>(object: & mut Widget) -> Option<&'a mut T>
 where
     T: controls::Member + Sized,
 {
     let mut object = object.clone().upcast::<Object>();
     unsafe { cast_gobject_mut(&mut object) }
 }
-pub fn cast_gtk_widget_to_member<'a, T>(object: &'a Widget) -> Option<&'a T>
+pub fn cast_gtk_widget_to_member<'a, T>(object: & Widget) -> Option<&'a T>
 where
     T: controls::Member + Sized,
 {

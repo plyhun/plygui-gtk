@@ -1,6 +1,7 @@
 use crate::common::{self, *};
 
 use gtk::{Bin, BinExt, Button as GtkButtonSys, ButtonExt, Label, LabelExt};
+use gdk::ModifierType;
 use pango::LayoutExt;
 
 use std::borrow::Cow;
@@ -13,6 +14,7 @@ pub struct GtkButton {
 
     h_left_clicked: Option<callbacks::OnClick>,
     h_right_clicked: Option<callbacks::OnClick>,
+    skip_callbacks: bool,
 }
 
 impl ButtonInner for GtkButton {
@@ -23,6 +25,7 @@ impl ButtonInner for GtkButton {
                     base: common::GtkControlBase::with_gtk_widget(reckless::button::RecklessButton::new().upcast::<Widget>()),
                     h_left_clicked: None,
                     h_right_clicked: None,
+                    skip_callbacks: false,
                 },
                 (),
             ),
@@ -44,13 +47,13 @@ impl ButtonInner for GtkButton {
 }
 
 impl HasLabelInner for GtkButton {
-    fn label<'a>(&'a self) -> Cow<'a, str> {
+    fn label(&self, _: &MemberBase) -> Cow<str> {
         let self_widget: Object = Object::from(self.base.widget.clone()).into();
         Cow::Owned(self_widget.downcast::<GtkButtonSys>().unwrap().get_label().unwrap_or(String::new()))
     }
-    fn set_label(&mut self, _: &mut MemberBase, label: &str) {
+    fn set_label(&mut self, _: &mut MemberBase, label: Cow<str>) {
         let self_widget: Object = Object::from(self.base.widget.clone()).into();
-        self_widget.downcast::<GtkButtonSys>().unwrap().set_label(label)
+        self_widget.downcast::<GtkButtonSys>().unwrap().set_label(&label)
     }
 }
 
@@ -58,9 +61,11 @@ impl ClickableInner for GtkButton {
     fn on_click(&mut self, cb: Option<callbacks::OnClick>) {
         self.h_left_clicked = cb;
     }
-    fn click(&mut self) {
+    fn click(&mut self, skip_callbacks: bool) -> bool {
+        self.skip_callbacks = skip_callbacks;
         let self_widget: Object = Object::from(self.base.widget.clone()).into();
-        self_widget.downcast::<GtkButtonSys>().unwrap();
+        gtk::test_widget_click(&self_widget.downcast::<GtkButtonSys>().unwrap(), 1, ModifierType::BUTTON1_MASK);
+        true
     }
 }
 
