@@ -64,11 +64,7 @@ impl ClickableInner for GtkButton {
     fn click(&mut self, skip_callbacks: bool) -> bool {
         self.skip_callbacks = skip_callbacks;
         let self_widget: Object = Object::from(self.base.widget.clone()).into();
-        let self_widget = self_widget.downcast::<GtkButtonSys>().unwrap();
-        unsafe {
-            gtk_sys::gtk_button_pressed(self_widget.to_glib_none().0);
-            gtk_sys::gtk_button_released(self_widget.to_glib_none().0);
-        }
+        gtk::test_widget_click(&self_widget.downcast::<GtkButtonSys>().unwrap(), 1, ModifierType::BUTTON1_MASK);
         true
     }
 }
