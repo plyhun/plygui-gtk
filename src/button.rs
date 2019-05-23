@@ -61,11 +61,10 @@ impl ClickableInner for GtkButton {
     fn on_click(&mut self, cb: Option<callbacks::OnClick>) {
         self.h_left_clicked = cb;
     }
-    fn click(&mut self, skip_callbacks: bool) -> bool {
+    fn click(&mut self, skip_callbacks: bool) {
         self.skip_callbacks = skip_callbacks;
         let self_widget: Object = Object::from(self.base.widget.clone()).into();
         gtk::test_widget_click(&self_widget.downcast::<GtkButtonSys>().unwrap(), 1, ModifierType::BUTTON1_MASK);
-        true
     }
 }
 
