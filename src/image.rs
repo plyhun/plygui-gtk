@@ -1,8 +1,5 @@
 use crate::common::{self, *};
-use crate::external::image;
 
-use cairo::Format;
-use gdk_pixbuf::{Colorspace, InterpType, Pixbuf, PixbufExt};
 use gtk::{Cast, Image as GtkImageSys, ImageExt, Widget, WidgetExt};
 
 pub type Image = Member<Control<GtkImage>>;
@@ -17,13 +14,7 @@ pub struct GtkImage {
 
 impl ImageInner for GtkImage {
     fn with_content(content: image::DynamicImage) -> Box<controls::Image> {
-        use image::GenericImageView;
-
-        let (w, h) = content.dimensions();
-        let raw = content.to_rgba().into_raw();
-        let stride = Format::ARgb32.stride_for_width(w).unwrap();
-
-        let pixbuf = Pixbuf::new_from_vec(raw, Colorspace::Rgb, true, 8, w as i32, h as i32, stride);
+        let pixbuf = common::image_to_pixbuf(&content);
 
         let mut i = Box::new(Member::with_inner(
             Control::with_inner(

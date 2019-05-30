@@ -6,6 +6,8 @@ pub use glib::Object;
 pub use gobject_sys::GObject;
 pub use gtk::{Cast, Menu as GtkMenu, MenuItem as GtkMenuItem, MenuItemExt, MenuShell as GtkMenuShell, MenuShellExt, Orientation as GtkOrientation, SeparatorMenuItem as GtkSeparatorMenuItem, Widget, WidgetExt};
 pub use gtk_sys::GtkWidget as WidgetSys;
+pub use gdk_pixbuf::{Colorspace, InterpType, Pixbuf, PixbufExt};
+pub use cairo::Format;
 
 pub use std::borrow::Cow;
 pub use std::ffi::CString;
@@ -14,6 +16,7 @@ pub use std::os::raw::{c_char, c_void};
 pub use std::{cmp, mem, ops, ptr, sync::mpsc};
 
 pub use crate::reckless;
+pub use crate::external::image;
 
 lazy_static! {
     pub static ref PROPERTY: CString = CString::new("plygui").unwrap();
@@ -284,7 +287,14 @@ pub fn gtk_allocation_to_size<'a>(object: &'a Widget) -> (i32, i32) {
     let alloc = object.get_allocation();
     (alloc.width, alloc.height)
 }
-
+pub fn image_to_pixbuf(src: &image::DynamicImage) -> Pixbuf {
+    use image::GenericImageView;
+    
+    let (w, h) = src.dimensions();
+    let raw = src.to_rgba().into_raw();
+    let stride = Format::ARgb32.stride_for_width(w).unwrap();
+    Pixbuf::new_from_vec(raw, Colorspace::Rgb, true, 8, w as i32, h as i32, stride)
+}
 fn append_item<T: controls::Member>(menu: GtkMenuShell, label: String, action: callbacks::Action, storage: &mut Vec<callbacks::Action>, item_spawn: fn(id: usize, selfptr: *mut T) -> GtkMenuItem, selfptr: *mut T) {
     let id = storage.len();
     let mi = item_spawn(id, selfptr);

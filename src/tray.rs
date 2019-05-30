@@ -50,6 +50,20 @@ impl CloseableInner for GtkTray {
     }
 }
 
+impl HasImageInner for GtkTray {
+	fn image(&self, _base: &MemberBase) -> Cow<image::DynamicImage> {
+        unimplemented!()
+    }
+    fn set_image(&mut self, _base: &mut MemberBase, i: Cow<image::DynamicImage>) {
+    	/*let i = {
+    		let status_size = self.tray.get_size() as u32;
+    		i.resize(status_size, status_size, image::FilterType::Lanczos3)
+    	};*/
+    	let i = common::image_to_pixbuf(&i);
+    	self.tray.set_from_pixbuf(Some(&i));
+    }
+}
+
 impl TrayInner for GtkTray {
     fn with_params(title: &str, menu: types::Menu) -> Box<Member<Self>> {
         use plygui_api::controls::HasLabel;
