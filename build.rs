@@ -25,5 +25,6 @@ fn main() {
         .file("ffi/reckless_box.c")
         .file("ffi/reckless_text_view.c")
         .file("ffi/reckless_label.c")
+        .file("ffi/reckless_progress_bar.c")
         .compile("gtk_reckless");
 }

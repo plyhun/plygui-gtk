@@ -10,7 +10,7 @@ name = "plygui_gtk"
 path = "src/lib.rs"
 
 [dependencies]
-plygui-api = {version = "0.0.1", path = "../plygui-api"}
+plygui-api = {version = "0.0.1", path = "../plygui/api"}
 gtk = { version = "^0.4", features = ["v3_18"] }
 gdk = { version = "^0.8", features = ["v3_18"] }
 glib = { version = "^0.5" }
