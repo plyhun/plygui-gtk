@@ -6,3 +6,4 @@ pub mod label;
 pub mod paned;
 pub mod text_view;
 pub mod progress_bar;
+pub mod tree_view;

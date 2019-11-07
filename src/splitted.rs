@@ -75,9 +75,10 @@ impl SplittedInner for GtkSplitted {
         }
         ll
     }
-    fn set_splitter(&mut self, _: &mut MemberBase, control: &mut ControlBase, pos: f32) {
+    fn set_splitter(&mut self, base: &mut MemberBase, pos: f32) {
         let pos = pos % 1.0;
         self.splitter = pos;
+        let (_, control) = Splitted::control_base_parts_mut(base);
         self.update_splitter(control);
     }
     fn splitter(&self) -> f32 {

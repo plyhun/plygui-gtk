@@ -13,7 +13,7 @@ pub struct GtkImage {
 }
 
 impl ImageInner for GtkImage {
-    fn with_content(content: image::DynamicImage) -> Box<controls::Image> {
+    fn with_content(content: image::DynamicImage) -> Box<dyn controls::Image> {
         let pixbuf = common::image_to_pixbuf(&content);
 
         let mut i = Box::new(Member::with_inner(
@@ -35,7 +35,7 @@ impl ImageInner for GtkImage {
         }
         i
     }
-    fn set_scale(&mut self, _: &mut MemberBase, _: &mut ControlBase, policy: types::ImageScalePolicy) {
+    fn set_scale(&mut self, _: &mut MemberBase, policy: types::ImageScalePolicy) {
         if self.scale != policy {
             self.scale = policy;
             self.base.invalidate();
@@ -92,24 +92,24 @@ impl HasLayoutInner for GtkImage {
 }
 
 impl ControlInner for GtkImage {
-    fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
+    fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &dyn controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
         self.measure(member, control, pw, ph);
         //self.apply_sized_image(base);
         control.coords = Some((x, y));
         self.draw(member, control);
     }
-    fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &controls::Container) {}
+    fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &dyn controls::Container) {}
 
-    fn parent(&self) -> Option<&controls::Member> {
+    fn parent(&self) -> Option<&dyn controls::Member> {
         self.base.parent().map(|m| m.as_member())
     }
-    fn parent_mut(&mut self) -> Option<&mut controls::Member> {
+    fn parent_mut(&mut self) -> Option<&mut dyn controls::Member> {
         self.base.parent_mut().map(|m| m.as_member_mut())
     }
-    fn root(&self) -> Option<&controls::Member> {
+    fn root(&self) -> Option<&dyn controls::Member> {
         self.base.root().map(|m| m.as_member())
     }
-    fn root_mut(&mut self) -> Option<&mut controls::Member> {
+    fn root_mut(&mut self) -> Option<&mut dyn controls::Member> {
         self.base.root_mut().map(|m| m.as_member_mut())
     }
 

@@ -9,12 +9,15 @@ use gtk::Application as GtkApplicationSys;
 use plygui_api::development;
 use plygui_api::{controls, types};
 
+const DEFAULT_FRAME_SLEEP_MS: u32 = 10;
+
 pub struct GtkApplication {
     app: GtkApplicationSys,
     name: String,
     windows: Vec<Widget>,
     trays: Vec<Object>,
     selfptr: *mut Application,
+    sleep: u32,
 }
 
 pub type Application = development::Application<GtkApplication>;
@@ -50,16 +53,23 @@ impl development::ApplicationInner for GtkApplication {
                 windows: Vec::with_capacity(1),
                 trays: Vec::with_capacity(0),
                 selfptr: ptr::null_mut(),
+                sleep: DEFAULT_FRAME_SLEEP_MS,
             },
             (),
         ));
         a.as_inner_mut().selfptr = a.as_mut() as *mut Application;
         a
     }
+    fn frame_sleep(&self) -> u32 {
+    	self.sleep
+    }
+    fn set_frame_sleep(&mut self, value: u32) {
+    	self.sleep = value;
+    }
     fn new_window(&mut self, title: &str, size: types::WindowStartSize, menu: types::Menu) -> Box<dyn controls::Window> {
         let w = super::window::GtkWindow::with_params(title, size, menu);
         let widget = {
-            use plygui_api::controls::AsAny;
+            use plygui_api::types::AsAny;
             let widget: Widget = unsafe { w.as_any().downcast_ref::<Window>().unwrap().as_inner().native_id().as_ref().clone().downcast().unwrap() };
             widget
         };
@@ -70,7 +80,7 @@ impl development::ApplicationInner for GtkApplication {
     fn new_tray(&mut self, title: &str, menu: types::Menu) -> Box<dyn controls::Tray> {
         let t = super::tray::GtkTray::with_params(title, menu);
         let o = {
-            use plygui_api::controls::AsAny;
+            use plygui_api::types::AsAny;
 
             let o: Object = unsafe { t.as_any().downcast_ref::<Tray>().unwrap().as_inner().native_id().as_ref().clone() };
             o
@@ -94,8 +104,8 @@ impl development::ApplicationInner for GtkApplication {
             let selfptr = self.selfptr as usize;
             glib::idle_add(move || unsafe {
                 let mut frame_callbacks = 0;
+                let a = &mut *(selfptr as *mut Application);
                 while frame_callbacks < defaults::MAX_FRAME_CALLBACKS {
-                    let a = &mut *(selfptr as *mut Application);
                     let b = a.base_mut();
                     match b.queue().try_recv() {
                         Ok(mut cmd) => {
@@ -110,7 +120,7 @@ impl development::ApplicationInner for GtkApplication {
                         },
                     }
                 }
-                glib::usleep(10);
+                glib::usleep(a.as_inner().sleep as u64);
                 Continue(true)
             });
         }
@@ -261,7 +271,7 @@ struct MemberIterator<'a> {
     index: usize,
 }
 impl<'a> Iterator for MemberIterator<'a> {
-    type Item = &'a (controls::Member + 'static);
+    type Item = &'a (dyn controls::Member + 'static);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index >= self.inner.windows.len() {
@@ -269,9 +279,9 @@ impl<'a> Iterator for MemberIterator<'a> {
             self.index = 0;
         }
         let ret = if self.needs_tray && self.is_tray {
-            self.inner.trays.get(self.index).map(|tray| unsafe { common::cast_gobject::<Tray>(tray).unwrap() } as &controls::Member)
+            self.inner.trays.get(self.index).map(|tray| unsafe { common::cast_gobject::<Tray>(tray).unwrap() } as &dyn controls::Member)
         } else if self.needs_window {
-            self.inner.windows.get(self.index).map(|window| common::cast_gtk_widget_to_member::<Window>(window).unwrap() as &controls::Member)
+            self.inner.windows.get(self.index).map(|window| common::cast_gtk_widget_to_member::<Window>(window).unwrap() as &dyn controls::Member)
         } else {
             return None;
         };
@@ -288,7 +298,7 @@ struct MemberIteratorMut<'a> {
     index: usize,
 }
 impl<'a> Iterator for MemberIteratorMut<'a> {
-    type Item = &'a mut (controls::Member);
+    type Item = &'a mut (dyn controls::Member + 'static);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.needs_tray && self.index >= self.inner.windows.len() {
@@ -296,9 +306,9 @@ impl<'a> Iterator for MemberIteratorMut<'a> {
             self.index = 0;
         }
         let ret = if self.needs_tray && self.is_tray {
-            self.inner.trays.get_mut(self.index).map(|tray| unsafe { common::cast_gobject_mut::<Tray>(tray).unwrap() } as &mut controls::Member)
+            self.inner.trays.get_mut(self.index).map(|tray| unsafe { common::cast_gobject_mut::<Tray>(tray).unwrap() } as &mut dyn controls::Member)
         } else if self.needs_window {
-            self.inner.windows.get_mut(self.index).map(|window| common::cast_gtk_widget_to_member_mut::<Window>(window).unwrap() as &mut controls::Member)
+            self.inner.windows.get_mut(self.index).map(|window| common::cast_gtk_widget_to_member_mut::<Window>(window).unwrap() as &mut dyn controls::Member)
         } else {
             return None;
         };
