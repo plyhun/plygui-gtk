@@ -13,7 +13,6 @@ fn main() {
     for lib in glib_probe.include_paths.as_slice() {
         cc_build.include(lib.to_str().unwrap());
     }
-
     cc_build.include("ffi")
         .define("STATIC_BUILD", None)
         .opt_level(3)
@@ -27,5 +26,6 @@ fn main() {
         .file("ffi/reckless_label.c")
         .file("ffi/reckless_progress_bar.c")
         .file("ffi/reckless_tree_view.c")
+        .file("ffi/reckless_cell_renderer.c")
         .compile("gtk_reckless");
 }
