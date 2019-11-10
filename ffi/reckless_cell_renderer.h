@@ -15,7 +15,7 @@ typedef struct _RecklessCellRendererClass RecklessCellRendererClass;
 
 struct _RecklessCellRenderer {
 	GtkCellRenderer parent;
-	GtkWidget* cell;
+	GtkWidget *cell;
 };
 
 struct _RecklessCellRendererClass {
@@ -24,4 +24,4 @@ struct _RecklessCellRendererClass {
 
 GType reckless_cell_renderer_get_type(void);
 
-GtkCellRenderer* reckless_cell_renderer_new(void);
+GObject* reckless_cell_renderer_new(void);

@@ -16,13 +16,12 @@ static void reckless_cell_renderer_get_size(GtkCellRenderer *cell,
 		GtkWidget *widget, const GdkRectangle *cell_area, gint *x_offset,
 		gint *y_offset, gint *width, gint *height);
 
-static void reckless_cell_renderer_render(GtkCellRenderer *cell,
-		cairo_t *ctx, GtkWidget *widget, const GdkRectangle *background_area,
+static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
+		GtkWidget *widget, const GdkRectangle *background_area,
 		const GdkRectangle *cell_area, GtkCellRendererState state);
 
-enum
-{
-  PROP_CELL = 1,
+enum {
+	PROP_CELL = 1,
 };
 static gpointer parent_class;
 
@@ -33,8 +32,8 @@ GType reckless_cell_renderer_get_type(void) {
 		return cell__type;
 
 	if (1) {
-		static const GTypeInfo cell__info = {
-				sizeof(RecklessCellRendererClass), NULL, /* base_init */
+		static const GTypeInfo cell__info = { sizeof(RecklessCellRendererClass),
+				NULL, /* base_init */
 				NULL, /* base_finalize */
 				(GClassInitFunc) reckless_cell_renderer_class_init, NULL, /* class_finalize */
 				NULL, /* class_data */
@@ -49,11 +48,7 @@ GType reckless_cell_renderer_get_type(void) {
 	return cell__type;
 }
 
-static void reckless_cell_renderer_init(
-		RecklessCellRenderer *cellrenderer) {
-//	GTK_CELL_RENDERER(cellrenderer)->mode = GTK_CELL_RENDERER_MODE_INERT;
-//	GTK_CELL_RENDERER(cellrenderer)->xpad = 2;
-//	GTK_CELL_RENDERER(cellrenderer)->ypad = 2;
+static void reckless_cell_renderer_init(RecklessCellRenderer *cellrenderer) {
 }
 
 static void reckless_cell_renderer_class_init(RecklessCellRendererClass *clz) {
@@ -75,8 +70,7 @@ static void reckless_cell_renderer_class_init(RecklessCellRendererClass *clz) {
 
 	/* Install our very own properties */
 	g_object_class_install_property(object_class, PROP_CELL,
-			g_param_spec_double("percentage", "Percentage",
-					"The fractional  to display", 0, 1, 0,
+			g_param_spec_double("cell", "Cell", "Widget to display", 0, 1, 0,
 					G_PARAM_READWRITE));
 }
 
@@ -144,7 +138,7 @@ static void reckless_cell_renderer_set_property(GObject *object, guint param_id,
  *
  ***************************************************************************/
 
-GtkCellRenderer*
+GObject*
 reckless_cell_renderer_new(void) {
 	return g_object_new(TYPE_RECKLESS_CELL_RENDERER, NULL);
 }
@@ -153,7 +147,7 @@ static void reckless_cell_renderer_get_size(GtkCellRenderer *cell,
 		GtkWidget *widget, const GdkRectangle *cell_area, gint *x_offset,
 		gint *y_offset, gint *width, gint *height) {
 
-	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER (cell);
+	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
 	gtk_widget_get_size_request(rc->cell, width, height);
 
 	if (cell_area) {
@@ -168,44 +162,16 @@ static void reckless_cell_renderer_get_size(GtkCellRenderer *cell,
 		}
 	}
 }
-static void reckless_cell_renderer_render(GtkCellRenderer *cell,
-		cairo_t *ctx,
-		GtkWidget *widget,
-		const GdkRectangle *background_area,
-		const GdkRectangle *cell_area,
-		GtkCellRendererState state)
-{
-	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER (cell);
+static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
+		GtkWidget *widget, const GdkRectangle *background_area,
+		const GdkRectangle *cell_area, GtkCellRendererState state) {
+	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
 	GtkStateType ty;
 	gint width, height;
 	gint x_offset, y_offset;
 
-	reckless_cell_renderer_get_size (cell, widget, cell_area,
-			&x_offset, &y_offset,
-			&width, &height);
+	reckless_cell_renderer_get_size(cell, widget, cell_area, &x_offset,
+			&y_offset, &width, &height);
 
-	/*if (GTK_WIDGET_HAS_FOCUS (widget))
-	state = GTK_STATE_ACTIVE;
-	else
-	state = GTK_STATE_NORMAL;
-
-	width -= cell->xpad*2;
-	height -= cell->ypad*2;
-
-	gtk_paint_box (widget->style,
-			window,
-			GTK_STATE_NORMAL, GTK_SHADOW_IN,
-			NULL, widget, "trough",
-			cell_area->x + x_offset + cell->xpad,
-			cell_area->y + y_offset + cell->ypad,
-			width - 1, height - 1);
-
-	gtk_paint_box (widget->style,
-			window,
-			state, GTK_SHADOW_OUT,
-			NULL, widget, "bar",
-			cell_area->x + x_offset + cell->xpad,
-			cell_area->y + y_offset + cell->ypad,
-			width * cell->,
-			height - 1);*/
+	gtk_widget_draw(rc->cell, ctx);
 }

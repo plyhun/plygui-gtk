@@ -1,13 +1,39 @@
 use crate::common::{self, *};
 
-use gtk::{TreeView, TreeViewExt};
+use gtk::{TreeView, TreeViewExt, TreeViewColumn, ListStore, Type, CellLayoutExt, ListStoreExtManual};
 
 pub type List = Member<Control<Adapter<GtkList>>>;
 
 #[repr(C)]
 pub struct GtkList {
     base: GtkControlBase<List>,
-    children: Vec<Box<dyn controls::Control>>,
+    col: TreeViewColumn,
+    renderer: reckless::cell_renderer::RecklessCellRenderer,
+    store: ListStore,
+    items: Vec<Box<dyn controls::Control>>,
+}
+
+impl GtkList {
+    fn add_item_inner(&mut self, base: &mut MemberBase, i: usize, y: &mut i32) {
+        let (member, control, adapter) = List::adapter_base_parts_mut(base);
+        let (pw, ph) = control.measured;
+        let this: &mut List = unsafe { utils::base_to_impl_mut(member) };
+        
+        let mut item = adapter.adapter.spawn_item_view(i, this);
+        item.on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32 /*- scroll_width - 14*/ /*TODO: WHY???*/ - DEFAULT_PADDING) as u16, utils::coord_to_size(ph as i32) as u16);
+        let widget = common::cast_control_to_gtkwidget(item.as_mut());
+                
+        let (_, yy) = item.size();
+        self.items.push(item);
+        *y += yy as i32;
+        
+        //this.as_inner_mut().as_inner_mut().as_inner_mut().store.insert_with_values(Some(i as u32), &[0], &[&common::pointer(widget)]);
+    }
+    fn remove_item_inner(&mut self, base: &mut MemberBase, i: usize) {
+        let this: &mut List = unsafe { utils::base_to_impl_mut(base) };
+        self.items.remove(i).on_removed_from_container(this); 
+        
+    }
 }
 
 impl AdapterViewInner for GtkList {
@@ -17,7 +43,10 @@ impl AdapterViewInner for GtkList {
                 Adapter::with_inner(
 	                GtkList {
 	                    base: common::GtkControlBase::with_gtk_widget(reckless::tree_view::RecklessTreeView::new().upcast::<Widget>()),
-	                    children: Vec::new(),
+	                    col: TreeViewColumn::new(),
+	                    renderer: reckless::cell_renderer::RecklessCellRenderer::new(),
+	                    store: ListStore::new(&[Type::Pointer]),
+	                    items: Vec::new(),
 	                },
 	                adapter
                 ),
@@ -30,13 +59,40 @@ impl AdapterViewInner for GtkList {
             btn.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
         }
         btn.as_inner_mut().as_inner_mut().as_inner_mut().base.widget().connect_size_allocate(on_size_allocate);
+        {
+            let tv = btn.as_inner_mut().as_inner_mut().as_inner_mut().base.widget().downcast::<TreeView>().unwrap();
+            let renderer = &btn.as_inner().as_inner().as_inner().renderer;
+            let col = &btn.as_inner().as_inner().as_inner().col;
+            col.pack_start(renderer, false);
+            col.add_attribute(renderer, "cell", 0);
+            tv.set_model(&btn.as_inner_mut().as_inner_mut().as_inner_mut().store);
+            tv.append_column(&btn.as_inner_mut().as_inner_mut().as_inner_mut().col);
+        }
         btn
 	}
-    fn on_item_change(&mut self, base: &mut MemberBase, value: types::Change) {}
+    fn on_item_change(&mut self, base: &mut MemberBase, value: types::Change) {
+        let mut y = 0;
+        {
+            for item in self.items.as_slice() {
+                let (_, yy) = item.size();
+                y += yy as i32;
+            }
+        }
+        match value {
+            types::Change::Added(at) => {
+                self.add_item_inner(base, at, &mut y);
+            },
+            types::Change::Removed(at) => {
+                self.remove_item_inner(base, at);
+            },
+            types::Change::Edited(_) => {
+            },
+        }
+    }
 }
 impl ContainerInner for GtkList {
     fn find_control_mut(&mut self, arg: types::FindBy) -> Option<&mut dyn controls::Control> {
-        for child in self.children.as_mut_slice() {
+        for child in self.items.as_mut_slice() {
             match arg {
                 types::FindBy::Id(ref id) => {
                     if child.as_member_mut().id() == *id {
@@ -62,7 +118,7 @@ impl ContainerInner for GtkList {
         None
     }
     fn find_control(&self, arg: types::FindBy) -> Option<&dyn controls::Control> {
-        for child in self.children.as_slice() {
+        for child in self.items.as_slice() {
             match arg {
                 types::FindBy::Id(ref id) => {
                     if child.as_member().id() == *id {
