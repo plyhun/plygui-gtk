@@ -112,7 +112,7 @@ impl Drawable for GtkText {
         control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
-                let mut label_size = (42i32, 42i32);
+                let mut label_size = (-1i32, -1i32);
 
                 let w = match control.layout.width {
                     layout::Size::MatchParent => parent_width as i32,

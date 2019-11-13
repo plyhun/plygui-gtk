@@ -10,9 +10,6 @@
 typedef struct _RecklessCellRenderer RecklessCellRenderer;
 typedef struct _RecklessCellRendererClass RecklessCellRendererClass;
 
-/* RecklessCellRenderer: Our custom cell renderer
- *   structure. Extend according to need */
-
 struct _RecklessCellRenderer {
 	GtkCellRenderer parent;
 	GtkWidget *cell;

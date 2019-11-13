@@ -33,14 +33,13 @@ GType reckless_cell_renderer_get_type(void) {
 
 	if (1) {
 		static const GTypeInfo cell__info = { sizeof(RecklessCellRendererClass),
-				NULL, /* base_init */
-				NULL, /* base_finalize */
-				(GClassInitFunc) reckless_cell_renderer_class_init, NULL, /* class_finalize */
-				NULL, /* class_data */
-				sizeof(RecklessCellRenderer), 0, /* n_preallocs */
+				NULL,
+				NULL,
+				(GClassInitFunc) reckless_cell_renderer_class_init, NULL,
+				NULL,
+				sizeof(RecklessCellRenderer), 0,
 				(GInstanceInitFunc) reckless_cell_renderer_init, };
 
-		/* Derive from GtkCellRenderer */
 		cell__type = g_type_register_static(GTK_TYPE_CELL_RENDERER,
 				"RecklessCellRenderer", &cell__info, 0);
 	}
@@ -58,43 +57,24 @@ static void reckless_cell_renderer_class_init(RecklessCellRendererClass *clz) {
 	parent_class = g_type_class_peek_parent(clz);
 	object_class->finalize = reckless_cell_renderer_finalize;
 
-	/* Hook up functions to set and get our
-	 *   custom cell renderer properties */
 	object_class->get_property = reckless_cell_renderer_get_property;
 	object_class->set_property = reckless_cell_renderer_set_property;
 
-	/* Override the two crucial functions that are the heart
-	 *   of a cell renderer in the parent class */
 	cell_class->get_size = reckless_cell_renderer_get_size;
 	cell_class->render = reckless_cell_renderer_render;
 
-	/* Install our very own properties */
 	g_object_class_install_property(object_class, PROP_CELL,
-			g_param_spec_double("cell", "Cell", "Widget to display", 0, 1, 0,
-					G_PARAM_READWRITE));
+			g_param_spec_pointer("cell", "Cell", "Widget to display", G_PARAM_READWRITE));
 }
 
-/***************************************************************************
- *
- *  reckless_cell_renderer_finalize: free any resources here
- *
- ***************************************************************************/
 
 static void reckless_cell_renderer_finalize(GObject *object) {
 	/*
 	 RecklessCellRenderer *cellrenderer = RECKLESS_CELL_RENDERER(object);
 	 */
 
-	/* Free any dynamically allocated resources here */
-
 	(*G_OBJECT_CLASS(parent_class)->finalize)(object);
 }
-
-/***************************************************************************
- *
- *  reckless_cell_renderer_get_property: as it says
- *
- ***************************************************************************/
 
 static void reckless_cell_renderer_get_property(GObject *object, guint param_id,
 		GValue *value, GParamSpec *psec) {
@@ -111,12 +91,6 @@ static void reckless_cell_renderer_get_property(GObject *object, guint param_id,
 	}
 }
 
-/***************************************************************************
- *
- *  reckless_cell_renderer_set_property: as it says
- *
- ***************************************************************************/
-
 static void reckless_cell_renderer_set_property(GObject *object, guint param_id,
 		const GValue *value, GParamSpec *pspec) {
 	RecklessCellRenderer *cell = RECKLESS_CELL_RENDERER(object);
@@ -131,12 +105,6 @@ static void reckless_cell_renderer_set_property(GObject *object, guint param_id,
 		break;
 	}
 }
-
-/***************************************************************************
- *
- *  reckless_cell_renderer_new: return a new cell renderer instance
- *
- ***************************************************************************/
 
 GObject*
 reckless_cell_renderer_new(void) {
@@ -172,6 +140,8 @@ static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
 
 	reckless_cell_renderer_get_size(cell, widget, cell_area, &x_offset,
 			&y_offset, &width, &height);
+
+	gtk_widget_size_allocate(rc->cell, cell_area);
 
 	gtk_widget_draw(rc->cell, ctx);
 }

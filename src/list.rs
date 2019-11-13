@@ -1,6 +1,8 @@
 use crate::common::{self, *};
 
-use gtk::{TreeView, TreeViewExt, TreeViewColumn, ListStore, Type, CellLayoutExt, ListStoreExtManual};
+use glib::translate::ToGlibPtrMut;
+use gobject_sys::g_value_set_pointer;
+use gtk::{TreeView, TreeViewExt, TreeViewColumn, ListStore, Type, CellLayoutExt, ListStoreExtManual, Value};
 
 pub type List = Member<Control<Adapter<GtkList>>>;
 
@@ -27,7 +29,10 @@ impl GtkList {
         self.items.push(item);
         *y += yy as i32;
         
-        //this.as_inner_mut().as_inner_mut().as_inner_mut().store.insert_with_values(Some(i as u32), &[0], &[&common::pointer(widget)]);
+        let mut val = Value::from_type(Type::Pointer);
+        let ptr: *mut gobject_sys::GObject = Object::from(widget.clone()).to_glib_none().0;
+        unsafe { g_value_set_pointer(val.to_glib_none_mut().0, ptr as *mut c_void); }
+        this.as_inner_mut().as_inner_mut().as_inner_mut().store.insert_with_values(Some(i as u32), &[0], &[&val]);
     }
     fn remove_item_inner(&mut self, base: &mut MemberBase, i: usize) {
         let this: &mut List = unsafe { utils::base_to_impl_mut(base) };
@@ -156,6 +161,12 @@ impl ControlInner for GtkList {
         self.measure(member, control, pw, ph);
         control.coords = Some((x, y));
         self.draw(member, control);
+        let (member, _, adapter) = List::adapter_base_parts_mut(member);
+
+        let mut y = 0;
+        for i in 0..adapter.adapter.len() {
+            self.add_item_inner(member, i, &mut y);
+        }
     }
     fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &dyn controls::Container) {}
 
