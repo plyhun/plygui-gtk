@@ -133,15 +133,10 @@ static void reckless_cell_renderer_get_size(GtkCellRenderer *cell,
 static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
 		GtkWidget *widget, const GdkRectangle *background_area,
 		const GdkRectangle *cell_area, GtkCellRendererState state) {
+
+	GdkRectangle _cell_area = *cell_area;
 	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
-	GtkStateType ty;
-	gint width, height;
-	gint x_offset, y_offset;
-
-	reckless_cell_renderer_get_size(cell, widget, cell_area, &x_offset,
-			&y_offset, &width, &height);
-
-	gtk_widget_size_allocate(rc->cell, cell_area);
-
+	gtk_widget_size_allocate(rc->cell, &_cell_area);
+	gtk_widget_show(rc->cell);
 	gtk_widget_draw(rc->cell, ctx);
 }

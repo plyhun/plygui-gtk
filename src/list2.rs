@@ -1,12 +1,17 @@
 use crate::common::{self, *};
 
-use gtk::{ListBox, ListBoxExt, Container, ContainerExt};
+use glib::translate::ToGlibPtrMut;
+use gobject_sys::g_value_set_pointer;
+use gtk::{TreeView, TreeViewExt, TreeViewColumn, ListStore, Type, CellLayoutExt, ListStoreExtManual, Value};
 
 pub type List = Member<Control<Adapter<GtkList>>>;
 
 #[repr(C)]
 pub struct GtkList {
     base: GtkControlBase<List>,
+    col: TreeViewColumn,
+    renderer: reckless::cell_renderer::RecklessCellRenderer,
+    store: ListStore,
     items: Vec<Box<dyn controls::Control>>,
 }
 
@@ -24,15 +29,15 @@ impl GtkList {
         self.items.push(item);
         *y += yy as i32;
         
-        Object::from(this.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<ListBox>().unwrap().insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
+        let mut val = Value::from_type(Type::Pointer);
+        let ptr: *mut gobject_sys::GObject = Object::from(widget.clone()).to_glib_none().0;
+        unsafe { g_value_set_pointer(val.to_glib_none_mut().0, ptr as *mut c_void); }
+        this.as_inner_mut().as_inner_mut().as_inner_mut().store.insert_with_values(Some(i as u32), &[0], &[&val]);
     }
     fn remove_item_inner(&mut self, base: &mut MemberBase, i: usize) {
         let this: &mut List = unsafe { utils::base_to_impl_mut(base) };
-        let mut item = self.items.remove(i);
-        item.on_removed_from_container(this); 
-        let widget = common::cast_control_to_gtkwidget(item.as_mut());
+        self.items.remove(i).on_removed_from_container(this); 
         
-        Object::from(this.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<Container>().unwrap().remove(&Object::from(widget).downcast::<Widget>().unwrap());
     }
 }
 
@@ -42,7 +47,10 @@ impl AdapterViewInner for GtkList {
             Control::with_inner(
                 Adapter::with_inner(
 	                GtkList {
-	                    base: common::GtkControlBase::with_gtk_widget(reckless::list_box::RecklessListBox::new().upcast::<Widget>()),
+	                    base: common::GtkControlBase::with_gtk_widget(reckless::tree_view::RecklessTreeView::new().upcast::<Widget>()),
+	                    col: TreeViewColumn::new(),
+	                    renderer: reckless::cell_renderer::RecklessCellRenderer::new(),
+	                    store: ListStore::new(&[Type::Pointer]),
 	                    items: Vec::new(),
 	                },
 	                adapter
@@ -56,6 +64,15 @@ impl AdapterViewInner for GtkList {
             btn.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
         }
         btn.as_inner_mut().as_inner_mut().as_inner_mut().base.widget().connect_size_allocate(on_size_allocate);
+        {
+            let tv = btn.as_inner_mut().as_inner_mut().as_inner_mut().base.widget().downcast::<TreeView>().unwrap();
+            let renderer = &btn.as_inner().as_inner().as_inner().renderer;
+            let col = &btn.as_inner().as_inner().as_inner().col;
+            col.pack_start(renderer, false);
+            col.add_attribute(renderer, "cell", 0);
+            tv.set_model(&btn.as_inner_mut().as_inner_mut().as_inner_mut().store);
+            tv.append_column(&btn.as_inner_mut().as_inner_mut().as_inner_mut().col);
+        }
         btn
 	}
     fn on_item_change(&mut self, base: &mut MemberBase, value: types::Change) {

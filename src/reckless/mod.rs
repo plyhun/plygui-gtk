@@ -7,5 +7,6 @@ pub mod paned;
 pub mod text_view;
 pub mod progress_bar;
 pub mod tree_view;
+pub mod list_box;
 
 pub mod cell_renderer;

@@ -27,5 +27,6 @@ fn main() {
         .file("ffi/reckless_progress_bar.c")
         .file("ffi/reckless_tree_view.c")
         .file("ffi/reckless_cell_renderer.c")
+        .file("ffi/reckless_list_box.c")
         .compile("gtk_reckless");
 }
