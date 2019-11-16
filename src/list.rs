@@ -1,6 +1,6 @@
 use crate::common::{self, *};
 
-use gtk::{ListBox, ListBoxExt, Container, ContainerExt};
+use gtk::{ListBox, ListBoxExt, Container, ContainerExt, ListBoxRow, ListBoxRowExt};
 
 pub type List = Member<Control<Adapter<GtkList>>>;
 
@@ -28,11 +28,10 @@ impl GtkList {
     }
     fn remove_item_inner(&mut self, base: &mut MemberBase, i: usize) {
         let this: &mut List = unsafe { utils::base_to_impl_mut(base) };
-        let mut item = self.items.remove(i);
-        item.on_removed_from_container(this); 
-        let widget = common::cast_control_to_gtkwidget(item.as_mut());
+        self.items.remove(i).on_removed_from_container(this); 
+        let row = Object::from(this.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<ListBox>().unwrap().get_row_at_index(i as i32).unwrap();
         
-        Object::from(this.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<Container>().unwrap().remove(&Object::from(widget).downcast::<Widget>().unwrap());
+        Object::from(this.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<Container>().unwrap().remove(&row);
     }
 }
 
@@ -54,6 +53,11 @@ impl AdapterViewInner for GtkList {
         {
             let ptr = btn.as_ref() as *const _ as *mut std::os::raw::c_void;
             btn.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
+        }
+        {
+            let self_widget: Object = Object::from(btn.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).into();
+            let lb = self_widget.downcast::<ListBox>().unwrap();
+            lb.connect_row_activated(on_activated);
         }
         btn.as_inner_mut().as_inner_mut().as_inner_mut().base.widget().connect_size_allocate(on_size_allocate);
         btn
@@ -232,6 +236,22 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
 
     let measured_size = ll.as_inner().base().measured;
     ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
+}
+fn on_activated(this: &ListBox, row: &ListBoxRow) {
+    let i = row.get_index();
+    if i < 0 {
+        return;
+    }
+    let mut ll = this.clone().upcast::<Widget>();
+    let ll = common::cast_gtk_widget_to_member_mut::<List>(&mut ll).unwrap();
+    let mut ll2 = this.clone().upcast::<Widget>();
+    let ll2 = common::cast_gtk_widget_to_member_mut::<List>(&mut ll2).unwrap();
+    let item_view = ll.as_inner_mut().as_inner_mut().as_inner_mut().items.get_mut(i as usize).unwrap();
+    if let Some(ref mut callback) = ll2.as_inner_mut().as_inner_mut().base_mut().on_item_click {
+        let mut ll2 = this.clone().upcast::<Widget>();
+        let ll2 = common::cast_gtk_widget_to_member_mut::<List>(&mut ll2).unwrap();
+        (callback.as_mut())(ll2, i as usize, item_view.as_mut());
+    }
 }
 
 default_impls_as!(List);
