@@ -17,7 +17,7 @@ impl TextInner for GtkText {
         let mut btn = Box::new(Member::with_inner(
             Control::with_inner(
                 GtkText {
-                    base: common::GtkControlBase::with_gtk_widget(reckless::label::RecklessLabel::new().upcast::<Widget>()),
+                    base: common::GtkControlBase::with_gtk_widget(reckless::RecklessLabel::new().upcast::<Widget>()),
                 },
                 (),
             ),

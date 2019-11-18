@@ -51,7 +51,7 @@ impl ProgressBarInner for GtkProgressBar {
         let mut pb = Box::new(Member::with_inner(
             Control::with_inner(
                 GtkProgressBar {
-                    base: common::GtkControlBase::with_gtk_widget(reckless::progress_bar::RecklessProgressBar::new().upcast::<Widget>()),
+                    base: common::GtkControlBase::with_gtk_widget(reckless::RecklessProgressBar::new().upcast::<Widget>()),
                 },
                 (),
             ),

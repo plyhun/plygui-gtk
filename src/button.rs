@@ -22,7 +22,7 @@ impl ButtonInner for GtkButton {
         let mut btn = Box::new(Member::with_inner(
             Control::with_inner(
                 GtkButton {
-                    base: common::GtkControlBase::with_gtk_widget(reckless::button::RecklessButton::new().upcast::<Widget>()),
+                    base: common::GtkControlBase::with_gtk_widget(reckless::RecklessButton::new().upcast::<Widget>()),
                     h_left_clicked: None,
                     h_right_clicked: None,
                     skip_callbacks: false,

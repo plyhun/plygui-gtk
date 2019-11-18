@@ -1,12 +1,13 @@
 use crate::common::{self, *};
 
-use gtk::{ListBox, ListBoxExt, Container, ContainerExt, ListBoxRow, ListBoxRowExt};
+use gtk::{ListBox, ListBoxExt, ContainerExt, ListBoxRow, ListBoxRowExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
 
 pub type List = Member<Control<Adapter<GtkList>>>;
 
 #[repr(C)]
 pub struct GtkList {
     base: GtkControlBase<List>,
+    boxc: ListBox,
     items: Vec<Box<dyn controls::Control>>,
 }
 
@@ -17,31 +18,32 @@ impl GtkList {
         let this: &mut List = unsafe { utils::base_to_impl_mut(member) };
         
         let mut item = adapter.adapter.spawn_item_view(i, this);
-        item.on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32 /*- scroll_width - 14*/ /*TODO: WHY???*/ - DEFAULT_PADDING) as u16, utils::coord_to_size(ph as i32) as u16);
+        item.on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
         let widget = common::cast_control_to_gtkwidget(item.as_mut());
                 
         let (_, yy) = item.size();
         self.items.push(item);
         *y += yy as i32;
         
-        Object::from(this.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<ListBox>().unwrap().insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
+        this.as_inner_mut().as_inner_mut().as_inner_mut().boxc.insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
     }
     fn remove_item_inner(&mut self, base: &mut MemberBase, i: usize) {
         let this: &mut List = unsafe { utils::base_to_impl_mut(base) };
         self.items.remove(i).on_removed_from_container(this); 
-        let row = Object::from(this.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<ListBox>().unwrap().get_row_at_index(i as i32).unwrap();
+        let row = this.as_inner_mut().as_inner_mut().as_inner_mut().boxc.get_row_at_index(i as i32).unwrap();
         
-        Object::from(this.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<Container>().unwrap().remove(&row);
+        this.as_inner_mut().as_inner_mut().as_inner_mut().boxc.remove(&row);
     }
 }
 
 impl AdapterViewInner for GtkList {
 	fn with_adapter(adapter: Box<dyn types::Adapter>) -> Box<Member<Control<Adapter<Self>>>> {
-		let mut btn = Box::new(Member::with_inner(
+		let mut li = Box::new(Member::with_inner(
             Control::with_inner(
                 Adapter::with_inner(
 	                GtkList {
-	                    base: common::GtkControlBase::with_gtk_widget(reckless::list_box::RecklessListBox::new().upcast::<Widget>()),
+	                    base: common::GtkControlBase::with_gtk_widget(reckless::RecklessScrolledWindow::new().upcast::<Widget>()),
+	                    boxc: ListBox::new(),
 	                    items: Vec::new(),
 	                },
 	                adapter
@@ -51,16 +53,20 @@ impl AdapterViewInner for GtkList {
             MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
         ));
         {
-            let ptr = btn.as_ref() as *const _ as *mut std::os::raw::c_void;
-            btn.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
+            let ptr = li.as_ref() as *const _ as *mut std::os::raw::c_void;
+            li.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
+            let mut boxc = li.as_inner_mut().as_inner_mut().as_inner_mut().boxc.clone().upcast::<Object>();
+            common::set_pointer(&mut boxc, ptr);
         }
         {
-            let self_widget: Object = Object::from(btn.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).into();
-            let lb = self_widget.downcast::<ListBox>().unwrap();
-            lb.connect_row_activated(on_activated);
+            let self_widget: Object = Object::from(li.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).into();
+            let scr = self_widget.downcast::<ScrolledWindow>().unwrap();
+            scr.set_policy(PolicyType::Always, PolicyType::Never);
+            li.as_inner_mut().as_inner_mut().as_inner_mut().boxc.connect_row_activated(on_activated);
+            scr.add(&li.as_inner_mut().as_inner_mut().as_inner_mut().boxc);
         }
-        btn.as_inner_mut().as_inner_mut().as_inner_mut().base.widget().connect_size_allocate(on_size_allocate);
-        btn
+        li.as_inner_mut().as_inner_mut().as_inner_mut().base.widget().connect_size_allocate(on_size_allocate);
+        li
 	}
     fn on_item_change(&mut self, base: &mut MemberBase, value: types::Change) {
         let mut y = 0;
@@ -204,6 +210,7 @@ impl MemberInner for GtkList {}
 impl Drawable for GtkList {
     fn draw(&mut self, _: &mut MemberBase, control: &mut ControlBase) {
         self.base.draw(control);
+        self.boxc.show();
     }
     fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
         let old_size = control.measured;

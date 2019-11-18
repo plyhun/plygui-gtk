@@ -47,7 +47,7 @@ impl AdapterViewInner for GtkList {
             Control::with_inner(
                 Adapter::with_inner(
 	                GtkList {
-	                    base: common::GtkControlBase::with_gtk_widget(reckless::tree_view::RecklessTreeView::new().upcast::<Widget>()),
+	                    base: common::GtkControlBase::with_gtk_widget(reckless::RecklessTreeView::new().upcast::<Widget>()),
 	                    col: TreeViewColumn::new(),
 	                    renderer: reckless::cell_renderer::RecklessCellRenderer::new(),
 	                    store: ListStore::new(&[Type::Pointer]),

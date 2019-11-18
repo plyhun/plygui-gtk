@@ -19,7 +19,7 @@ impl FrameInner for GtkFrame {
             Control::with_inner(
                 SingleContainer::with_inner(
                     GtkFrame {
-                        base: common::GtkControlBase::with_gtk_widget(reckless::frame::RecklessFrame::new().upcast::<Widget>()),
+                        base: common::GtkControlBase::with_gtk_widget(reckless::RecklessFrame::new().upcast::<Widget>()),
                         child: None,
                     },
                     (),

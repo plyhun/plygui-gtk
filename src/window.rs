@@ -5,7 +5,7 @@ use gtk::{BinExt, Box as GtkBox, ContainerExt, GtkWindowExt, MenuBar as GtkMenuB
 #[repr(C)]
 pub struct GtkWindow {
     window: GtkWindowSys,
-    container: reckless::boxc::RecklessBox,
+    container: reckless::RecklessBox,
     size: (i32, i32),
     child: Option<Box<dyn controls::Control>>,
     menu_bar: Option<GtkMenuBar>,
@@ -56,7 +56,7 @@ impl WindowInner for GtkWindow {
                     GtkWindow {
                         size: (0, 0),
                         window: GtkWindowSys::new(WindowType::Toplevel),
-                        container: reckless::boxc::RecklessBox::new(),
+                        container: reckless::RecklessBox::new(),
                         child: None,
                         menu_bar: if menu.is_some() { Some(GtkMenuBar::new()) } else { None },
                         menu: if menu.is_some() { Vec::new() } else { Vec::with_capacity(0) },

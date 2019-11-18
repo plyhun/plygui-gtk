@@ -43,7 +43,7 @@ impl SplittedInner for GtkSplitted {
             Control::with_inner(
                 MultiContainer::with_inner(
                     GtkSplitted {
-                        base: common::GtkControlBase::with_gtk_widget(reckless::paned::RecklessPaned::new().upcast::<Widget>()),
+                        base: common::GtkControlBase::with_gtk_widget(reckless::RecklessPaned::new().upcast::<Widget>()),
                         first: first,
                         splitter: 0.5,
                         second: second,

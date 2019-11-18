@@ -62,11 +62,13 @@ impl GtkImage {
 
         let (wrate, hrate) = (inner_h as f32 / bm_width as f32, inner_v as f32 / bm_height as f32);
         let less_rate = fmin(wrate, hrate);
-
         let scaled = match self.scale {
             types::ImageScalePolicy::FitCenter => {
                 let bm_h = (bm_width as f32 * less_rate) as i32;
                 let bm_v = (bm_height as f32 * less_rate) as i32;
+                if bm_h < 1 || bm_v < 1 {
+                    return;
+                }
                 let alpha = self.orig.get_has_alpha();
                 let bits = self.orig.get_bits_per_sample();
 

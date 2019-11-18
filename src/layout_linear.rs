@@ -16,7 +16,7 @@ impl LinearLayoutInner for GtkLinearLayout {
             Control::with_inner(
                 MultiContainer::with_inner(
                     GtkLinearLayout {
-                        base: common::GtkControlBase::with_gtk_widget(reckless::boxc::RecklessBox::new().upcast::<Widget>()),
+                        base: common::GtkControlBase::with_gtk_widget(reckless::RecklessBox::new().upcast::<Widget>()),
                         children: Vec::new(),
                     },
                     (),
