@@ -61,7 +61,7 @@ impl AdapterViewInner for GtkList {
         {
             let self_widget: Object = Object::from(li.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).into();
             let scr = self_widget.downcast::<ScrolledWindow>().unwrap();
-            scr.set_policy(PolicyType::Always, PolicyType::Never);
+            scr.set_policy(PolicyType::Never, PolicyType::Always);
             li.as_inner_mut().as_inner_mut().as_inner_mut().boxc.connect_row_activated(on_activated);
             scr.add(&li.as_inner_mut().as_inner_mut().as_inner_mut().boxc);
         }

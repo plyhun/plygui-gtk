@@ -29,6 +29,10 @@
             
             static void reckless_fixed_get_preferred_width(GtkWidget *widget, int *minimal, int *natural);
             static void reckless_fixed_get_preferred_height(GtkWidget *widget, int *minimal, int *natural);
+            static void reckless_fixed_get_preferred_height_for_width (GtkWidget *widget, int value, int *minimal, int *natural);
+            static void reckless_fixed_get_preferred_width_for_height (GtkWidget *widget, int value, int *minimal, int *natural);
+            static void reckless_fixed_get_preferred_height_and_baseline_for_width (GtkWidget *widget, int width, int *minimum_height, int *natural_height, int *minimum_baseline, int *natural_baseline);
+            static void reckless_fixed_get_preferred_size (GtkWidget *widget, GtkRequisition *minimum_size, GtkRequisition *natural_size);
             
             #endif /* __RECKLESS_FIXED_H__ */        
         

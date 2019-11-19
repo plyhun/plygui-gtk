@@ -20,6 +20,10 @@ fn generate(kls: &str, cc_build: &mut cc::Build) {
             	GtkWidgetClass *widget_class = GTK_WIDGET_CLASS(klass);
             	widget_class->get_preferred_width = reckless_{}_get_preferred_width;
             	widget_class->get_preferred_height = reckless_{}_get_preferred_height;
+            	widget_class->get_preferred_height_for_width = reckless_{}_get_preferred_height_for_width;
+                widget_class->get_preferred_width_for_height = reckless_{}_get_preferred_width_for_height;
+                widget_class->get_preferred_height_and_baseline_for_width = reckless_{}_get_preferred_height_and_baseline_for_width;
+                // widget_class->get_preferred_size = reckless_{}_get_preferred_size;
             }}
             static void reckless_{}_init( Reckless{}* self ) {{}}
             
@@ -29,8 +33,22 @@ fn generate(kls: &str, cc_build: &mut cc::Build) {
             static void reckless_{}_get_preferred_height(GtkWidget *widget, int *minimal, int *natural) {{
             	*minimal = *natural = 1;
             }}
+            
+            static void reckless_{}_get_preferred_height_for_width (GtkWidget *widget, int value, int *minimal, int *natural) {{
+                *minimal = *natural = 1;
+            }}
+            static void reckless_{}_get_preferred_width_for_height (GtkWidget *widget, int value, int *minimal, int *natural) {{
+                *minimal = *natural = 1;
+            }}
+            static void reckless_{}_get_preferred_height_and_baseline_for_width (GtkWidget *widget, int width, int *minimum_height, int *natural_height, int *minimum_baseline, int *natural_baseline) {{
+                *minimum_height = *natural_height = *minimum_baseline = *natural_baseline = 1;
+            }}
+            static void reckless_{}_get_preferred_size (GtkWidget *widget, GtkRequisition *minimum_size, GtkRequisition *natural_size) {{
+                minimum_size->width = minimum_size->height = natural_size->width = natural_size->height = 1;
+            }}
+            
             GtkWidget* reckless_{}_new (void) {{
-              return g_object_new (RECKLESS_{}_TYPE, NULL);
+                return g_object_new (RECKLESS_{}_TYPE, NULL);
             }}
         "#,
         snake.clone(),
@@ -42,7 +60,15 @@ fn generate(kls: &str, cc_build: &mut cc::Build) {
         snake.clone(),
         snake.clone(),
         snake.clone(),
+        snake.clone(),
+        snake.clone(),
+        snake.clone(),
+        snake.clone(),
         camel.clone(),
+        snake.clone(),
+        snake.clone(),
+        snake.clone(),
+        snake.clone(),
         snake.clone(),
         snake.clone(),
         snake.clone(),
@@ -81,6 +107,10 @@ fn generate(kls: &str, cc_build: &mut cc::Build) {
             
             static void reckless_{}_get_preferred_width(GtkWidget *widget, int *minimal, int *natural);
             static void reckless_{}_get_preferred_height(GtkWidget *widget, int *minimal, int *natural);
+            static void reckless_{}_get_preferred_height_for_width (GtkWidget *widget, int value, int *minimal, int *natural);
+            static void reckless_{}_get_preferred_width_for_height (GtkWidget *widget, int value, int *minimal, int *natural);
+            static void reckless_{}_get_preferred_height_and_baseline_for_width (GtkWidget *widget, int width, int *minimum_height, int *natural_height, int *minimum_baseline, int *natural_baseline);
+            static void reckless_{}_get_preferred_size (GtkWidget *widget, GtkRequisition *minimum_size, GtkRequisition *natural_size);
             
             #endif /* __RECKLESS_{}_H__ */        
         "#,
@@ -109,6 +139,10 @@ fn generate(kls: &str, cc_build: &mut cc::Build) {
         camel.clone(),
         camel.clone(),
         camel.clone(),
+        snake.clone(),
+        snake.clone(),
+        snake.clone(),
+        snake.clone(),
         snake.clone(),
         snake.clone(),
         snake.clone(),
