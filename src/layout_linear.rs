@@ -48,7 +48,12 @@ impl HasNativeIdInner for GtkLinearLayout {
 }
 
 impl HasSizeInner for GtkLinearLayout {
-    fn on_size_set(&mut self, _: &mut MemberBase, (width, height): (u16, u16)) -> bool {
+    fn on_size_set(&mut self, base: &mut MemberBase, (width, height): (u16, u16)) -> bool {
+        use plygui_api::controls::HasLayout;
+
+        let this = base.as_any_mut().downcast_mut::<LinearLayout>().unwrap();
+        this.set_layout_width(layout::Size::Exact(width));
+        this.set_layout_width(layout::Size::Exact(height));
         self.base.widget().set_size_request(width as i32, height as i32);
         true
     }
@@ -70,64 +75,39 @@ impl Drawable for GtkLinearLayout {
         }
     }
     fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
-        use std::cmp::max;
-
         let orientation = self.layout_orientation();
         let old_size = control.measured;
+        let mut w = 0;
+        let mut h = 0;
         control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
-                let mut measured = false;
+                for child in self.children.as_mut_slice() {
+                    match orientation {
+                        layout::Orientation::Horizontal => {
+                            let (cw, ch, _) = child.measure(cmp::max(0, parent_width as i32 - w as i32) as u16, cmp::max(0, parent_height as i32) as u16);
+                            w += cw;
+                            h = cmp::max(h, ch);
+                        }
+                        layout::Orientation::Vertical => {
+                            let (cw, ch, _) = child.measure(cmp::max(0, parent_width as i32) as u16, cmp::max(0, parent_height as i32 - h as i32) as u16);
+                            w = cmp::max(w, cw);
+                            h += ch;
+                        }
+                    }
+                }
                 let w = match control.layout.width {
                     layout::Size::Exact(w) => w,
                     layout::Size::MatchParent => parent_width,
                     layout::Size::WrapContent => {
-                        let mut w = 0;
-                        let self_widget = self.base.widget();
-                        for ref mut child in self.children.as_mut_slice() {
-                            let (cw, _, _) = child.measure(
-                                max(0, parent_width as i32 - self_widget.get_margin_start() - self_widget.get_margin_start()) as u16,
-                                max(0, parent_height as i32 - self_widget.get_margin_top() - self_widget.get_margin_end()) as u16,
-                            );
-                            match orientation {
-                                layout::Orientation::Horizontal => {
-                                    w += cw;
-                                }
-                                layout::Orientation::Vertical => {
-                                    w = max(w, cw);
-                                }
-                            }
-                        }
-                        measured = true;
-                        max(0, w) as u16
+                        cmp::max(0, w as i32) as u16
                     }
                 };
                 let h = match control.layout.height {
                     layout::Size::Exact(h) => h,
                     layout::Size::MatchParent => parent_height,
                     layout::Size::WrapContent => {
-                        let mut h = 0;
-                        let self_widget = self.base.widget();
-                        for ref mut child in self.children.as_mut_slice() {
-                            let ch = if measured {
-                                child.size().1
-                            } else {
-                                let (_, ch, _) = child.measure(
-                                    max(0, parent_width as i32 - self_widget.get_margin_start() - self_widget.get_margin_end()) as u16,
-                                    max(0, parent_height as i32 - self_widget.get_margin_top() - self_widget.get_margin_bottom()) as u16,
-                                );
-                                ch
-                            };
-                            match orientation {
-                                layout::Orientation::Horizontal => {
-                                    h = max(h, ch);
-                                }
-                                layout::Orientation::Vertical => {
-                                    h += ch;
-                                }
-                            }
-                        }
-                        max(0, h) as u16
+                        cmp::max(0, h as i32) as u16
                     }
                 };
                 (w, h)
