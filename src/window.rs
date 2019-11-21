@@ -253,11 +253,14 @@ fn on_resize_move(this: &GtkWindowSys, allo: &Rectangle) {
     let mut window = this.clone().upcast::<Widget>();
     let window = common::cast_gtk_widget_to_member_mut::<Window>(&mut window);
     if let Some(window) = window {
-        let (width, height) = window.as_inner().as_inner().as_inner().size;
+        let (width, mut height) = window.as_inner().as_inner().as_inner().size;
+        if let Some(ref menu) = window.as_inner().as_inner().as_inner().menu_bar {
+            let allo = menu.get_allocation();
+            height -= allo.height;
+        }
+        
         if width != allo.width || height != allo.height {
-            use std::cmp::max;
-
-            window.as_inner_mut().as_inner_mut().as_inner_mut().size = (max(0, allo.width), max(0, allo.height));
+            window.as_inner_mut().as_inner_mut().as_inner_mut().size = (cmp::max(0, allo.width), cmp::max(0, allo.height));
             if let Some(ref mut child) = window.as_inner_mut().as_inner_mut().as_inner_mut().child {
                 child.measure(width as u16, height as u16);
                 child.draw(Some((0, 0)));

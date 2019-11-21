@@ -16,6 +16,8 @@ impl GtkSplitted {
     fn update_splitter(&mut self, control: &ControlBase) {
         let self_widget = self.base.widget();
         let orientation = self.layout_orientation();
+        
+        println!("{:?}", control.measured);
         match orientation {
             layout::Orientation::Horizontal => self_widget.downcast::<Paned>().unwrap().set_position((control.measured.0 as f32 * self.splitter) as i32),
             layout::Orientation::Vertical => self_widget.downcast::<Paned>().unwrap().set_position((control.measured.1 as f32 * self.splitter) as i32),
@@ -34,6 +36,29 @@ impl GtkSplitted {
             utils::coord_to_size((target as f32 * self.splitter) as i32 - start - (handle / 2)),
             utils::coord_to_size((target as f32 * (1.0 - self.splitter)) as i32 - end - (handle / 2)),
         )
+    }
+    fn update_children_layout(&mut self, base: &ControlBase) -> (u16, u16) {
+        let orientation = self.layout_orientation();
+        let (first_size, second_size) = self.children_sizes(base);
+        let (width, height) = base.measured;
+        let (lm, tm, rm, bm) = self.base.margins().into();
+        let mut w = 0;
+        let mut h = 0;
+        for (size, child) in [(first_size, self.first.as_mut()), (second_size, self.second.as_mut())].iter_mut() {
+            match orientation {
+                layout::Orientation::Horizontal => {
+                    let (cw, ch, _) = child.measure(cmp::max(0, *size) as u16, cmp::max(0, height as i32 - tm - bm) as u16);
+                    w += cw;
+                    h = cmp::max(h, ch);
+                }
+                layout::Orientation::Vertical => {
+                    let (cw, ch, _) = child.measure(cmp::max(0, width as i32 - lm - rm) as u16, cmp::max(0, *size) as u16);
+                    w = cmp::max(w, cw);
+                    h += ch;
+                }
+            }
+        }
+        (w, h)
     }
 }
 
@@ -129,77 +154,24 @@ impl Drawable for GtkSplitted {
         self.second.draw(Some((0, 0)));
     }
     fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
-        let orientation = self.layout_orientation();
         let old_size = control.measured;
-        let (first, second) = self.children_sizes(control);
-        let (lm, tm, rm, bm) = self.base.margins().into();
         control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
-                let mut measured = false;
+                let (w, h) = self.update_children_layout(control);
                 let w = match control.layout.width {
                     layout::Size::Exact(w) => w,
                     layout::Size::MatchParent => parent_width,
-                    layout::Size::WrapContent => {
-                        let mut w = 0;
-                        for (size, child) in [(first, self.first.as_mut()), (second, self.second.as_mut())].iter_mut() {
-                            match orientation {
-                                layout::Orientation::Horizontal => {
-                                    let (cw, _, _) = child.measure(*size, utils::coord_to_size(parent_height as i32 - tm - bm));
-                                    w += cw;
-                                }
-                                layout::Orientation::Vertical => {
-                                    let (cw, _, _) = child.measure(utils::coord_to_size(parent_width as i32 - lm - rm), *size);
-                                    w = cmp::max(w, cw);
-                                }
-                            }
-                        }
-                        measured = true;
-                        w
-                    }
+                    layout::Size::WrapContent => cmp::max(0, w as i32) as u16
                 };
                 let h = match control.layout.height {
                     layout::Size::Exact(h) => h,
                     layout::Size::MatchParent => parent_height,
-                    layout::Size::WrapContent => {
-                        let mut h = 0;
-                        for (size, child) in [(first, self.first.as_mut()), (second, self.second.as_mut())].iter_mut() {
-                            let ch = if measured {
-                                child.size().1
-                            } else {
-                                let (_, ch, _) = match orientation {
-                                    layout::Orientation::Horizontal => child.measure(*size, utils::coord_to_size(parent_height as i32 - tm - bm)),
-                                    layout::Orientation::Vertical => child.measure(utils::coord_to_size(parent_width as i32 - lm - rm), *size),
-                                };
-                                ch
-                            };
-                            match orientation {
-                                layout::Orientation::Horizontal => {
-                                    h = cmp::max(h, ch);
-                                }
-                                layout::Orientation::Vertical => {
-                                    h += ch;
-                                }
-                            }
-                        }
-                        h
-                    }
+                    layout::Size::WrapContent => cmp::max(0, h as i32) as u16
                 };
                 (w, h)
             }
         };
-        match orientation {
-            layout::Orientation::Horizontal => {
-                let size = utils::coord_to_size(parent_height as i32 - tm - bm);
-                self.first.measure(first, size);
-                self.second.measure(second, size);
-            }
-            layout::Orientation::Vertical => {
-                let size = utils::coord_to_size(parent_width as i32 - lm - rm);
-                self.first.measure(size, first);
-                self.second.measure(size, second);
-            }
-        }
         (control.measured.0, control.measured.1, control.measured != old_size)
     }
     fn invalidate(&mut self, _: &mut MemberBase, _: &mut ControlBase) {
@@ -439,11 +411,6 @@ fn on_size_allocate(this: &::gtk::Widget, _: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut ll).unwrap();
 
-    let mut ll2 = this.clone().upcast::<Widget>();
-    let ll2 = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut ll2).unwrap();
-
-    ll.as_inner_mut().as_inner_mut().as_inner_mut().update_splitter(ll2.as_inner().base());
-
     let measured_size = ll.as_inner().base().measured;
     ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
 }
@@ -459,6 +426,7 @@ fn on_property_position_notify(this: &::gtk::Paned) {
     let ll = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut ll).unwrap();
     let orientation = ll.layout_orientation();
     let (width, height) = ll.size();
+    println!("splitted {}/{}", width, height);
     let splitter = position as f32
         / match orientation {
             layout::Orientation::Vertical => {
@@ -481,8 +449,8 @@ fn on_property_position_notify(this: &::gtk::Paned) {
     let ll = ll.as_inner_mut().as_inner_mut().as_inner_mut();
     ll.splitter = splitter;
     ll.measure(member, control, width, height);
-    ll.first.draw(Some((0, 0)));
-    ll.second.draw(Some((0, 0)));
+    ll.first.draw(Some((0,0)));
+    ll.second.draw(Some((0,0)));
 }
 
 default_impls_as!(Splitted);

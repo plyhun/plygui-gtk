@@ -193,13 +193,8 @@ impl HasNativeIdInner for GtkList {
 }
 
 impl HasSizeInner for GtkList {
-    fn on_size_set(&mut self, base: &mut MemberBase, (width, height): (u16, u16)) -> bool {
-        use plygui_api::controls::HasLayout;
-
-        let this = base.as_any_mut().downcast_mut::<List>().unwrap();
-        this.set_layout_width(layout::Size::Exact(width));
-        this.set_layout_width(layout::Size::Exact(height));
-        self.base.widget().set_size_request(width as i32, height as i32);
+    fn on_size_set(&mut self, _: &mut MemberBase, _: (u16, u16)) -> bool {
+        self.base.invalidate();
         true
     }
 }
@@ -219,6 +214,7 @@ impl Drawable for GtkList {
     }
     fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
         let old_size = control.measured;
+        println!("list {}/{}", parent_width, parent_height);
         control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
@@ -249,7 +245,8 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let measured_size = ll.as_inner().base().measured;
     ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
     
-    println!("{:?}", measured_size);
+    println!("list2 {}/{}", measured_size.0 as u16, measured_size.1 as u16);
+        
     
     let mut y = 0;
     let list = ll.as_inner_mut().as_inner_mut().as_inner_mut();

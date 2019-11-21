@@ -79,7 +79,7 @@ impl GtkImage {
             types::ImageScalePolicy::CropCenter => {
                 let half_diff_h = (bm_width - aw as i32) / 2;
                 let half_diff_v = (bm_height - ah as i32) / 2;
-                self.orig.new_subpixbuf(cmp::max(0, half_diff_h), cmp::max(0, half_diff_v), cmp::min(bm_width, inner_h), cmp::min(bm_height, inner_v)).unwrap()
+                self.orig.new_subpixbuf(cmp::max(0, half_diff_h), cmp::max(0, half_diff_v), cmp::max(1, cmp::min(bm_width, inner_h)), cmp::max(1, cmp::min(bm_height, inner_v))).unwrap()
             }
         };
         Object::from(self.base.widget.clone()).downcast::<GtkImageSys>().unwrap().set_from_pixbuf(&scaled);
