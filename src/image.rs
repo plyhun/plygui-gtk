@@ -71,7 +71,7 @@ impl GtkImage {
                 }
                 let alpha = self.orig.get_has_alpha();
                 let bits = self.orig.get_bits_per_sample();
-
+                
                 let scaled = Pixbuf::new(Colorspace::Rgb, alpha, bits, bm_h, bm_v);
                 self.orig.scale(&scaled, 0, 0, bm_h, bm_v, 0f64, 0f64, less_rate as f64, less_rate as f64, InterpType::Hyper);
                 scaled
@@ -88,7 +88,6 @@ impl GtkImage {
 
 impl HasLayoutInner for GtkImage {
     fn on_layout_changed(&mut self, _: &mut MemberBase) {
-        //self.apply_padding(unsafe { &mut utils::member_control_base_mut_unchecked(base).control });
         self.base.invalidate();
     }
 }
@@ -96,7 +95,6 @@ impl HasLayoutInner for GtkImage {
 impl ControlInner for GtkImage {
     fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &dyn controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
         self.measure(member, control, pw, ph);
-        //self.apply_sized_image(base);
         control.coords = Some((x, y));
         self.draw(member, control);
     }

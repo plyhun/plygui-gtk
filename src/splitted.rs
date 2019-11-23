@@ -351,7 +351,8 @@ impl MultiContainerInner for GtkSplitted {
                     mem::swap(&mut self.first, &mut child);
 
                     let widget = common::cast_control_to_gtkwidget(self.first.as_mut());
-                    gtk_self.add1(&Object::from(widget).downcast::<Widget>().unwrap());
+                    let widget = Object::from(widget).downcast::<Widget>().unwrap();
+                    gtk_self.add1(&widget);
                     child.on_removed_from_container(self2);
                     match orientation {
                         layout::Orientation::Horizontal => {
@@ -365,8 +366,9 @@ impl MultiContainerInner for GtkSplitted {
                 1 => {
                     mem::swap(&mut self.second, &mut child);
 
-                    let widget = common::cast_control_to_gtkwidget(self.first.as_mut());
-                    gtk_self.downcast::<Paned>().unwrap().add2(&Object::from(widget).downcast::<Widget>().unwrap());
+                    let widget = common::cast_control_to_gtkwidget(self.second.as_mut());
+                    let widget = Object::from(widget).downcast::<Widget>().unwrap();
+                    gtk_self.add2(&widget);
                     child.on_removed_from_container(self2);
                     match orientation {
                         layout::Orientation::Horizontal => {

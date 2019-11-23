@@ -72,7 +72,6 @@ impl Drawable for GtkLinearLayout {
     fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
         let orientation = self.layout_orientation();
         let old_size = control.measured;
-        println!("ll {}/{}", parent_width, parent_height);
         control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
@@ -247,7 +246,8 @@ impl MultiContainerInner for GtkLinearLayout {
         };
 
         let widget = common::cast_control_to_gtkwidget(self.children.get_mut(index).unwrap().as_mut());
-        Object::from(self.base.widget.clone()).downcast::<GtkBox>().unwrap().add::<Widget>(&Object::from(widget).downcast().unwrap());
+        let widget = Object::from(widget).downcast::<Widget>().unwrap();
+        Object::from(self.base.widget.clone()).downcast::<GtkBox>().unwrap().add(&widget);
         if self2.as_inner().base().coords.is_some() {
             let (pw, ph) = self2.as_inner().base().measured;
             let self_widget = self.base.widget();
@@ -303,11 +303,21 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let mut x = 0;
     let mut y = 0;
     let list = ll.as_inner_mut().as_inner_mut().as_inner_mut();
+    let o = list.layout_orientation();
     for i in 0..list.children.len() {
         let item = &mut list.children[i];
         let (cw, ch, _) = item.measure(cmp::max(0, measured_size.0 as i32) as u16, cmp::max(0, measured_size.1 as i32) as u16);
-        item.draw(Some((0, y)));
-        y += ch as i32;
+        
+        match o {
+            layout::Orientation::Horizontal => {
+                item.draw(Some((x, 0)));
+                x += cw as i32;
+            },
+            layout::Orientation::Vertical => {
+                item.draw(Some((0, y)));
+                y += ch as i32;
+            },
+        }
     }
 }
 
