@@ -214,7 +214,6 @@ impl Drawable for GtkList {
     }
     fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
         let old_size = control.measured;
-        println!("list {}/{}", parent_width, parent_height);
         control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
@@ -244,9 +243,6 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
 
     let measured_size = ll.as_inner().base().measured;
     ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
-    
-    println!("list2 {}/{}", measured_size.0 as u16, measured_size.1 as u16);
-        
     
     let mut y = 0;
     let list = ll.as_inner_mut().as_inner_mut().as_inner_mut();

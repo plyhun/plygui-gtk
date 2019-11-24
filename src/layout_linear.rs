@@ -72,6 +72,7 @@ impl Drawable for GtkLinearLayout {
     fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
         let orientation = self.layout_orientation();
         let old_size = control.measured;
+        
         control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
@@ -306,14 +307,14 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let o = list.layout_orientation();
     for i in 0..list.children.len() {
         let item = &mut list.children[i];
-        let (cw, ch, _) = item.measure(cmp::max(0, measured_size.0 as i32) as u16, cmp::max(0, measured_size.1 as i32) as u16);
-        
         match o {
             layout::Orientation::Horizontal => {
+                let (cw, _, _) = item.measure(cmp::max(0, measured_size.0 as i32 - x) as u16, cmp::max(0, measured_size.1 as i32) as u16);
                 item.draw(Some((x, 0)));
                 x += cw as i32;
             },
             layout::Orientation::Vertical => {
+                let (_, ch, _) = item.measure(cmp::max(0, measured_size.0 as i32) as u16, cmp::max(0, measured_size.1 as i32 - y) as u16);
                 item.draw(Some((0, y)));
                 y += ch as i32;
             },

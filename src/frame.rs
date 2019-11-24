@@ -235,8 +235,11 @@ impl Drawable for GtkFrame {
         control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
-                let mut label_size = (-1i32, -1i32);
                 let mut measured = false;
+                let self_widget = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
+                let frame_sys = self_widget.clone().downcast::<GtkFrameSys>().unwrap();
+                let label = frame_sys.get_label_widget().unwrap().downcast::<Label>().unwrap();
+                let label_size = label.get_layout().unwrap().get_pixel_size();
                 let w = match control.layout.width {
                     layout::Size::MatchParent => parent_width as i32,
                     layout::Size::Exact(w) => w as i32,
@@ -247,13 +250,7 @@ impl Drawable for GtkFrame {
                             size += cw as i32;
                             measured = true;
                         }
-                        let self_widget = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
-                        if label_size.0 < 0 {
-                            let frame_sys = self_widget.clone().downcast::<GtkFrameSys>().unwrap();
-                            let label = frame_sys.get_label_widget().unwrap().downcast::<Label>().unwrap();
-                            label_size = label.get_layout().unwrap().get_pixel_size();
-                        }
-                        size + label_size.0 + self_widget.get_margin_start() + self_widget.get_margin_end()
+                        cmp::max(size, label_size.0) + self_widget.get_margin_start() + self_widget.get_margin_end()
                     }
                 };
                 let h = match control.layout.height {
@@ -265,16 +262,10 @@ impl Drawable for GtkFrame {
                             let ch = if measured {
                                 child.size().1
                             } else {
-                                let (_, ch, _) = child.measure(cmp::max(0, parent_width as i32) as u16, cmp::max(0, parent_height as i32) as u16);
+                                let (_, ch, _) = child.measure(cmp::max(0, parent_width as i32) as u16, cmp::max(0, parent_height as i32 - label_size.1) as u16);
                                 ch
                             };
                             size += ch as i32;
-                        }
-                        let self_widget = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
-                        if label_size.1 < 0 {
-                            let frame_sys = self_widget.clone().downcast::<GtkFrameSys>().unwrap();
-                            let label = frame_sys.get_label_widget().unwrap().downcast::<Label>().unwrap();
-                            label_size = label.get_layout().unwrap().get_pixel_size();
                         }
                         size + label_size.1 + self_widget.get_margin_top() + self_widget.get_margin_bottom() + 2 // TODO WHY???
                     }
