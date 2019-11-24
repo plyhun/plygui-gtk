@@ -86,6 +86,7 @@ impl AdapterViewInner for GtkList {
             types::Change::Edited(_) => {
             },
         }
+        self.base.invalidate();
     }
 }
 impl ContainerInner for GtkList {

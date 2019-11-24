@@ -127,11 +127,25 @@ impl ControlInner for GtkLinearLayout {
         self.measure(member, control, pw, ph);
         control.coords = Some((x, y));
         self.draw(member, control);
-        let (lm, tm, rm, bm) = self.base.margins().into();
+        let o = self.layout_orientation();
+	    let (lm, tm, rm, bm) = self.base.margins().into();
         let self2 = self.base.as_control();
-        for ref mut child in self.children.as_mut_slice() {
-            child.on_added_to_container(self2, 0, 0, utils::coord_to_size(cmp::max(0, pw as i32 - lm - rm)), utils::coord_to_size(cmp::max(0, ph as i32 - tm - bm)));
-        }
+        let mut x = 0;
+	    let mut y = 0;
+	    for ref mut child in self.children.as_mut_slice() {
+            match o {
+	            layout::Orientation::Horizontal => {
+	            	child.on_added_to_container(self2, 0, 0, utils::coord_to_size(cmp::max(0, pw as i32 - x - lm - rm)), utils::coord_to_size(cmp::max(0, ph as i32 - tm - bm)));
+	            	let (cw, _) = child.size();
+	                x += cw as i32;
+	            },
+	            layout::Orientation::Vertical => {
+	                child.on_added_to_container(self2, 0, 0, utils::coord_to_size(cmp::max(0, pw as i32 - lm - rm)), utils::coord_to_size(cmp::max(0, ph as i32 - y - tm - bm)));
+	                let (_, ch) = child.size();
+	                y += ch as i32;
+	            },
+	        }
+	    }
     }
     fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &dyn controls::Container) {
         let self2 = self.base.as_control();

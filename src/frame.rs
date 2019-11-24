@@ -165,12 +165,15 @@ impl ControlInner for GtkFrame {
         if let Some(ref mut child) = self.child {
             let self2 = unsafe { utils::base_to_impl_mut::<Frame>(member) };
             let self_widget = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
+            let frame_sys = self_widget.clone().downcast::<GtkFrameSys>().unwrap();
+            let label = frame_sys.get_label_widget().unwrap().downcast::<Label>().unwrap();
+            let label_size = label.get_layout().unwrap().get_pixel_size();
             child.on_added_to_container(
                 self2,
                 0,
                 0,
                 utils::coord_to_size(cmp::max(0, pw as i32 - self_widget.get_margin_start() - self_widget.get_margin_end())),
-                utils::coord_to_size(cmp::max(0, ph as i32 - self_widget.get_margin_top() - self_widget.get_margin_bottom())),
+                utils::coord_to_size(cmp::max(0, ph as i32 - self_widget.get_margin_top() - self_widget.get_margin_bottom() - label_size.1)),
             );
         }
     }
