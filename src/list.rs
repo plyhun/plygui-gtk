@@ -22,7 +22,7 @@ impl GtkList {
         let widget = common::cast_control_to_gtkwidget(item.as_mut());
                 
         let (_, yy) = item.size();
-        self.items.push(item);
+        self.items.insert(i, item);
         *y += yy as i32;
         
         this.as_inner_mut().as_inner_mut().as_inner_mut().boxc.insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
