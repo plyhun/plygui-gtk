@@ -14,7 +14,7 @@ pub struct GtkText {
 impl<O: controls::Text> NewTextInner<O> for GtkText {
     fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
         let ptr = ptr as *mut _ as *mut c_void;
-        let tx = reckless::RecklessLabel::new();
+        let tx = Label::new(None);
         let tx = tx.upcast::<Widget>();
         tx.connect_size_allocate(on_size_allocate::<O>);
         let mut tx = GtkText {

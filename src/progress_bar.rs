@@ -10,7 +10,7 @@ pub struct GtkProgressBar {
 impl<O: controls::ProgressBar> NewProgressBarInner<O> for GtkProgressBar {
     fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
     	let ptr = ptr as *mut _ as *mut c_void;
-        let pb = reckless::RecklessProgressBar::new();
+        let pb = GtkProgressBarSys::new();
         pb.set_show_text(false);
         let pb = pb.upcast::<Widget>();
         pb.connect_size_allocate(on_size_allocate::<O>);

@@ -10,9 +10,9 @@ pub struct GtkLinearLayout {
     children: Vec<Box<dyn controls::Control>>,
 }
 impl<O: controls::LinearLayout> NewLinearLayoutInner<O> for GtkLinearLayout {
-    fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
+    fn with_uninit_params(ptr: &mut mem::MaybeUninit<O>, orientation: layout::Orientation) -> Self {
         let ptr = ptr as *mut _ as *mut c_void;
-        let ll = reckless::RecklessBox::new();
+        let ll = GtkBox::new(common::orientation_to_gtk(orientation), 2);
         let ll = ll.upcast::<Widget>();
         ll.connect_size_allocate(on_size_allocate::<O>);
         let mut ll = GtkLinearLayout {
@@ -26,18 +26,17 @@ impl<O: controls::LinearLayout> NewLinearLayoutInner<O> for GtkLinearLayout {
 impl LinearLayoutInner for GtkLinearLayout {
     fn with_orientation(orientation: layout::Orientation) -> Box<dyn controls::LinearLayout> {
         let mut b: Box<mem::MaybeUninit<LinearLayout>> = Box::new_uninit();
-        let mut ab = AMember::with_inner(
+        let ab = AMember::with_inner(
             AControl::with_inner(
                 AContainer::with_inner(
                     AMultiContainer::with_inner(
                         ALinearLayout::with_inner(
-                            <Self as NewLinearLayoutInner<LinearLayout>>::with_uninit(b.as_mut()),
+                            <Self as NewLinearLayoutInner<LinearLayout>>::with_uninit_params(b.as_mut(), orientation),
                         )
                     ),
                 )
             ),
         );
-        controls::HasOrientation::set_orientation(&mut ab, orientation);
         unsafe {
 	        b.as_mut_ptr().write(ab);
 	        b.assume_init()
@@ -94,6 +93,7 @@ impl Drawable for GtkLinearLayout {
                         layout::Orientation::Vertical => {
                             let (cw, ch, _) = child.measure(cmp::max(0, parent_width as i32) as u16, cmp::max(0, parent_height as i32 - h as i32) as u16);
                             w = cmp::max(w, cw);
+        
                             h += ch;
                         }
                     }

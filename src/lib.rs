@@ -5,14 +5,11 @@ extern crate plygui_api;
 #[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
 pub extern crate glib;
 pub use gdk;
 pub use gtk;
 pub use libc;
 pub use pango;
-
-pub mod reckless;
 
 #[macro_use]
 pub mod common;

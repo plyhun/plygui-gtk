@@ -18,7 +18,7 @@ pub struct GtkButton {
 impl<O: controls::Button> NewButtonInner<O> for GtkButton {
     fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
         let ptr = ptr as *mut _ as *mut c_void;
-        let btn = reckless::RecklessButton::new();
+        let btn = GtkButtonSys::new();
         btn.connect_clicked(on_click::<O>);
         let btn = btn.upcast::<Widget>();
         btn.connect_size_allocate(on_size_allocate::<O>);
@@ -197,7 +197,7 @@ fn on_size_allocate<O: controls::Button>(this: &::gtk::Widget, _allo: &::gtk::Re
     ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
 }
 
-fn on_click<O: controls::Button>(this: &reckless::RecklessButton) {
+fn on_click<O: controls::Button>(this: &GtkButtonSys) {
     let mut b = this.clone().upcast::<Widget>();
     let b = common::cast_gtk_widget_to_member_mut::<Button>(&mut b).unwrap();
     if let Some(ref mut cb) = b.inner_mut().inner_mut().inner_mut().h_left_clicked {

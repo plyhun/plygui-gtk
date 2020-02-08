@@ -15,7 +15,7 @@ pub struct GtkFrame {
 impl<O: controls::Frame> NewFrameInner<O> for GtkFrame {
     fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
         let ptr = ptr as *mut _ as *mut c_void;
-        let fr = reckless::RecklessFrame::new();
+        let fr = GtkFrameSys::new(None);
         let fr = fr.upcast::<Widget>();
         fr.connect_size_allocate(on_size_allocate::<O>);
         let mut fr = GtkFrame {

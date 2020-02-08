@@ -39,7 +39,7 @@ impl GtkList {
 impl<O: controls::List> NewListInner<O> for GtkList {
     fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
         let ptr = ptr as *mut _ as *mut c_void;
-        let li = reckless::RecklessScrolledWindow::new();
+        let li = ScrolledWindow::new(None, None);
         let li = li.upcast::<Widget>();
         li.connect_size_allocate(on_size_allocate::<O>);
         let mut li = GtkList {

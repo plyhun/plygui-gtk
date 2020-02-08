@@ -4,7 +4,7 @@ pub use plygui_api::{callbacks, controls, defaults, ids, layout, types, utils};
 pub use glib::translate::ToGlibPtr;
 pub use glib::Object;
 pub use gobject_sys::GObject;
-pub use gtk::{Cast, Menu as GtkMenu, MenuItem as GtkMenuItem, MenuItemExt, MenuShell as GtkMenuShell, MenuShellExt, Orientation as GtkOrientation, SeparatorMenuItem as GtkSeparatorMenuItem, Widget, WidgetExt};
+pub use gtk::{Align, Cast, Menu as GtkMenu, MenuItem as GtkMenuItem, MenuItemExt, MenuShell as GtkMenuShell, MenuShellExt, Orientation as GtkOrientation, SeparatorMenuItem as GtkSeparatorMenuItem, Widget, WidgetExt};
 pub use gtk_sys::GtkWidget as WidgetSys;
 pub use gdk_pixbuf::{Colorspace, InterpType, Pixbuf, PixbufExt};
 pub use cairo::Format;
@@ -15,7 +15,6 @@ pub use std::marker::PhantomData;
 pub use std::os::raw::{c_char, c_void};
 pub use std::{cmp, mem, ops, ptr, sync::mpsc};
 
-pub use crate::reckless;
 pub use crate::external::image;
 
 lazy_static! {
@@ -76,11 +75,11 @@ impl AsMut<Object> for GtkWidget {
     }
 }
 impl NativeId for GtkWidget {
-	unsafe fn from_outer(a: usize) -> GtkWidget {
-		use glib::translate::FromGlibPtrFull;
+    unsafe fn from_outer(a: usize) -> GtkWidget {
+        use glib::translate::FromGlibPtrFull;
 
         GtkWidget(Object::from_glib_full(a as *mut GObject))
-	}
+    }
 }
 
 #[repr(C)]
@@ -161,7 +160,33 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
     pub fn draw(&mut self, control: &mut ControlBase) {
         if control.coords.is_some() {
             let widget = self.widget();
-            widget.set_size_request(control.measured.0 as i32, control.measured.1 as i32);
+            let w = match control.layout.width {
+                layout::Size::MatchParent => {
+                    widget.set_halign(Align::Fill);
+                    1
+                },
+                layout::Size::WrapContent => {
+                    widget.set_halign(Align::Center);
+                    1
+                },
+                layout::Size::Exact(v) => {
+                    v
+                }
+            };
+            let h = match control.layout.height {
+                layout::Size::MatchParent => {
+                    widget.set_valign(Align::Fill);
+                    1
+                },
+                layout::Size::WrapContent => {
+                    widget.set_halign(Align::Center);
+                    1
+                },
+                layout::Size::Exact(v) => {
+                    v
+                }
+            };
+            widget.set_size_request(w as i32, h as i32);
             if let types::Visibility::Gone = control.visibility {
                 widget.hide();
             } else {
