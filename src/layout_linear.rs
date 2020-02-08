@@ -1,41 +1,46 @@
 use crate::common::{self, *};
 
-use gtk::{Box as GtkBox, BoxExt, Cast, ContainerExt, OrientableExt, Widget, WidgetExt};
+use gtk::{Box as GtkBox, Cast, ContainerExt, OrientableExt, Widget, WidgetExt};
 
-pub type LinearLayout = Member<Control<MultiContainer<GtkLinearLayout>>>;
+pub type LinearLayout = AMember<AControl<AContainer<AMultiContainer<ALinearLayout<GtkLinearLayout>>>>>;
 
 #[repr(C)]
 pub struct GtkLinearLayout {
     base: common::GtkControlBase<LinearLayout>,
     children: Vec<Box<dyn controls::Control>>,
 }
-
-impl LinearLayoutInner for GtkLinearLayout {
-    fn with_orientation(orientation: layout::Orientation) -> Box<LinearLayout> {
-        let mut ll = Box::new(Member::with_inner(
-            Control::with_inner(
-                MultiContainer::with_inner(
-                    GtkLinearLayout {
-                        base: common::GtkControlBase::with_gtk_widget(reckless::RecklessBox::new().upcast::<Widget>()),
-                        children: Vec::new(),
-                    },
-                    (),
-                ),
-                (),
-            ),
-            MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
-        ));
-        {
-            let ptr = ll.as_ref() as *const _ as *mut std::os::raw::c_void;
-            ll.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
-        }
-        {
-            let boxc = Object::from(ll.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<GtkBox>().unwrap();
-            boxc.set_orientation(common::orientation_to_gtk(orientation));
-            boxc.set_spacing(0);
-        }
-        ll.as_inner_mut().as_inner_mut().as_inner_mut().base.widget().connect_size_allocate(on_size_allocate);
+impl<O: controls::LinearLayout> NewLinearLayoutInner<O> for GtkLinearLayout {
+    fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
+        let mut ll = reckless::RecklessFrame::new();
+        let mut ll = ll.upcast::<Widget>().unwrap();
+        ll.connect_size_allocate(on_size_allocate);
+        let mut ll = GtkLinearLayout {
+            base: common::GtkControlBase::with_gtk_widget(ll),
+            children: Vec::new(),
+        };
+        ll.base.set_pointer(ptr);
         ll
+    }
+}
+impl LinearLayoutInner for GtkLinearLayout {
+    fn with_orientation(orientation: layout::Orientation) -> Box<dyn controls::LinearLayout> {
+        let mut b: Box<mem::MaybeUninit<LinearLayout>> = Box::new_uninit();
+        let mut ab = AMember::with_inner(
+            AControl::with_inner(
+                AContainer::with_inner(
+                    AMultiContainer::with_inner(
+                        ALinearLayout::with_inner(
+                            <Self as NewLinearLayoutInner<LinearLayout>>::with_uninit(b.as_mut()),
+                        )
+                    ),
+                )
+            ),
+        );
+        controls::HasOrientation::set_orientation(&mut ab, orientation);
+        unsafe {
+	        b.as_mut_ptr().write(ab);
+	        b.assume_init()
+        }
     }
 }
 
@@ -177,11 +182,11 @@ impl ControlInner for GtkLinearLayout {
 }
 
 impl HasOrientationInner for GtkLinearLayout {
-    fn layout_orientation(&self) -> layout::Orientation {
+    fn orientation(&self) -> layout::Orientation {
         let gtk_self = Object::from(self.base.widget.clone()).downcast::<GtkBox>().unwrap();
         common::gtk_to_orientation(gtk_self.get_orientation())
     }
-    fn set_layout_orientation(&mut self, _: &mut MemberBase, orientation: layout::Orientation) {
+    fn set_orientation(&mut self, _: &mut MemberBase, orientation: layout::Orientation) {
         let gtk_self = Object::from(self.base.widget.clone()).downcast::<GtkBox>().unwrap();
         gtk_self.set_orientation(common::orientation_to_gtk(orientation));
         self.base.invalidate();
@@ -302,10 +307,10 @@ impl MultiContainerInner for GtkLinearLayout {
         }
     }
 }
-
-#[allow(dead_code)]
-pub(crate) fn spawn() -> Box<dyn controls::Control> {
-    LinearLayout::with_orientation(layout::Orientation::Vertical).into_control()
+impl Spawnable for GtkLinearLayout {
+    fn spawn() -> Box<dyn controls::Control> {
+        Self::with_orientation(layout::Orientation::Vertical).into_control()
+    }
 }
 
 fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
@@ -335,5 +340,3 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
         }
     }
 }
-
-default_impls_as!(LinearLayout);

@@ -1,13 +1,43 @@
 use crate::common::{self, *};
 
 use gtk::{ProgressBar as GtkProgressBarSys, ProgressBarExt, WidgetExt};
-pub type ProgressBar = Member<Control<GtkProgressBar>>;
+pub type ProgressBar = AMember<AControl<AProgressBar<GtkProgressBar>>>;
 
 #[repr(C)]
 pub struct GtkProgressBar {
     base: GtkControlBase<ProgressBar>,
 }
-
+impl<O: controls::ProgressBar> NewProgressBarInner<O> for GtkProgressBar {
+    fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
+    	let ptr = ptr as *mut _ as u64;
+        let mut pb = reckless::RecklessProgressBar::new();
+        pb.set_show_text(false);
+        let mut pb = pb.upcast::<Widget>().unwrap();
+        pb.connect_size_allocate(on_size_allocate);
+        let mut pb = GtkProgressBar {
+            base: common::GtkControlBase::with_gtk_widget(pb),
+        };
+        pb.base.set_pointer(ptr);    
+        pb
+    }
+}
+impl ProgressBarInner for GtkProgressBar {
+    fn with_progress(progress: types::Progress) -> Box<dyn controls::ProgressBar> {
+        let mut b: Box<mem::MaybeUninit<ProgressBar>> = Box::new_uninit();
+        let mut ab = AMember::with_inner(
+            AControl::with_inner(
+                AProgressBar::with_inner(
+                    <Self as NewProgressBarInner<ProgressBar>>::with_uninit(b.as_mut()),
+                )
+            ),
+        );
+        controls::HasProgress::set_progress(&mut ab, progress);
+        unsafe {
+	        b.as_mut_ptr().write(ab);
+	        b.assume_init()
+        }
+    }
+}
 impl HasProgressInner for GtkProgressBar {
 	fn progress(&self, _base: &MemberBase) -> types::Progress {
 	    let self_widget: Object = Object::from(self.base.widget.clone()).into();
@@ -43,33 +73,6 @@ impl HasProgressInner for GtkProgressBar {
         	}
         }
 	}
-}
-impl ProgressBarInner for GtkProgressBar {
-    fn with_progress(arg: types::Progress) -> Box<ProgressBar> {
-        use crate::plygui_api::controls::HasProgress;
-        
-        let mut pb = Box::new(Member::with_inner(
-            Control::with_inner(
-                GtkProgressBar {
-                    base: common::GtkControlBase::with_gtk_widget(reckless::RecklessProgressBar::new().upcast::<Widget>()),
-                },
-                (),
-            ),
-            MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
-        ));
-        {
-            let ptr = pb.as_ref() as *const _ as *mut std::os::raw::c_void;
-            pb.as_inner_mut().as_inner_mut().base.set_pointer(ptr);
-        }
-        {
-            let self_widget: Object = Object::from(pb.as_inner_mut().as_inner_mut().base.widget.clone()).into();
-            let progress_bar = self_widget.downcast::<GtkProgressBarSys>().unwrap();
-            progress_bar.set_show_text(false);
-        }
-        Object::from(pb.as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<Widget>().unwrap().connect_size_allocate(on_size_allocate);
-        pb.set_progress(arg);
-        pb
-    }
 }
 
 impl HasLayoutInner for GtkProgressBar {
@@ -167,10 +170,10 @@ impl Drawable for GtkProgressBar {
         self.base.invalidate();
     }
 }
-
-#[allow(dead_code)]
-pub(crate) fn spawn() -> Box<dyn controls::Control> {
-    ProgressBar::with_progress(types::Progress::None).into_control()
+impl Spawnable for GtkProgressBar {
+    fn spawn() -> Box<dyn controls::Control> {
+        Self::with_progress(types::Progress::None).into_control()
+    }
 }
 
 fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
@@ -180,5 +183,3 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let measured_size = ll.as_inner().base().measured;
     ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
 }
-
-default_impls_as!(ProgressBar);

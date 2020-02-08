@@ -9,27 +9,28 @@ pub struct GtkMessage {
     actions: Vec<(String, callbacks::Action)>,
 }
 
-pub type Message = Member<GtkMessage>;
+pub type Message = AMember<AMessage<GtkMessage>>;
 
 impl MessageInner for GtkMessage {
     fn with_actions(content: types::TextContent, severity: types::MessageSeverity, actions: Vec<(String, callbacks::Action)>, parent: Option<&dyn controls::Member>) -> Box<Message> {
         let parent = parent.map(|parent| Object::from(common::cast_member_to_gtkwidget(parent)).downcast::<Widget>().unwrap().get_toplevel().unwrap().downcast::<gtk::Window>().unwrap());
 
-        let mut message = Box::new(Member::with_inner(
-            GtkMessage {
-                message: MessageDialog::new(
-                    parent.as_ref(),
-                    DialogFlags::MODAL | DialogFlags::DESTROY_WITH_PARENT,
-                    severity_to_message_type(severity),
-                    if actions.len() > 0 { ButtonsType::None } else { ButtonsType::Ok },
-                    match content {
-                        types::TextContent::Plain(ref text) => text.as_str(),
-                        types::TextContent::LabelDescription(ref label, _) => label.as_str(),
-                    },
-                ),
-                actions: actions,
-            },
-            MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
+        let mut message = Box::new(AMember::with_inner(
+            AMessage::with_inner(
+	            GtkMessage {
+	                message: MessageDialog::new(
+	                    parent.as_ref(),
+	                    DialogFlags::MODAL | DialogFlags::DESTROY_WITH_PARENT,
+	                    severity_to_message_type(severity),
+	                    if actions.len() > 0 { ButtonsType::None } else { ButtonsType::Ok },
+	                    match content {
+	                        types::TextContent::Plain(ref text) => text.as_str(),
+	                        types::TextContent::LabelDescription(ref label, _) => label.as_str(),
+	                    },
+	                ),
+	                actions: actions,
+	            }
+            ),
         ));
 
         let ptr = message.as_ref() as *const _ as *mut std::os::raw::c_void;
@@ -107,5 +108,3 @@ fn on_response(this: &MessageDialog, r: i32) {
         }
     }
 }
-
-default_impls_as!(Message);

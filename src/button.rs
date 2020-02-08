@@ -6,43 +6,46 @@ use pango::LayoutExt;
 
 use std::borrow::Cow;
 
-pub type Button = Member<Control<GtkButton>>;
+pub type Button = AMember<AControl<AButton<GtkButton>>>;
 
 #[repr(C)]
 pub struct GtkButton {
     base: GtkControlBase<Button>,
 
     h_left_clicked: Option<callbacks::OnClick>,
-    h_right_clicked: Option<callbacks::OnClick>,
     skip_callbacks: bool,
 }
-
+impl<O: controls::Button> NewButtonInner<O> for GtkButton {
+    fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
+        let ptr = ptr as *mut _ as u64;
+        let mut btn = reckless::RecklessButton::new();
+        btn.connect_clicked(on_click);
+        let mut btn = btn.upcast::<Widget>().unwrap();
+        btn.connect_size_allocate(on_size_allocate);
+        let mut btn = GtkButton {
+            base: common::GtkControlBase::with_gtk_widget(btn),
+            h_left_clicked: None,
+            skip_callbacks: false,
+        };
+        btn.base.set_pointer(ptr);    
+        btn
+    }
+}
 impl ButtonInner for GtkButton {
     fn with_label(label: &str) -> Box<Button> {
-        let mut btn = Box::new(Member::with_inner(
-            Control::with_inner(
-                GtkButton {
-                    base: common::GtkControlBase::with_gtk_widget(reckless::RecklessButton::new().upcast::<Widget>()),
-                    h_left_clicked: None,
-                    h_right_clicked: None,
-                    skip_callbacks: false,
-                },
-                (),
+        let mut b: Box<mem::MaybeUninit<Button>> = Box::new_uninit();
+        let mut ab = AMember::with_inner(
+            AControl::with_inner(
+                AButton::with_inner(
+	                <Self as NewButtonInner<Button>>::with_uninit(b.as_mut())
+                )
             ),
-            MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
-        ));
-        {
-            let ptr = btn.as_ref() as *const _ as *mut std::os::raw::c_void;
-            btn.as_inner_mut().as_inner_mut().base.set_pointer(ptr);
+        );
+        controls::HasLabel::set_label(&mut ab, label.as_ref().into());
+        unsafe {
+	        b.as_mut_ptr().write(ab);
+	        b.assume_init()
         }
-        {
-            let self_widget: Object = Object::from(btn.as_inner_mut().as_inner_mut().base.widget.clone()).into();
-            let button = self_widget.downcast::<GtkButtonSys>().unwrap();
-            button.set_label(label);
-            button.connect_clicked(on_click);
-        }
-        Object::from(btn.as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<Widget>().unwrap().connect_size_allocate(on_size_allocate);
-        btn
     }
 }
 
@@ -175,6 +178,11 @@ impl Drawable for GtkButton {
         self.base.invalidate();
     }
 }
+impl Spawnable for GtkButton {
+    fn spawn() -> Box<dyn controls::Control> {
+        Self::with_label("").into_control()
+    }
+}
 
 #[allow(dead_code)]
 pub(crate) fn spawn() -> Box<dyn controls::Control> {
@@ -198,5 +206,3 @@ fn on_click(this: &GtkButtonSys) {
         (cb.as_mut())(w2);
     }
 }
-
-default_impls_as!(Button);

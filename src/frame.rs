@@ -5,42 +5,45 @@ use pango::LayoutExt;
 
 use std::borrow::Cow;
 
-pub type Frame = Member<Control<SingleContainer<GtkFrame>>>;
+pub type Frame = AMember<AControl<AContainer<ASingleContainer<AFrame<GtkFrame>>>>>;
 
 #[repr(C)]
 pub struct GtkFrame {
     base: common::GtkControlBase<Frame>,
     child: Option<Box<dyn controls::Control>>,
 }
-
+impl<O: controls::Frame> NewFrameInner<O> for GtkFrame {
+    fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
+        let mut fr = reckless::RecklessFrame::new();
+        let mut fr = fr.upcast::<Widget>().unwrap();
+        fr.connect_size_allocate(on_size_allocate);
+        let mut fr = GtkFrame {
+            base: common::GtkControlBase::with_gtk_widget(fr),
+            child: None,
+        };
+        fr.base.set_pointer(ptr);    
+        fr
+    }
+}
 impl FrameInner for GtkFrame {
     fn with_label(label: &str) -> Box<Frame> {
-        let mut fr = Box::new(Member::with_inner(
-            Control::with_inner(
-                SingleContainer::with_inner(
-                    GtkFrame {
-                        base: common::GtkControlBase::with_gtk_widget(reckless::RecklessFrame::new().upcast::<Widget>()),
-                        child: None,
-                    },
-                    (),
+        let mut b: Box<mem::MaybeUninit<Frame>> = Box::new_uninit();
+        let mut ab = AMember::with_inner(
+            AControl::with_inner(
+                AContainer::with_inner(
+                    ASingleContainer::with_inner(
+                        AFrame::with_inner(
+                            <Self as NewFrameInner<Frame>>::with_uninit(b.as_mut())
+                        )
+                    ),
                 ),
-                (),
             ),
-            MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
-        ));
-        {
-            let ptr = fr.as_ref() as *const _ as *mut std::os::raw::c_void;
-            fr.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
+        );
+        controls::HasLabel::set_label(&mut ab, label.as_ref().into());
+        unsafe {
+	        b.as_mut_ptr().write(ab);
+	        b.assume_init()
         }
-        {
-            let frame = Object::from(fr.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<GtkFrameSys>().unwrap();
-            frame.set_label(label);
-        }
-        Object::from(fr.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone())
-            .downcast::<Widget>()
-            .unwrap()
-            .connect_size_allocate(on_size_allocate);
-        fr
     }
 }
 
@@ -282,6 +285,11 @@ impl Drawable for GtkFrame {
         self.base.invalidate();
     }
 }
+impl Spawnable for GtkFrame {
+    fn spawn() -> Box<dyn controls::Control> {
+        Self::with_label("").into_control()
+    }
+}
 
 #[allow(dead_code)]
 pub(crate) fn spawn() -> Box<dyn controls::Control> {
@@ -295,5 +303,3 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let measured_size = ll.as_inner().base().measured;
     ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
 }
-
-default_impls_as!(Frame);

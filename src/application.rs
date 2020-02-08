@@ -20,7 +20,7 @@ pub struct GtkApplication {
     sleep: u32,
 }
 
-pub type Application = development::Application<GtkApplication>;
+pub type Application = AApplication<GtkApplication>;
 
 impl development::HasNativeIdInner for GtkApplication {
     type Id = common::GtkWidget;
@@ -46,7 +46,7 @@ impl development::ApplicationInner for GtkApplication {
         if gtk::init().is_err() {
             panic!("Failed to initialize GTK");
         }
-        let mut a = Box::new(development::Application::with_inner(
+        let mut a = Box::new(AApplication::with_inner(
             GtkApplication {
                 app: GtkApplicationSys::new("application.plygui", ApplicationFlags::FLAGS_NONE).unwrap(),
                 name: String::new(), // TODO later // name.into(),

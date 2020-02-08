@@ -14,7 +14,7 @@ pub struct GtkWindow {
     skip_callbacks: bool,
 }
 
-pub type Window = Member<SingleContainer<::plygui_api::development::Window<GtkWindow>>>;
+pub type Window = AMember<AContainer<ASingleContainer<AWindow<GtkWindow>>>>;
 
 impl GtkWindow {
     fn size_inner(&self) -> (u16, u16) {
@@ -47,27 +47,26 @@ impl CloseableInner for GtkWindow {
 }
 
 impl WindowInner for GtkWindow {
-    fn with_params(title: &str, start_size: types::WindowStartSize, menu: types::Menu) -> Box<Window> {
+    fn with_params(title: &str, start_size: types::WindowStartSize, menu: types::Menu) -> Box<dyn controls::Window> {
         use plygui_api::controls::HasLabel;
 
-        let mut window = Box::new(Member::with_inner(
-            SingleContainer::with_inner(
-                ::plygui_api::development::Window::with_inner(
-                    GtkWindow {
-                        size: (0, 0),
-                        window: GtkWindowSys::new(WindowType::Toplevel),
-                        container: reckless::RecklessBox::new(),
-                        child: None,
-                        menu_bar: if menu.is_some() { Some(GtkMenuBar::new()) } else { None },
-                        menu: if menu.is_some() { Vec::new() } else { Vec::with_capacity(0) },
-                        on_close: None,
-                        skip_callbacks: false,
-                    },
-                    (),
-                ),
-                (),
+        let mut window = Box::new(AMember::with_inner(
+            AContainer::with_inner(
+	            ASingleContainer::with_inner(
+	                AWindow::with_inner(
+	                    GtkWindow {
+	                        size: (0, 0),
+	                        window: GtkWindowSys::new(WindowType::Toplevel),
+	                        container: reckless::RecklessBox::new(),
+	                        child: None,
+	                        menu_bar: if menu.is_some() { Some(GtkMenuBar::new()) } else { None },
+	                        menu: if menu.is_some() { Vec::new() } else { Vec::with_capacity(0) },
+	                        on_close: None,
+	                        skip_callbacks: false,
+	                    },
+	                ),
+	            )
             ),
-            MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
         ));
 
         let selfptr = window.as_mut() as *mut Window;
@@ -269,4 +268,4 @@ fn on_resize_move(this: &GtkWindowSys, allo: &Rectangle) {
         }
     }
 }
-default_impls_as!(Window);
+

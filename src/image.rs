@@ -2,7 +2,7 @@ use crate::common::{self, *};
 
 use gtk::{Cast, Image as GtkImageSys, ImageExt, Widget, WidgetExt};
 
-pub type Image = Member<Control<GtkImage>>;
+pub type Image = AMember<AControl<AImage<GtkImage>>>;
 
 #[repr(C)]
 pub struct GtkImage {
@@ -11,29 +11,36 @@ pub struct GtkImage {
     scale: types::ImageScalePolicy,
     orig: Pixbuf,
 }
-
+impl<O: controls::Image> NewImageInner<O> for GtkImage {
+    fn with_uninit_params(ptr: &mut mem::MaybeUninit<O>, content: image::DynamicImage) -> Self {
+        let pixbuf = common::image_to_pixbuf(&content);
+        let mut i = GtkImageSys::new_from_pixbuf(Some(&pixbuf));
+        let mut i = i.upcast::<Widget>().unwrap();
+        i.connect_size_allocate(on_size_allocate);
+        i.connect_show(on_show);
+        let mut i = GtkImage {
+            base: GtkControlBase::with_gtk_widget(i),
+            scale: types::ImageScalePolicy::FitCenter,
+            orig: pixbuf,
+        };
+        i.base.set_pointer(ptr);    
+        i
+    }
+}
 impl ImageInner for GtkImage {
     fn with_content(content: image::DynamicImage) -> Box<dyn controls::Image> {
-        let pixbuf = common::image_to_pixbuf(&content);
-
-        let mut i = Box::new(Member::with_inner(
-            Control::with_inner(
-                GtkImage {
-                    base: GtkControlBase::with_gtk_widget(GtkImageSys::new_from_pixbuf(Some(&pixbuf)).upcast::<Widget>()),
-                    scale: types::ImageScalePolicy::FitCenter,
-                    orig: pixbuf,
-                },
-                (),
+        let mut b: Box<mem::MaybeUninit<Image>> = Box::new_uninit();
+        let ab = AMember::with_inner(
+            AControl::with_inner(
+                AImage::with_inner(
+                    <Self as NewImageInner<Image>>::with_uninit_params(b.as_mut(), content)
+                )
             ),
-            MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
-        ));
-        i.as_inner_mut().as_inner_mut().base.widget().connect_size_allocate(on_size_allocate);
-        i.as_inner_mut().as_inner_mut().base.widget().connect_show(on_show);
-        {
-            let ptr = i.as_ref() as *const _ as *mut ::std::os::raw::c_void;
-            i.as_inner_mut().as_inner_mut().base.set_pointer(ptr);
+        );
+        unsafe {
+	        b.as_mut_ptr().write(ab);
+	        b.assume_init()
         }
-        i
     }
     fn set_scale(&mut self, _: &mut MemberBase, policy: types::ImageScalePolicy) {
         if self.scale != policy {
@@ -45,7 +52,17 @@ impl ImageInner for GtkImage {
         self.scale
     }
 }
-
+impl HasImageInner for GtkImage {
+    fn image(&self, _: &MemberBase) -> Cow<image::DynamicImage> {
+        unimplemented!()
+    }
+    fn set_image(&mut self, base: &mut MemberBase, arg0: Cow<image::DynamicImage>) {
+        self.orig = common::image_to_pixbuf(&arg0);
+        let this = unsafe { utils::base_to_impl_mut::<Image>(base) };
+        let (_, control, _) = Image::as_control_parts_mut(this);
+        self.apply_sized_image(control)
+    }
+}
 impl GtkImage {
     fn apply_sized_image(&mut self, control: &ControlBase) {
         let bm_width = self.orig.get_width();
@@ -184,10 +201,11 @@ impl Drawable for GtkImage {
     }
 }
 
-/*#[allow(dead_code)]
-pub(crate) fn spawn() -> Box<controls::Control> {
-    Image::with_label("").into_control()
-}*/
+impl Spawnable for GtkImage {
+    fn spawn() -> Box<dyn controls::Control> {
+        Self::with_content(image::DynamicImage::new_luma8(0, 0)).into_control()
+    }
+}
 
 fn on_show(this: &::gtk::Widget) {
     let mut ll1 = this.clone().upcast::<Widget>();
@@ -217,5 +235,3 @@ fn fmin(a: f32, b: f32) -> f32 {
         b
     }
 }
-
-default_impls_as!(Image);

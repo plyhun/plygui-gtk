@@ -5,34 +5,40 @@ use pango::LayoutExt;
 
 use std::borrow::Cow;
 
-pub type Text = Member<Control<GtkText>>;
+pub type Text = AMember<AControl<AText<GtkText>>>;
 
 #[repr(C)]
 pub struct GtkText {
     base: GtkControlBase<Text>,
 }
-
+impl<O: controls::Text> NewTextInner<O> for GtkText {
+    fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
+        let tx = ptr as *mut _ as u64;
+        let mut tx = reckless::RecklessLabel::new();
+        let mut tx = tx.upcast::<Widget>().unwrap();
+        tx.connect_size_allocate(on_size_allocate);
+        let mut tx = GtkText {
+            base: common::GtkControlBase::with_gtk_widget(tx),
+        };
+        tx.base.set_pointer(ptr);    
+        tx
+    }
+}
 impl TextInner for GtkText {
-    fn with_text(text: &str) -> Box<Text> {
-        let mut btn = Box::new(Member::with_inner(
-            Control::with_inner(
-                GtkText {
-                    base: common::GtkControlBase::with_gtk_widget(reckless::RecklessLabel::new().upcast::<Widget>()),
-                },
-                (),
+    fn with_text<S: AsRef<str>>(text: S) -> Box<dyn controls::Text> {
+        let mut b: Box<mem::MaybeUninit<Text>> = Box::new_uninit();
+        let mut ab = AMember::with_inner(
+            AControl::with_inner(
+                AText::with_inner(
+                    <Self as NewTextInner<Text>>::with_uninit(b.as_mut()),
+                )
             ),
-            MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
-        ));
-        {
-            let ptr = btn.as_ref() as *const _ as *mut std::os::raw::c_void;
-            btn.as_inner_mut().as_inner_mut().base.set_pointer(ptr);
+        );
+        controls::HasLabel::set_label(&mut ab, text.as_ref().into());
+        unsafe {
+	        b.as_mut_ptr().write(ab);
+	        b.assume_init()
         }
-        {
-            let text1 = Object::from(btn.as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<Label>().unwrap();
-            text1.set_text(text);
-        }
-        btn.as_inner_mut().as_inner_mut().base.widget().connect_size_allocate(on_size_allocate);
-        btn
     }
 }
 
@@ -147,10 +153,10 @@ impl Drawable for GtkText {
         self.base.invalidate();
     }
 }
-
-#[allow(dead_code)]
-pub(crate) fn spawn() -> Box<dyn controls::Control> {
-    Text::empty().into_control()
+impl Spawnable for GtkText {
+    fn spawn() -> Box<dyn controls::Control> {
+        Self::with_text("").into_control()
+    }
 }
 
 fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
@@ -161,4 +167,3 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
 }
 
-default_impls_as!(Text);

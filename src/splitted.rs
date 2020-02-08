@@ -2,7 +2,7 @@ use crate::common::{self, *};
 
 use gtk::{Cast, OrientableExt, Paned, PanedExt, Widget, WidgetExt};
 
-pub type Splitted = Member<Control<MultiContainer<GtkSplitted>>>;
+pub type Splitted = AMember<AControl<AContainer<AMultiContainer<ASplitted<GtkSplitted>>>>>;
 
 #[repr(C)]
 pub struct GtkSplitted {
@@ -61,44 +61,43 @@ impl GtkSplitted {
         (w, h)
     }
 }
-
+impl<O: controls::Splitted> NewSplittedInner<O> for GtkSplitted {
+    fn with_uninit_params(ptr: &mut mem::MaybeUninit<O>, mut first: Box<dyn controls::Control>, mut second: Box<dyn controls::Control>, orientation: layout::Orientation) -> Self {
+    	let mut sp = reckless::RecklessPaned::new();
+    	sp.set_orientation(common::orientation_to_gtk(orientation));
+        sp.pack1(&Object::from(common::cast_control_to_gtkwidget(first.as_mut())).downcast::<Widget>().unwrap(), false, true);
+        sp.pack2(&Object::from(common::cast_control_to_gtkwidget(second.as_mut())).downcast::<Widget>().unwrap(), false, true);
+        sp.connect_property_position_notify(on_property_position_notify);
+        let mut sp = sp.upcast::<Widget>().unwrap();
+        sp.connect_size_allocate(on_size_allocate);
+        let mut sp = GtkSplitted {
+            base: common::GtkControlBase::with_gtk_widget(sp),
+            first: first,
+            splitter: 0.5,
+            second: second,
+        };
+        sp.base.set_pointer(ptr);
+        sp
+    }
+}
 impl SplittedInner for GtkSplitted {
     fn with_content(first: Box<dyn controls::Control>, second: Box<dyn controls::Control>, orientation: layout::Orientation) -> Box<Splitted> {
-        let mut ll = Box::new(Member::with_inner(
-            Control::with_inner(
-                MultiContainer::with_inner(
-                    GtkSplitted {
-                        base: common::GtkControlBase::with_gtk_widget(reckless::RecklessPaned::new().upcast::<Widget>()),
-                        first: first,
-                        splitter: 0.5,
-                        second: second,
-                    },
-                    (),
-                ),
-                (),
+        let mut b: Box<mem::MaybeUninit<Splitted>> = Box::new_uninit();
+        let ab = AMember::with_inner(
+            AControl::with_inner(
+                AContainer::with_inner(
+                    AMultiContainer::with_inner(
+                        ASplitted::with_inner(
+                            <Self as NewSplittedInner<Splitted>>::with_uninit_params(b.as_mut(), first, second, orientation)
+                        )
+                    ),
+                )
             ),
-            MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
-        ));
-        {
-            let ptr = ll.as_ref() as *const _ as *mut std::os::raw::c_void;
-            ll.as_inner_mut().as_inner_mut().as_inner_mut().base.set_pointer(ptr);
+        );
+        unsafe {
+            b.as_mut_ptr().write(ab);
+	        b.assume_init()
         }
-        {
-            let paned = Object::from(ll.as_inner_mut().as_inner_mut().as_inner_mut().base.widget.clone()).downcast::<Paned>().unwrap();
-            paned.set_orientation(common::orientation_to_gtk(orientation));
-            paned.pack1(&Object::from(common::cast_control_to_gtkwidget(ll.as_inner_mut().as_inner_mut().as_inner_mut().first())).downcast::<Widget>().unwrap(), false, true);
-            paned.pack2(&Object::from(common::cast_control_to_gtkwidget(ll.as_inner_mut().as_inner_mut().as_inner_mut().second())).downcast::<Widget>().unwrap(), false, true);
-            paned.connect_property_position_notify(on_property_position_notify);
-        }
-        {
-            let mut self_widget = ll.as_inner_mut().as_inner_mut().as_inner_mut().base.widget();
-            self_widget.connect_size_allocate(on_size_allocate);
-            ll.as_inner_mut()
-                .as_inner_mut()
-                .as_inner_mut()
-                .update_splitter(common::cast_gtk_widget_to_member::<Splitted>(&mut self_widget).unwrap().as_inner().base());
-        }
-        ll
     }
     fn set_splitter(&mut self, base: &mut MemberBase, pos: f32) {
         let pos = pos % 1.0;
@@ -243,11 +242,11 @@ impl ControlInner for GtkSplitted {
 }
 
 impl HasOrientationInner for GtkSplitted {
-    fn layout_orientation(&self) -> layout::Orientation {
+    fn orientation(&self) -> layout::Orientation {
         let gtk_self = Object::from(self.base.widget.clone()).downcast::<Paned>().unwrap();
         common::gtk_to_orientation(gtk_self.get_orientation())
     }
-    fn set_layout_orientation(&mut self, _: &mut MemberBase, orientation: layout::Orientation) {
+    fn set_orientation(&mut self, _: &mut MemberBase, orientation: layout::Orientation) {
         let gtk_self = Object::from(self.base.widget.clone()).downcast::<Paned>().unwrap();
         gtk_self.set_orientation(common::orientation_to_gtk(orientation));
         self.base.invalidate();
@@ -403,11 +402,11 @@ impl MultiContainerInner for GtkSplitted {
         }
     }
 }
-
-/*#[allow(dead_code)]
-pub(crate) fn spawn() -> Box<controls::Control> {
-    Splitted::with_orientation(layout::Orientation::Vertical).into_control()
-}*/
+impl Spawnable for GtkSplitted {
+    fn spawn() -> Box<dyn controls::Control> {
+        Self::with_content(super::text::Text::spawn(), super::text::Text::spawn(), layout::Orientation::Vertical).into_control()
+    }
+}
 
 fn on_size_allocate(this: &::gtk::Widget, _: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
@@ -417,7 +416,7 @@ fn on_size_allocate(this: &::gtk::Widget, _: &::gtk::Rectangle) {
     ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
 }
 fn on_property_position_notify(this: &::gtk::Paned) {
-    use plygui_api::controls::{HasOrientation, HasSize};
+    use plygui_api::controls::{HasSize};
 
     let position = this.get_position();
     if position < 1 {
@@ -428,7 +427,6 @@ fn on_property_position_notify(this: &::gtk::Paned) {
     let ll = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut ll).unwrap();
     let orientation = ll.layout_orientation();
     let (width, height) = ll.size();
-    println!("splitted {}/{}", width, height);
     let splitter = position as f32
         / match orientation {
             layout::Orientation::Vertical => {
@@ -454,5 +452,3 @@ fn on_property_position_notify(this: &::gtk::Paned) {
     ll.first.draw(Some((0,0)));
     ll.second.draw(Some((0,0)));
 }
-
-default_impls_as!(Splitted);

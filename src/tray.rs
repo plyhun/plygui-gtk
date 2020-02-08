@@ -12,7 +12,7 @@ pub struct GtkTray {
     on_close: Option<callbacks::OnClose>,
 }
 
-pub type Tray = Member<GtkTray>;
+pub type Tray = AMember<ATray<GtkTray>>;
 
 impl HasLabelInner for GtkTray {
     fn label(&self, _: &MemberBase) -> Cow<str> {
@@ -65,17 +65,18 @@ impl HasImageInner for GtkTray {
 }
 
 impl TrayInner for GtkTray {
-    fn with_params(title: &str, menu: types::Menu) -> Box<Member<Self>> {
+    fn with_params(title: &str, menu: types::Menu) -> Box<dyn controls::Tray> {
         use plygui_api::controls::HasLabel;
 
-        let mut tray = Box::new(Member::with_inner(
-            GtkTray {
-                tray: GtkStatusIcon::new_from_icon_name(title),
-                context_menu: if menu.is_some() { Some(GtkMenu::new()) } else { None },
-                menu: if menu.is_some() { Vec::new() } else { Vec::with_capacity(0) },
-                on_close: None,
-            },
-            MemberFunctions::new(_as_any, _as_any_mut, _as_member, _as_member_mut),
+        let mut tray = Box::new(AMember::with_inner(
+            ATray::with_inner(
+		        GtkTray {
+	                tray: GtkStatusIcon::new_from_icon_name(title),
+	                context_menu: if menu.is_some() { Some(GtkMenu::new()) } else { None },
+	                menu: if menu.is_some() { Vec::new() } else { Vec::with_capacity(0) },
+	                on_close: None,
+	            },
+            )
         ));
 
         let selfptr = tray.as_mut() as *mut Tray;
@@ -127,5 +128,3 @@ fn popup_menu<'a>(this: &'a GtkStatusIcon, user_data: u32, button: u32) {
         menu.popup(Option::<&GtkMenu>::None, Option::<&GtkMenu>::None, move |menu, x, y| GtkStatusIcon::position_menu(menu, x, y, this), user_data, button);
     }
 }
-
-default_impls_as!(Tray);
