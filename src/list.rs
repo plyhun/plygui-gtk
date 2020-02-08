@@ -48,6 +48,7 @@ impl<O: controls::List> NewListInner<O> for GtkList {
             items: Vec::new(),
             h_left_clicked: None,
         };
+        li.boxc.set_activate_on_single_click(true);
         li.boxc.connect_row_activated(on_activated::<O>);
         let scr = Object::from(li.base.widget.clone()).downcast::<ScrolledWindow>().unwrap();
         scr.set_policy(PolicyType::Never, PolicyType::Always);

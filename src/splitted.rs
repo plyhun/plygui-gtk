@@ -15,10 +15,8 @@ pub struct GtkSplitted {
 impl GtkSplitted {
     fn update_splitter(&mut self, member: &MemberBase, control: &ControlBase) {
         let self_widget = self.base.widget();
-        let orientation = self.orientation(member);
         
-        println!("{:?}", control.measured);
-        match orientation {
+        match self.orientation(member) {
             layout::Orientation::Horizontal => self_widget.downcast::<Paned>().unwrap().set_position((control.measured.0 as f32 * self.splitter) as i32),
             layout::Orientation::Vertical => self_widget.downcast::<Paned>().unwrap().set_position((control.measured.1 as f32 * self.splitter) as i32),
         }

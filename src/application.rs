@@ -89,8 +89,8 @@ impl development::ApplicationInner for GtkApplication {
         self.trays.retain(|t| GtkWidget::from(t.clone()) != id);
         self.maybe_exit();
     }
-    fn name(&self) -> ::std::borrow::Cow<'_, str> {
-        ::std::borrow::Cow::Borrowed(self.name.as_ref())
+    fn name(&self) -> Cow<str> {
+        Cow::Borrowed(self.name.as_ref())
     }
     fn start(&mut self) {
         {

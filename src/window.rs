@@ -230,20 +230,19 @@ impl MemberInner for GtkWindow {}
 fn on_widget_deleted<'t, 'e>(this: &'t GtkWindowSys, _: &'e gdk::Event) -> glib::signal::Inhibit {
     let mut window = this.clone().upcast::<Widget>();
     let window = common::cast_gtk_widget_to_member_mut::<Window>(&mut window);
+    let mut inhibit = false;
     if let Some(window) = window {
         if !window.inner_mut().inner_mut().inner_mut().inner_mut().skip_callbacks {
             let mut window2 = window.inner_mut().inner_mut().inner_mut().inner_mut().window.clone().upcast::<Widget>();
             let window2 = common::cast_gtk_widget_to_member_mut::<Window>(&mut window2);
             if let Some(window2) = window2 {
                 if let Some(ref mut on_close) = window.inner_mut().inner_mut().inner_mut().inner_mut().on_close {
-                    if !(on_close.as_mut())(window2) {
-                        return glib::signal::Inhibit(true);
-                    }
+                    inhibit = !(on_close.as_mut())(window2);
                 }
             }
         }
     }
-    glib::signal::Inhibit(false)
+    glib::signal::Inhibit(inhibit)
 }
 
 fn on_resize_move(this: &GtkWindowSys, allo: &Rectangle) {
