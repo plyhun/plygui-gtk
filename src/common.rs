@@ -43,13 +43,6 @@ impl From<GtkWidget> for usize {
         aa as usize
     }
 }
-impl From<usize> for GtkWidget {
-    fn from(a: usize) -> GtkWidget {
-        use glib::translate::FromGlibPtrFull;
-
-        unsafe { GtkWidget(Object::from_glib_full(a as *mut GObject)) }
-    }
-}
 impl cmp::PartialOrd for GtkWidget {
     fn partial_cmp(&self, other: &GtkWidget) -> Option<cmp::Ordering> {
         pointer(&self.0).partial_cmp(&pointer(&other.0))
@@ -82,7 +75,13 @@ impl AsMut<Object> for GtkWidget {
         &mut self.0
     }
 }
-impl NativeId for GtkWidget {}
+impl NativeId for GtkWidget {
+	unsafe fn from_outer(a: usize) -> GtkWidget {
+		use glib::translate::FromGlibPtrFull;
+
+        GtkWidget(Object::from_glib_full(a as *mut GObject))
+	}
+}
 
 #[repr(C)]
 pub struct GtkControlBase<T: controls::Control + Sized> {
@@ -219,7 +218,7 @@ pub fn pointer(this: &Object) -> *mut c_void {
     unsafe { ::gobject_sys::g_object_get_data(this.to_glib_none().0, PROPERTY.as_ptr() as *const c_char) as *mut c_void }
 }
 pub fn cast_member_to_gtkwidget(member: &dyn controls::Member) -> GtkWidget {
-    unsafe { member.native_id().into() }
+    unsafe { GtkWidget::from_outer(member.native_id()) }
 }
 pub fn cast_control_to_gtkwidget(control: &dyn controls::Control) -> GtkWidget {
     cast_member_to_gtkwidget(control.as_member())

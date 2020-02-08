@@ -41,7 +41,7 @@ impl CloseableInner for GtkTray {
             .as_any_mut()
             .downcast_mut::<super::application::Application>()
             .unwrap()
-            .as_inner_mut()
+            .inner_mut()
             .remove_tray(self.tray.clone().upcast::<Object>().into());
         true
     }
@@ -65,13 +65,11 @@ impl HasImageInner for GtkTray {
 }
 
 impl TrayInner for GtkTray {
-    fn with_params(title: &str, menu: types::Menu) -> Box<dyn controls::Tray> {
-        use plygui_api::controls::HasLabel;
-
+    fn with_params<S: AsRef<str>>(title: S, menu: types::Menu) -> Box<dyn controls::Tray> {
         let mut tray = Box::new(AMember::with_inner(
             ATray::with_inner(
 		        GtkTray {
-	                tray: GtkStatusIcon::new_from_icon_name(title),
+	                tray: GtkStatusIcon::new_from_icon_name(title.as_ref()),
 	                context_menu: if menu.is_some() { Some(GtkMenu::new()) } else { None },
 	                menu: if menu.is_some() { Vec::new() } else { Vec::with_capacity(0) },
 	                on_close: None,
@@ -81,7 +79,7 @@ impl TrayInner for GtkTray {
 
         let selfptr = tray.as_mut() as *mut Tray;
         {
-            let tray = tray.as_inner_mut();
+            let tray = tray.inner_mut().inner_mut();
             common::set_pointer(&mut tray.tray.clone().upcast::<Object>(), selfptr as *mut std::os::raw::c_void);
 
             if let Some(menu) = menu {
@@ -91,7 +89,7 @@ impl TrayInner for GtkTray {
                     mi.connect_activate(move |this| {
                         let mut t = this.clone().upcast::<Widget>();
                         let t = common::cast_gtk_widget_to_member_mut::<Tray>(&mut t).unwrap();
-                        if let Some(a) = t.as_inner_mut().menu.get_mut(id) {
+                        if let Some(a) = t.inner_mut().inner_mut().menu.get_mut(id) {
                             let t = unsafe { &mut *selfptr };
                             (a.as_mut())(t);
                         }
@@ -104,7 +102,7 @@ impl TrayInner for GtkTray {
             }
             tray.tray.connect_popup_menu(popup_menu);
         }
-        tray.set_label(title.into());
+        controls::HasLabel::set_label(tray.as_mut(), title.as_ref().into());
         tray
     }
 }
@@ -123,7 +121,7 @@ fn popup_menu<'a>(this: &'a GtkStatusIcon, user_data: u32, button: u32) {
     let mut t = this.clone().upcast::<Object>();
     let this: &'static GtkStatusIcon = unsafe { mem::transmute(this) };
     let t = unsafe { common::cast_gobject_mut::<Tray>(&mut t).unwrap() };
-    if let Some(ref mut menu) = t.as_inner_mut().context_menu {
+    if let Some(ref mut menu) = t.inner_mut().inner_mut().context_menu {
         menu.show_all();
         menu.popup(Option::<&GtkMenu>::None, Option::<&GtkMenu>::None, move |menu, x, y| GtkStatusIcon::position_menu(menu, x, y, this), user_data, button);
     }

@@ -14,7 +14,7 @@ pub struct GtkList {
 
 impl GtkList {
     fn add_item_inner(&mut self, base: &mut MemberBase, i: usize, y: &mut i32) {
-        let (member, control, adapter) = List::adapter_base_parts_mut(base);
+        let (member, control, adapter, _) = unsafe { List::adapter_base_parts_mut(base) };
         let (pw, ph) = control.measured;
         let this: &mut List = unsafe { utils::base_to_impl_mut(member) };
         
@@ -26,30 +26,34 @@ impl GtkList {
         self.items.insert(i, item);
         *y += yy as i32;
         
-        this.as_inner_mut().as_inner_mut().as_inner_mut().boxc.insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
+        this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
     }
     fn remove_item_inner(&mut self, base: &mut MemberBase, i: usize) {
         let this: &mut List = unsafe { utils::base_to_impl_mut(base) };
         self.items.remove(i).on_removed_from_container(this); 
-        let row = this.as_inner_mut().as_inner_mut().as_inner_mut().boxc.get_row_at_index(i as i32).unwrap();
+        let row = this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.get_row_at_index(i as i32).unwrap();
         
-        this.as_inner_mut().as_inner_mut().as_inner_mut().boxc.remove(&row);
+        this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.remove(&row);
     }
 }
 impl<O: controls::List> NewListInner<O> for GtkList {
     fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
-        let mut li = reckless::RecklessScrolledWindow::new();
-        let mut li = li.upcast::<Widget>().unwrap();
-        li.connect_size_allocate(on_size_allocate);
+        let ptr = ptr as *mut _ as *mut c_void;
+        let li = reckless::RecklessScrolledWindow::new();
+        let li = li.upcast::<Widget>();
+        li.connect_size_allocate(on_size_allocate::<O>);
         let mut li = GtkList {
             base: common::GtkControlBase::with_gtk_widget(li),
             boxc: ListBox::new(),
             items: Vec::new(),
+            h_left_clicked: None,
         };
-        let scr = li.upcast::<ScrolledWindow>().unwrap();
+        li.boxc.connect_row_activated(on_activated::<O>);
+        let scr = Object::from(li.base.widget.clone()).downcast::<ScrolledWindow>().unwrap();
         scr.set_policy(PolicyType::Never, PolicyType::Always);
-        li.boxc.connect_row_activated(on_activated);
         scr.add(&li.boxc);
+        common::set_pointer(&mut li.boxc.clone().upcast(), ptr);
+        li.base.set_pointer(ptr);  
         li
     }
 }
@@ -77,22 +81,23 @@ impl ListInner for GtkList {
         };
         let (member, _, adapter, list) = unsafe { List::adapter_base_parts_mut(&mut bb.base) };
 
+		let mut y = 0;
         for i in 0..adapter.adapter.len() {
-            list.inner_mut().add_item_inner(member, i);
+            list.inner_mut().add_item_inner(member, i, &mut y);
         }
         bb
 	}
 }
 impl ItemClickableInner for GtkList {
     fn item_click(&mut self, i: usize, item_view: &mut dyn controls::Control, _skip_callbacks: bool) {
-        let mut this = self.base.widget.clone().upcast::<Widget>();
+        let mut this = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
 	    let this = common::cast_gtk_widget_to_member_mut::<List>(&mut this).unwrap();
         if let Some(ref mut callback) = self.h_left_clicked {
             (callback.as_mut())(this, i, item_view)
         }
     }
     fn on_item_click(&mut self, cb: Option<callbacks::OnItemClick>) {
-        self.h_left_clicked.0 = cb;
+        self.h_left_clicked = cb;
     }
 }
 impl AdaptedInner for GtkList {
@@ -183,12 +188,6 @@ impl ControlInner for GtkList {
         self.measure(member, control, pw, ph);
         control.coords = Some((x, y));
         self.draw(member, control);
-        let (member, _, adapter) = List::adapter_base_parts_mut(member);
-
-        let mut y = 0;
-        for i in 0..adapter.adapter.len() {
-            self.add_item_inner(member, i, &mut y);
-        }
     }
     fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &dyn controls::Container) {}
 
@@ -271,15 +270,15 @@ impl Spawnable for GtkList {
     }
 }
 
-fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
+fn on_size_allocate<O: controls::List>(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<List>(&mut ll).unwrap();
 
-    let measured_size = ll.as_inner().base().measured;
-    ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
+    let measured_size = ll.inner().base.measured;
+    ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
     
     let mut y = 0;
-    let list = ll.as_inner_mut().as_inner_mut().as_inner_mut();
+    let list = ll.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut();
     for i in 0..list.items.len() {
         let item = &mut list.items[i];
         let (_, ch, _) = item.measure(cmp::max(0, measured_size.0 as i32) as u16, cmp::max(0, measured_size.1 as i32) as u16);
@@ -287,7 +286,7 @@ fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
         y += ch as i32;
     }
 }
-fn on_activated(this: &ListBox, row: &ListBoxRow) {
+fn on_activated<O: controls::List>(this: &ListBox, row: &ListBoxRow) {
     let i = row.get_index();
     if i < 0 {
         return;
@@ -296,10 +295,10 @@ fn on_activated(this: &ListBox, row: &ListBoxRow) {
     let ll = common::cast_gtk_widget_to_member_mut::<List>(&mut ll).unwrap();
     let mut ll2 = this.clone().upcast::<Widget>();
     let ll2 = common::cast_gtk_widget_to_member_mut::<List>(&mut ll2).unwrap();
-    let item_view = ll.as_inner_mut().as_inner_mut().as_inner_mut().items.get_mut(i as usize).unwrap();
-    if let Some(ref mut callback) = ll2.as_inner_mut().as_inner_mut().base_mut().on_item_click {
+    let item_view = ll.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().items.get_mut(i as usize).unwrap();
+    if let Some(ref mut callback) = ll2.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().h_left_clicked {
         let mut ll2 = this.clone().upcast::<Widget>();
-        let ll2 = common::cast_gtk_widget_to_member_mut::<List>(&mut ll2).unwrap();
+        let ll2 = common::cast_gtk_widget_to_member_mut::<O>(&mut ll2).unwrap();
         (callback.as_mut())(ll2, i as usize, item_view.as_mut());
     }
 }

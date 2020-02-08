@@ -17,11 +17,11 @@ pub struct GtkButton {
 }
 impl<O: controls::Button> NewButtonInner<O> for GtkButton {
     fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
-        let ptr = ptr as *mut _ as u64;
-        let mut btn = reckless::RecklessButton::new();
-        btn.connect_clicked(on_click);
-        let mut btn = btn.upcast::<Widget>().unwrap();
-        btn.connect_size_allocate(on_size_allocate);
+        let ptr = ptr as *mut _ as *mut c_void;
+        let btn = reckless::RecklessButton::new();
+        btn.connect_clicked(on_click::<O>);
+        let btn = btn.upcast::<Widget>();
+        btn.connect_size_allocate(on_size_allocate::<O>);
         let mut btn = GtkButton {
             base: common::GtkControlBase::with_gtk_widget(btn),
             h_left_clicked: None,
@@ -32,7 +32,7 @@ impl<O: controls::Button> NewButtonInner<O> for GtkButton {
     }
 }
 impl ButtonInner for GtkButton {
-    fn with_label(label: &str) -> Box<Button> {
+    fn with_label<S: AsRef<str>>(label: S) -> Box<dyn controls::Button> {
         let mut b: Box<mem::MaybeUninit<Button>> = Box::new_uninit();
         let mut ab = AMember::with_inner(
             AControl::with_inner(
@@ -189,20 +189,20 @@ pub(crate) fn spawn() -> Box<dyn controls::Control> {
     Button::with_label("").into_control()
 }
 
-fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
+fn on_size_allocate<O: controls::Button>(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<Button>(&mut ll).unwrap();
 
-    let measured_size = ll.as_inner().base().measured;
-    ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
+    let measured_size = ll.inner().base.measured;
+    ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
 }
 
-fn on_click(this: &GtkButtonSys) {
+fn on_click<O: controls::Button>(this: &reckless::RecklessButton) {
     let mut b = this.clone().upcast::<Widget>();
     let b = common::cast_gtk_widget_to_member_mut::<Button>(&mut b).unwrap();
-    if let Some(ref mut cb) = b.as_inner_mut().as_inner_mut().h_left_clicked {
+    if let Some(ref mut cb) = b.inner_mut().inner_mut().inner_mut().h_left_clicked {
         let mut w2 = this.clone().upcast::<Widget>();
-        let w2 = common::cast_gtk_widget_to_member_mut::<Button>(&mut w2).unwrap();
+        let w2 = common::cast_gtk_widget_to_member_mut::<O>(&mut w2).unwrap();
         (cb.as_mut())(w2);
     }
 }

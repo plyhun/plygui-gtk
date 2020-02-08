@@ -13,10 +13,11 @@ pub struct GtkImage {
 }
 impl<O: controls::Image> NewImageInner<O> for GtkImage {
     fn with_uninit_params(ptr: &mut mem::MaybeUninit<O>, content: image::DynamicImage) -> Self {
+        let ptr = ptr as *mut _ as *mut c_void;
         let pixbuf = common::image_to_pixbuf(&content);
-        let mut i = GtkImageSys::new_from_pixbuf(Some(&pixbuf));
-        let mut i = i.upcast::<Widget>().unwrap();
-        i.connect_size_allocate(on_size_allocate);
+        let i = GtkImageSys::new_from_pixbuf(Some(&pixbuf));
+        let i = i.upcast::<Widget>();
+        i.connect_size_allocate(on_size_allocate::<O>);
         i.connect_show(on_show);
         let mut i = GtkImage {
             base: GtkControlBase::with_gtk_widget(i),
@@ -213,19 +214,19 @@ fn on_show(this: &::gtk::Widget) {
     let ll1 = cast_gtk_widget_to_member_mut::<Image>(&mut ll1).unwrap();
     let ll2 = cast_gtk_widget_to_member_mut::<Image>(&mut ll2).unwrap();
 
-    ll1.as_inner_mut().as_inner_mut().apply_sized_image(ll2.as_inner().base());
+    ll1.inner_mut().inner_mut().inner_mut().apply_sized_image(&mut ll2.inner_mut().base);
 }
 
-fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
+fn on_size_allocate<O: controls::Image>(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let mut ll1 = this.clone().upcast::<Widget>();
     let mut ll2 = this.clone().upcast::<Widget>();
     let ll1 = cast_gtk_widget_to_member_mut::<Image>(&mut ll1).unwrap();
     let ll2 = cast_gtk_widget_to_member_mut::<Image>(&mut ll2).unwrap();
 
-    ll1.as_inner_mut().as_inner_mut().apply_sized_image(ll2.as_inner().base());
+    ll1.inner_mut().inner_mut().inner_mut().apply_sized_image(&mut ll2.inner_mut().base);
 
-    let measured_size = ll1.as_inner().base().measured;
-    ll1.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
+    let measured_size = ll1.inner().base.measured;
+    ll1.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
 }
 
 fn fmin(a: f32, b: f32) -> f32 {

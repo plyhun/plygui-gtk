@@ -13,9 +13,9 @@ pub struct GtkSplitted {
 }
 
 impl GtkSplitted {
-    fn update_splitter(&mut self, control: &ControlBase) {
+    fn update_splitter(&mut self, member: &MemberBase, control: &ControlBase) {
         let self_widget = self.base.widget();
-        let orientation = self.layout_orientation();
+        let orientation = self.orientation(member);
         
         println!("{:?}", control.measured);
         match orientation {
@@ -23,10 +23,10 @@ impl GtkSplitted {
             layout::Orientation::Vertical => self_widget.downcast::<Paned>().unwrap().set_position((control.measured.1 as f32 * self.splitter) as i32),
         }
     }
-    fn children_sizes(&self, control: &ControlBase) -> (u16, u16) {
+    fn children_sizes(&self, member: &MemberBase, control: &ControlBase) -> (u16, u16) {
         let (w, h) = control.measured;
         let self_widget = self.base.widget();
-        let o = self.layout_orientation();
+        let o = self.orientation(member);
         let handle = 6; // no access to handle-size
         let (target, start, end) = match o {
             layout::Orientation::Horizontal => (w, self_widget.get_margin_start(), self_widget.get_margin_end()),
@@ -37,10 +37,10 @@ impl GtkSplitted {
             utils::coord_to_size((target as f32 * (1.0 - self.splitter)) as i32 - end - (handle / 2)),
         )
     }
-    fn update_children_layout(&mut self, base: &ControlBase) -> (u16, u16) {
-        let orientation = self.layout_orientation();
-        let (first_size, second_size) = self.children_sizes(base);
-        let (width, height) = base.measured;
+    fn update_children_layout(&mut self, member: &MemberBase, control: &ControlBase) -> (u16, u16) {
+        let orientation = self.orientation(member);
+        let (first_size, second_size) = self.children_sizes(member, control);
+        let (width, height) = control.measured;
         let (lm, tm, rm, bm) = self.base.margins().into();
         let mut w = 0;
         let mut h = 0;
@@ -63,13 +63,15 @@ impl GtkSplitted {
 }
 impl<O: controls::Splitted> NewSplittedInner<O> for GtkSplitted {
     fn with_uninit_params(ptr: &mut mem::MaybeUninit<O>, mut first: Box<dyn controls::Control>, mut second: Box<dyn controls::Control>, orientation: layout::Orientation) -> Self {
-    	let mut sp = reckless::RecklessPaned::new();
+    	let ptr = ptr as *mut _ as *mut c_void;
+        let sp = reckless::RecklessPaned::new();
+        let sp = sp.upcast::<Paned>();
     	sp.set_orientation(common::orientation_to_gtk(orientation));
         sp.pack1(&Object::from(common::cast_control_to_gtkwidget(first.as_mut())).downcast::<Widget>().unwrap(), false, true);
         sp.pack2(&Object::from(common::cast_control_to_gtkwidget(second.as_mut())).downcast::<Widget>().unwrap(), false, true);
         sp.connect_property_position_notify(on_property_position_notify);
-        let mut sp = sp.upcast::<Widget>().unwrap();
-        sp.connect_size_allocate(on_size_allocate);
+        let sp = sp.upcast::<Widget>();
+        sp.connect_size_allocate(on_size_allocate::<O>);
         let mut sp = GtkSplitted {
             base: common::GtkControlBase::with_gtk_widget(sp),
             first: first,
@@ -81,7 +83,7 @@ impl<O: controls::Splitted> NewSplittedInner<O> for GtkSplitted {
     }
 }
 impl SplittedInner for GtkSplitted {
-    fn with_content(first: Box<dyn controls::Control>, second: Box<dyn controls::Control>, orientation: layout::Orientation) -> Box<Splitted> {
+    fn with_content(first: Box<dyn controls::Control>, second: Box<dyn controls::Control>, orientation: layout::Orientation) -> Box<dyn controls::Splitted> {
         let mut b: Box<mem::MaybeUninit<Splitted>> = Box::new_uninit();
         let ab = AMember::with_inner(
             AControl::with_inner(
@@ -102,8 +104,8 @@ impl SplittedInner for GtkSplitted {
     fn set_splitter(&mut self, base: &mut MemberBase, pos: f32) {
         let pos = pos % 1.0;
         self.splitter = pos;
-        let (_, control) = Splitted::control_base_parts_mut(base);
-        self.update_splitter(control);
+        let (member, control, _) = unsafe { Splitted::control_base_parts_mut(base) };
+        self.update_splitter(member, control);
     }
     fn splitter(&self) -> f32 {
         self.splitter
@@ -152,12 +154,12 @@ impl Drawable for GtkSplitted {
         self.first.draw(Some((0, 0)));
         self.second.draw(Some((0, 0)));
     }
-    fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
+    fn measure(&mut self, member: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
         let old_size = control.measured;
         control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
-                let (w, h) = self.update_children_layout(control);
+                let (w, h) = self.update_children_layout(member, control);
                 let w = match control.layout.width {
                     layout::Size::Exact(w) => w,
                     layout::Size::MatchParent => parent_width,
@@ -180,8 +182,8 @@ impl Drawable for GtkSplitted {
 
 impl HasLayoutInner for GtkSplitted {
     fn on_layout_changed(&mut self, base: &mut MemberBase) {
-        let control = unsafe { utils::base_to_impl_mut::<Splitted>(base).as_inner_mut().base_mut() };
-        self.update_splitter(control);
+        let (member, control, _) = unsafe { Splitted::control_base_parts_mut(base) };
+        self.update_splitter(member, control);
         self.base.invalidate();
     }
 }
@@ -189,13 +191,13 @@ impl HasLayoutInner for GtkSplitted {
 impl ControlInner for GtkSplitted {
     fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &dyn controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
         control.measured = (pw, ph); // for update_splitter only
-        self.update_splitter(control);
+        self.update_splitter(member, control);
         self.measure(member, control, pw, ph);
         control.coords = Some((x, y));
         self.draw(member, control);
 
-        let (first, second) = self.children_sizes(control);
-        let o = self.layout_orientation();
+        let (first, second) = self.children_sizes(member, control);
+        let o = self.orientation(member);
         let (lm, tm, rm, bm) = self.base.margins().into();
         let self2 = self.base.as_control();
 
@@ -242,7 +244,7 @@ impl ControlInner for GtkSplitted {
 }
 
 impl HasOrientationInner for GtkSplitted {
-    fn orientation(&self) -> layout::Orientation {
+    fn orientation(&self, _: &MemberBase) -> layout::Orientation {
         let gtk_self = Object::from(self.base.widget.clone()).downcast::<Paned>().unwrap();
         common::gtk_to_orientation(gtk_self.get_orientation())
     }
@@ -336,14 +338,15 @@ impl MultiContainerInner for GtkSplitted {
     fn len(&self) -> usize {
         2
     }
-    fn set_child_to(&mut self, _: &mut MemberBase, index: usize, mut child: Box<dyn controls::Control>) -> Option<Box<dyn controls::Control>> {
-        let self2 = self.base.as_control();
+    fn set_child_to(&mut self, member: &mut MemberBase, index: usize, mut child: Box<dyn controls::Control>) -> Option<Box<dyn controls::Control>> {
+         let (member, control, _) = unsafe { Splitted::control_base_parts_mut(member) };
 
-        let (pw, ph) = self2.as_inner().base().measured;
-        let orientation = self.layout_orientation();
-        let (first, second) = self.children_sizes(self2.as_inner().base());
+        let (pw, ph) = control.measured;
+        let orientation = self.orientation(member);
+        let (first, second) = self.children_sizes(member, control);
         let (lm, tm, rm, bm) = self.base.margins().into();
         let gtk_self = Object::from(self.base.widget.clone()).downcast::<Paned>().unwrap();
+        let self2 = self.base.as_control_mut();
         {
             match index {
                 0 => {
@@ -408,14 +411,14 @@ impl Spawnable for GtkSplitted {
     }
 }
 
-fn on_size_allocate(this: &::gtk::Widget, _: &::gtk::Rectangle) {
+fn on_size_allocate<O: controls::Splitted>(this: &::gtk::Widget, _: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut ll).unwrap();
 
-    let measured_size = ll.as_inner().base().measured;
-    ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
+    let measured_size = ll.inner().base.measured;
+    ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
 }
-fn on_property_position_notify(this: &::gtk::Paned) {
+fn on_property_position_notify(this: &Paned) {
     use plygui_api::controls::{HasSize};
 
     let position = this.get_position();
@@ -425,7 +428,7 @@ fn on_property_position_notify(this: &::gtk::Paned) {
 
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<Splitted>(&mut ll).unwrap();
-    let orientation = ll.layout_orientation();
+    let orientation = controls::HasOrientation::orientation(ll);
     let (width, height) = ll.size();
     let splitter = position as f32
         / match orientation {
@@ -444,9 +447,8 @@ fn on_property_position_notify(this: &::gtk::Paned) {
                 }
             }
         };
-    let member = unsafe { &mut *(ll.base_mut() as *mut MemberBase) };
-    let control = unsafe { &mut *(ll.as_inner_mut().base_mut() as *mut ControlBase) };
-    let ll = ll.as_inner_mut().as_inner_mut().as_inner_mut();
+    let (member, control, ll) = ll.as_control_parts_mut();
+    let ll = ll.inner_mut().inner_mut().inner_mut();
     ll.splitter = splitter;
     ll.measure(member, control, width, height);
     ll.first.draw(Some((0,0)));

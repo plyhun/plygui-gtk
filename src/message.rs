@@ -12,7 +12,7 @@ pub struct GtkMessage {
 pub type Message = AMember<AMessage<GtkMessage>>;
 
 impl MessageInner for GtkMessage {
-    fn with_actions(content: types::TextContent, severity: types::MessageSeverity, actions: Vec<(String, callbacks::Action)>, parent: Option<&dyn controls::Member>) -> Box<Message> {
+    fn with_actions(content: types::TextContent, severity: types::MessageSeverity, actions: Vec<(String, callbacks::Action)>, parent: Option<&dyn controls::Member>) -> Box<dyn controls::Message> {
         let parent = parent.map(|parent| Object::from(common::cast_member_to_gtkwidget(parent)).downcast::<Widget>().unwrap().get_toplevel().unwrap().downcast::<gtk::Window>().unwrap());
 
         let mut message = Box::new(AMember::with_inner(
@@ -36,7 +36,7 @@ impl MessageInner for GtkMessage {
         let ptr = message.as_ref() as *const _ as *mut std::os::raw::c_void;
 
         {
-            let message = message.as_inner_mut();
+            let message = message.inner_mut().inner_mut();
             common::set_pointer(&mut message.message.clone().upcast(), ptr);
             message.message.connect_response(on_response);
 
@@ -99,9 +99,9 @@ fn on_response(this: &MessageDialog, r: i32) {
     let mut message = this.clone().upcast::<Widget>();
     let message = common::cast_gtk_widget_to_member_mut::<Message>(&mut message);
     if let Some(message) = message {
-        let mut message2 = message.as_inner_mut().message.clone().upcast::<Widget>();
+        let mut message2 = message.inner_mut().inner_mut().message.clone().upcast::<Widget>();
         let message2 = common::cast_gtk_widget_to_member_mut::<Message>(&mut message2);
-        if let Some(action) = message.as_inner_mut().actions.get_mut(r as usize) {
+        if let Some(action) = message.inner_mut().inner_mut().actions.get_mut(r as usize) {
             if let Some(message2) = message2 {
                 (action.1.as_mut())(message2);
             }

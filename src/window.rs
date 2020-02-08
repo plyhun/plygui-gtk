@@ -47,9 +47,7 @@ impl CloseableInner for GtkWindow {
 }
 
 impl WindowInner for GtkWindow {
-    fn with_params(title: &str, start_size: types::WindowStartSize, menu: types::Menu) -> Box<dyn controls::Window> {
-        use plygui_api::controls::HasLabel;
-
+    fn with_params<S: AsRef<str>>(title: S, start_size: types::WindowStartSize, menu: types::Menu) -> Box<dyn controls::Window> {
         let mut window = Box::new(AMember::with_inner(
             AContainer::with_inner(
 	            ASingleContainer::with_inner(
@@ -72,7 +70,7 @@ impl WindowInner for GtkWindow {
         let selfptr = window.as_mut() as *mut Window;
 
         {
-            let window = window.as_inner_mut().as_inner_mut().as_inner_mut();
+            let window = window.inner_mut().inner_mut().inner_mut().inner_mut();
             common::set_pointer(&mut window.window.clone().upcast::<Object>(), selfptr as *mut std::os::raw::c_void);
 
             if let Some(menu) = menu {
@@ -82,7 +80,7 @@ impl WindowInner for GtkWindow {
                     mi.connect_activate(move |this| {
                         let mut w = this.clone().upcast::<Widget>();
                         let w = common::cast_gtk_widget_to_member_mut::<Window>(&mut w).unwrap();
-                        if let Some(a) = w.as_inner_mut().as_inner_mut().as_inner_mut().menu.get_mut(id) {
+                        if let Some(a) = w.inner_mut().inner_mut().inner_mut().inner_mut().menu.get_mut(id) {
                             let w = unsafe { &mut *selfptr };
                             (a.as_mut())(w);
                         }
@@ -114,7 +112,7 @@ impl WindowInner for GtkWindow {
                     .as_any_mut()
                     .downcast_mut::<super::application::Application>()
                     .unwrap()
-                    .as_inner_mut()
+                    .inner_mut()
                     .remove_window(this.clone().upcast::<Object>().into());
             });
             window.window.connect_delete_event(on_widget_deleted);
@@ -122,7 +120,7 @@ impl WindowInner for GtkWindow {
             window.container.show();
         }
         
-        window.set_label(title.into());
+        controls::HasLabel::set_label(window.as_mut(), title.as_ref().into());
         window
     }
     fn size(&self) -> (u16, u16) {
@@ -233,11 +231,11 @@ fn on_widget_deleted<'t, 'e>(this: &'t GtkWindowSys, _: &'e gdk::Event) -> glib:
     let mut window = this.clone().upcast::<Widget>();
     let window = common::cast_gtk_widget_to_member_mut::<Window>(&mut window);
     if let Some(window) = window {
-        if !window.as_inner_mut().as_inner_mut().as_inner_mut().skip_callbacks {
-            let mut window2 = window.as_inner_mut().as_inner_mut().as_inner_mut().window.clone().upcast::<Widget>();
+        if !window.inner_mut().inner_mut().inner_mut().inner_mut().skip_callbacks {
+            let mut window2 = window.inner_mut().inner_mut().inner_mut().inner_mut().window.clone().upcast::<Widget>();
             let window2 = common::cast_gtk_widget_to_member_mut::<Window>(&mut window2);
             if let Some(window2) = window2 {
-                if let Some(ref mut on_close) = window.as_inner_mut().as_inner_mut().as_inner_mut().on_close {
+                if let Some(ref mut on_close) = window.inner_mut().inner_mut().inner_mut().inner_mut().on_close {
                     if !(on_close.as_mut())(window2) {
                         return glib::signal::Inhibit(true);
                     }
@@ -252,15 +250,15 @@ fn on_resize_move(this: &GtkWindowSys, allo: &Rectangle) {
     let mut window = this.clone().upcast::<Widget>();
     let window = common::cast_gtk_widget_to_member_mut::<Window>(&mut window);
     if let Some(window) = window {
-        let (width, mut height) = window.as_inner().as_inner().as_inner().size;
-        if let Some(ref menu) = window.as_inner().as_inner().as_inner().menu_bar {
+        let (width, mut height) = window.inner().inner().inner().inner().size;
+        if let Some(ref menu) = window.inner().inner().inner().inner().menu_bar {
             let allo = menu.get_allocation();
             height -= allo.height;
         }
         
         if width != allo.width || height != allo.height {
-            window.as_inner_mut().as_inner_mut().as_inner_mut().size = (cmp::max(0, allo.width), cmp::max(0, allo.height));
-            if let Some(ref mut child) = window.as_inner_mut().as_inner_mut().as_inner_mut().child {
+            window.inner_mut().inner_mut().inner_mut().inner_mut().size = (cmp::max(0, allo.width), cmp::max(0, allo.height));
+            if let Some(ref mut child) = window.inner_mut().inner_mut().inner_mut().inner_mut().child {
                 child.measure(width as u16, height as u16);
                 child.draw(Some((0, 0)));
             }

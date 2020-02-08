@@ -9,11 +9,11 @@ pub struct GtkProgressBar {
 }
 impl<O: controls::ProgressBar> NewProgressBarInner<O> for GtkProgressBar {
     fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
-    	let ptr = ptr as *mut _ as u64;
-        let mut pb = reckless::RecklessProgressBar::new();
+    	let ptr = ptr as *mut _ as *mut c_void;
+        let pb = reckless::RecklessProgressBar::new();
         pb.set_show_text(false);
-        let mut pb = pb.upcast::<Widget>().unwrap();
-        pb.connect_size_allocate(on_size_allocate);
+        let pb = pb.upcast::<Widget>();
+        pb.connect_size_allocate(on_size_allocate::<O>);
         let mut pb = GtkProgressBar {
             base: common::GtkControlBase::with_gtk_widget(pb),
         };
@@ -176,10 +176,10 @@ impl Spawnable for GtkProgressBar {
     }
 }
 
-fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
+fn on_size_allocate<O: controls::ProgressBar>(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<ProgressBar>(&mut ll).unwrap();
 
-    let measured_size = ll.as_inner().base().measured;
-    ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
+    let measured_size = ll.inner().base.measured;
+    ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
 }

@@ -13,10 +13,10 @@ pub struct GtkText {
 }
 impl<O: controls::Text> NewTextInner<O> for GtkText {
     fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
-        let tx = ptr as *mut _ as u64;
-        let mut tx = reckless::RecklessLabel::new();
-        let mut tx = tx.upcast::<Widget>().unwrap();
-        tx.connect_size_allocate(on_size_allocate);
+        let ptr = ptr as *mut _ as *mut c_void;
+        let tx = reckless::RecklessLabel::new();
+        let tx = tx.upcast::<Widget>();
+        tx.connect_size_allocate(on_size_allocate::<O>);
         let mut tx = GtkText {
             base: common::GtkControlBase::with_gtk_widget(tx),
         };
@@ -159,11 +159,11 @@ impl Spawnable for GtkText {
     }
 }
 
-fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
+fn on_size_allocate<O: controls::Text>(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<Text>(&mut ll).unwrap();
 
-    let measured_size = ll.as_inner().base().measured;
-    ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
+    let measured_size = ll.inner().base.measured;
+    ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
 }
 

@@ -14,9 +14,10 @@ pub struct GtkFrame {
 }
 impl<O: controls::Frame> NewFrameInner<O> for GtkFrame {
     fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
-        let mut fr = reckless::RecklessFrame::new();
-        let mut fr = fr.upcast::<Widget>().unwrap();
-        fr.connect_size_allocate(on_size_allocate);
+        let ptr = ptr as *mut _ as *mut c_void;
+        let fr = reckless::RecklessFrame::new();
+        let fr = fr.upcast::<Widget>();
+        fr.connect_size_allocate(on_size_allocate::<O>);
         let mut fr = GtkFrame {
             base: common::GtkControlBase::with_gtk_widget(fr),
             child: None,
@@ -26,7 +27,7 @@ impl<O: controls::Frame> NewFrameInner<O> for GtkFrame {
     }
 }
 impl FrameInner for GtkFrame {
-    fn with_label(label: &str) -> Box<Frame> {
+    fn with_label<S: AsRef<str>>(label: S) -> Box<dyn controls::Frame> {
         let mut b: Box<mem::MaybeUninit<Frame>> = Box::new_uninit();
         let mut ab = AMember::with_inner(
             AControl::with_inner(
@@ -51,12 +52,12 @@ impl SingleContainerInner for GtkFrame {
     fn set_child(&mut self, base: &mut MemberBase, mut child: Option<Box<dyn controls::Control>>) -> Option<Box<dyn controls::Control>> {
         let mut old = self.child.take();
         let this = unsafe { utils::base_to_impl_mut::<Frame>(base) };
-        let (pw, ph) = this.as_inner().base().measured;
+        let (pw, ph) = this.inner().base.measured;
         let frame_sys = Object::from(self.base.widget.clone()).downcast::<GtkFrameSys>().unwrap();
         if let Some(old) = old.as_mut() {
-            let old_sys: common::GtkWidget = unsafe { old.native_id() }.into();
+            let old_sys: common::GtkWidget = unsafe { common::GtkWidget::from_outer(old.native_id()) };
             frame_sys.remove(&Object::from(old_sys).downcast::<Widget>().unwrap());
-            if this.as_inner().base().coords.is_some() {
+            if this.inner().base.coords.is_some() {
                 old.on_removed_from_container(this);
             }
         }
@@ -64,7 +65,7 @@ impl SingleContainerInner for GtkFrame {
             let widget = common::cast_control_to_gtkwidget(new.as_ref());
             frame_sys.add(&Object::from(widget).downcast::<Widget>().unwrap());
             let self_widget = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
-            if this.as_inner().base().coords.is_some() {
+            if this.inner().base.coords.is_some() {
                 new.on_added_to_container(
                     this,
                     0,
@@ -296,10 +297,10 @@ pub(crate) fn spawn() -> Box<dyn controls::Control> {
     Frame::with_label("").into_control()
 }
 
-fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
+fn on_size_allocate<O: controls::Frame>(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<Frame>(&mut ll).unwrap();
 
-    let measured_size = ll.as_inner().base().measured;
-    ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
+    let measured_size = ll.inner().base.measured;
+    ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
 }

@@ -11,9 +11,10 @@ pub struct GtkLinearLayout {
 }
 impl<O: controls::LinearLayout> NewLinearLayoutInner<O> for GtkLinearLayout {
     fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
-        let mut ll = reckless::RecklessFrame::new();
-        let mut ll = ll.upcast::<Widget>().unwrap();
-        ll.connect_size_allocate(on_size_allocate);
+        let ptr = ptr as *mut _ as *mut c_void;
+        let ll = reckless::RecklessBox::new();
+        let ll = ll.upcast::<Widget>();
+        ll.connect_size_allocate(on_size_allocate::<O>);
         let mut ll = GtkLinearLayout {
             base: common::GtkControlBase::with_gtk_widget(ll),
             children: Vec::new(),
@@ -74,8 +75,8 @@ impl Drawable for GtkLinearLayout {
             child.draw(Some((0, 0)));
         }
     }
-    fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
-        let orientation = self.layout_orientation();
+    fn measure(&mut self, member: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
+        let orientation = self.orientation(member);
         let old_size = control.measured;
         
         control.measured = match control.visibility {
@@ -132,7 +133,7 @@ impl ControlInner for GtkLinearLayout {
         self.measure(member, control, pw, ph);
         control.coords = Some((x, y));
         self.draw(member, control);
-        let o = self.layout_orientation();
+        let o = self.orientation(member);
 	    let (lm, tm, rm, bm) = self.base.margins().into();
         let self2 = self.base.as_control();
         let mut x = 0;
@@ -182,7 +183,7 @@ impl ControlInner for GtkLinearLayout {
 }
 
 impl HasOrientationInner for GtkLinearLayout {
-    fn orientation(&self) -> layout::Orientation {
+    fn orientation(&self, _: &MemberBase) -> layout::Orientation {
         let gtk_self = Object::from(self.base.widget.clone()).downcast::<GtkBox>().unwrap();
         common::gtk_to_orientation(gtk_self.get_orientation())
     }
@@ -257,7 +258,7 @@ impl MultiContainerInner for GtkLinearLayout {
         self.children.insert(index, child);
         let old = if (index + 1) < self.children.len() {
             let mut old = self.children.remove(index + 1);
-            if self2.as_inner().base().coords.is_some() {
+            if self2.inner().base.coords.is_some() {
                 old.on_removed_from_container(self2);
             }
             Some(old)
@@ -268,8 +269,8 @@ impl MultiContainerInner for GtkLinearLayout {
         let widget = common::cast_control_to_gtkwidget(self.children.get_mut(index).unwrap().as_mut());
         let widget = Object::from(widget).downcast::<Widget>().unwrap();
         Object::from(self.base.widget.clone()).downcast::<GtkBox>().unwrap().add(&widget);
-        if self2.as_inner().base().coords.is_some() {
-            let (pw, ph) = self2.as_inner().base().measured;
+        if self2.inner().base.coords.is_some() {
+            let (pw, ph) = self2.inner().base.measured;
             let self_widget = self.base.widget();
             self.children.get_mut(index).unwrap().on_added_to_container(
                 self2,
@@ -313,19 +314,19 @@ impl Spawnable for GtkLinearLayout {
     }
 }
 
-fn on_size_allocate(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
+fn on_size_allocate<O: controls::LinearLayout>(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<LinearLayout>(&mut ll).unwrap();
 
-    let measured_size = ll.as_inner_mut().base().measured;
-    ll.call_on_size(measured_size.0 as u16, measured_size.1 as u16);
+    let measured_size = ll.inner_mut().base.measured;
+    ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
     
     let mut x = 0;
     let mut y = 0;
-    let list = ll.as_inner_mut().as_inner_mut().as_inner_mut();
-    let o = list.layout_orientation();
-    for i in 0..list.children.len() {
-        let item = &mut list.children[i];
+    let o = controls::HasOrientation::orientation(ll);
+    let ll = ll.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut();
+    for i in 0..ll.children.len() {
+        let item = &mut ll.children[i];
         match o {
             layout::Orientation::Horizontal => {
                 let (cw, _, _) = item.measure(cmp::max(0, measured_size.0 as i32 - x) as u16, cmp::max(0, measured_size.1 as i32) as u16);
