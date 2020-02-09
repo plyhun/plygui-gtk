@@ -1,13 +1,13 @@
 use crate::common::{self, *};
 
-use gtk::{ListBox, ListBoxExt, ContainerExt, ListBoxRow, ListBoxRowExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
+use gtk::{ListBoxExt, ContainerExt, ListBoxRow, ListBoxRowExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
 
 pub type List = AMember<AControl<AContainer<AAdapted<AList<GtkList>>>>>;
 
 #[repr(C)]
 pub struct GtkList {
     base: GtkControlBase<List>,
-    boxc: ListBox,
+    boxc: reckless::RecklessListBox,
     items: Vec<Box<dyn controls::Control>>,
     h_left_clicked: Option<callbacks::OnItemClick>,
 }
@@ -44,7 +44,7 @@ impl<O: controls::List> NewListInner<O> for GtkList {
         li.connect_size_allocate(on_size_allocate::<O>);
         let mut li = GtkList {
             base: common::GtkControlBase::with_gtk_widget(li),
-            boxc: ListBox::new(),
+            boxc: reckless::RecklessListBox::new(),
             items: Vec::new(),
             h_left_clicked: None,
         };
@@ -238,7 +238,15 @@ impl MemberInner for GtkList {}
 
 impl Drawable for GtkList {
     fn draw(&mut self, _: &mut MemberBase, control: &mut ControlBase) {
+        let mut y = 0;
+        for i in 0..self.items.len() {
+            let item = &mut self.items[i];
+            let (_, ch, _) = item.measure(control.measured.0, utils::coord_to_size(control.measured.1 as i32 - y));
+            item.draw(Some((0, y)));
+            y += ch as i32;
+        }
         self.base.draw(control);
+        self.boxc.set_size_request(control.measured.0 as i32, control.measured.1 as i32);
         self.boxc.show();
     }
     fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
@@ -277,17 +285,8 @@ fn on_size_allocate<O: controls::List>(this: &::gtk::Widget, _allo: &::gtk::Rect
 
     let measured_size = ll.inner().base.measured;
     ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
-    
-    let mut y = 0;
-    let list = ll.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut();
-    for i in 0..list.items.len() {
-        let item = &mut list.items[i];
-        let (_, ch, _) = item.measure(cmp::max(0, measured_size.0 as i32) as u16, cmp::max(0, measured_size.1 as i32) as u16);
-        item.draw(Some((0, y)));
-        y += ch as i32;
-    }
 }
-fn on_activated<O: controls::List>(this: &ListBox, row: &ListBoxRow) {
+fn on_activated<O: controls::List>(this: &reckless::RecklessListBox, row: &ListBoxRow) {
     let i = row.get_index();
     if i < 0 {
         return;

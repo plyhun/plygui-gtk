@@ -1,6 +1,6 @@
 use crate::common::{self, *};
 
-use gtk::{Box as GtkBox, Cast, ContainerExt, OrientableExt, Widget, WidgetExt};
+use gtk::{Box as GtkBox, BoxExt, Cast, ContainerExt, OrientableExt, Widget, WidgetExt};
 
 pub type LinearLayout = AMember<AControl<AContainer<AMultiContainer<ALinearLayout<GtkLinearLayout>>>>>;
 
@@ -255,10 +255,14 @@ impl MultiContainerInner for GtkLinearLayout {
     }
     fn set_child_to(&mut self, base: &mut MemberBase, index: usize, child: Box<dyn controls::Control>) -> Option<Box<dyn controls::Control>> {
         let self2 = unsafe { utils::base_to_impl_mut::<LinearLayout>(base) };
-
+        let boxc = Object::from(self.base.widget.clone()).downcast::<GtkBox>().unwrap();
+        
         self.children.insert(index, child);
         let old = if (index + 1) < self.children.len() {
             let mut old = self.children.remove(index + 1);
+            let widget = common::cast_control_to_gtkwidget(old.as_mut());
+            let widget = Object::from(widget).downcast::<Widget>().unwrap();
+            boxc.remove(&widget);
             if self2.inner().base.coords.is_some() {
                 old.on_removed_from_container(self2);
             }
@@ -269,7 +273,8 @@ impl MultiContainerInner for GtkLinearLayout {
 
         let widget = common::cast_control_to_gtkwidget(self.children.get_mut(index).unwrap().as_mut());
         let widget = Object::from(widget).downcast::<Widget>().unwrap();
-        Object::from(self.base.widget.clone()).downcast::<GtkBox>().unwrap().add(&widget);
+        boxc.add(&widget);
+        boxc.set_child_position(&widget, index as i32);
         if self2.inner().base.coords.is_some() {
             let (pw, ph) = self2.inner().base.measured;
             let self_widget = self.base.widget();

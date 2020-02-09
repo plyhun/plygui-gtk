@@ -451,4 +451,6 @@ fn on_property_position_notify(this: &Paned) {
     ll.measure(member, control, width, height);
     ll.first.draw(Some((0,0)));
     ll.second.draw(Some((0,0)));
+    
+    this.get_toplevel().unwrap().queue_resize(); // TODO WHY????
 }

@@ -1,6 +1,6 @@
 use crate::common::{self, *};
 
-use gtk::{BinExt, Box as GtkBox, ContainerExt, GtkWindowExt, MenuBar as GtkMenuBar, OrientableExt, Rectangle, Widget, Window as GtkWindowSys, WindowType};
+use gtk::{BoxExt, Box as GtkBox, ContainerExt, GtkWindowExt, MenuBar as GtkMenuBar, OrientableExt, Rectangle, Widget, Window as GtkWindowSys, WindowType};
 
 #[repr(C)]
 pub struct GtkWindow {
@@ -89,7 +89,7 @@ impl WindowInner for GtkWindow {
                 };
 
                 let menu_bar = window.menu_bar.as_ref().unwrap();
-                common::make_menu(menu_bar.clone().upcast(), menu, &mut window.menu, item_spawn, selfptr);
+                common::make_menu(menu_bar.clone().upcast::<GtkMenuBar>().upcast(), menu, &mut window.menu, item_spawn, selfptr);
                 window.container.add(menu_bar);
                 menu_bar.show_all();
             }
@@ -144,16 +144,19 @@ impl HasLabelInner for GtkWindow {
 impl SingleContainerInner for GtkWindow {
     fn set_child(&mut self, base: &mut MemberBase, mut child: Option<Box<dyn controls::Control>>) -> Option<Box<dyn controls::Control>> {
         let mut old = self.child.take();
+        let index = if self.menu_bar.is_some() { 1 } else { 0 };
         if let Some(old) = old.as_mut() {
-            for child in self.container.get_children().as_slice() {
-                self.container.remove(child);
-            }
+            let widget = common::cast_control_to_gtkwidget(old.as_mut());
+            let widget = Object::from(widget).downcast::<Widget>().unwrap();
+            self.container.remove(&widget);
             let self2 = unsafe { utils::base_to_impl_mut::<Window>(base) };
             old.on_removed_from_container(self2);
         }
         if let Some(new) = child.as_mut() {
             let widget = common::cast_control_to_gtkwidget(new.as_ref());
-            self.window.get_child().unwrap().downcast::<GtkBox>().unwrap().add(&Object::from(widget).downcast::<Widget>().unwrap());
+            self.container.add(&Object::from(widget).downcast::<Widget>().unwrap());
+            let widget = common::cast_control_to_gtkwidget(new.as_ref());
+            self.container.set_child_position(&Object::from(widget).downcast::<Widget>().unwrap(), index);
             let (pw, ph) = self.size();
             let self2 = unsafe { utils::base_to_impl_mut::<Window>(base) };
             new.on_added_to_container(
