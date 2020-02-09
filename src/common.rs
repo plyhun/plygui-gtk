@@ -179,7 +179,7 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
                     1
                 },
                 layout::Size::WrapContent => {
-                    widget.set_halign(Align::Center);
+                    widget.set_valign(Align::Center);
                     1
                 },
                 layout::Size::Exact(v) => {
