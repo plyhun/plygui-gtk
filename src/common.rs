@@ -4,7 +4,7 @@ pub use plygui_api::{callbacks, controls, defaults, ids, layout, types, utils};
 pub use glib::translate::ToGlibPtr;
 pub use glib::Object;
 pub use gobject_sys::GObject;
-pub use gtk::{Cast, Menu as GtkMenu, MenuItem as GtkMenuItem, MenuItemExt, MenuShell as GtkMenuShell, MenuShellExt, Orientation as GtkOrientation, SeparatorMenuItem as GtkSeparatorMenuItem, Widget, WidgetExt};
+pub use gtk::{Align, Cast, Menu as GtkMenu, MenuItem as GtkMenuItem, MenuItemExt, MenuShell as GtkMenuShell, MenuShellExt, Orientation as GtkOrientation, SeparatorMenuItem as GtkSeparatorMenuItem, Widget, WidgetExt};
 pub use gtk_sys::GtkWidget as WidgetSys;
 pub use gdk_pixbuf::{Colorspace, InterpType, Pixbuf, PixbufExt};
 pub use cairo::Format;

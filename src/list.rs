@@ -49,10 +49,14 @@ impl<O: controls::List> NewListInner<O> for GtkList {
             h_left_clicked: None,
         };
         li.boxc.set_activate_on_single_click(true);
+        li.boxc.set_halign(Align::Fill);
+        li.boxc.set_valign(Align::Fill);
         li.boxc.connect_row_activated(on_activated::<O>);
+        li.boxc.show();
         let scr = Object::from(li.base.widget.clone()).downcast::<ScrolledWindow>().unwrap();
         scr.set_policy(PolicyType::Never, PolicyType::Always);
         scr.add(&li.boxc);
+        scr.set_min_content_height(1);
         common::set_pointer(&mut li.boxc.clone().upcast(), ptr);
         li.base.set_pointer(ptr);  
         li
@@ -120,7 +124,7 @@ impl AdaptedInner for GtkList {
             types::Change::Edited(_) => {
             },
         }
-        self.base.invalidate();
+        //self.base.widget().get_toplevel().unwrap().queue_resize(); // TODO WHY????
     }
 }
 impl ContainerInner for GtkList {
@@ -239,32 +243,37 @@ impl MemberInner for GtkList {}
 impl Drawable for GtkList {
     fn draw(&mut self, _: &mut MemberBase, control: &mut ControlBase) {
         let mut y = 0;
-        for i in 0..self.items.len() {
-            let item = &mut self.items[i];
-            let (_, ch, _) = item.measure(control.measured.0, utils::coord_to_size(control.measured.1 as i32 - y));
+        for item in self.items.as_mut_slice() {
+            let (_, ch) = item.size();
             item.draw(Some((0, y)));
             y += ch as i32;
         }
         self.base.draw(control);
-        self.boxc.set_size_request(control.measured.0 as i32, control.measured.1 as i32);
-        self.boxc.show();
+        self.boxc.set_size_request(control.measured.0 as i32, y as i32 * 13 / 10);
     }
     fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
         let old_size = control.measured;
         control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
+                let mut w = 0;
+                let mut h = 0;
+                for item in self.items.as_mut_slice() {
+                    let (cw, ch, _) = item.measure(cmp::max(0, parent_width as i32) as u16, cmp::max(0, parent_height as i32 - h as i32) as u16);
+                    w = cmp::max(w, cw);
+                    h += ch;
+                }
                 let w = match control.layout.width {
                     layout::Size::MatchParent => parent_width,
                     layout::Size::Exact(w) => w,
-                    layout::Size::WrapContent => defaults::THE_ULTIMATE_ANSWER_TO_EVERYTHING,
+                    layout::Size::WrapContent => cmp::max(0, w as i32) as u16,
                 };
                 let h = match control.layout.height {
                     layout::Size::MatchParent => parent_height,
                     layout::Size::Exact(h) => h,
-                    layout::Size::WrapContent => defaults::THE_ULTIMATE_ANSWER_TO_EVERYTHING,
+                    layout::Size::WrapContent => cmp::max(0, h as i32) as u16,
                 };
-                (cmp::max(0, w as i32) as u16, cmp::max(0, h as i32) as u16)
+                (w, h)
             }
         };
         (control.measured.0, control.measured.1, control.measured != old_size)
