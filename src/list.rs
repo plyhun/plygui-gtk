@@ -19,7 +19,6 @@ impl GtkList {
         let this: &mut List = unsafe { utils::base_to_impl_mut(member) };
         
         let mut item = adapter.adapter.spawn_item_view(i, this);
-        item.on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
         let widget = common::cast_control_to_gtkwidget(item.as_mut());
                 
         let (_, yy) = item.size();
@@ -27,6 +26,24 @@ impl GtkList {
         *y += yy as i32;
         
         this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
+        
+        self.items[i].on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
+        
+        self.boxc.set_size_request(control.measured.0 as i32, *y as i32 * 13 / 10);
+        
+        /*if let Some(window) = self.base.widget().get_toplevel(){
+            if let Ok(window) = window.downcast::<gtk::Window>() {
+                window.queue_resize();
+            }
+        }*/
+        
+        {
+            use gdk::WindowExt;
+            let allo = self.boxc.get_allocation();
+            if let Some(window) = self.boxc.get_window() {
+                window.invalidate_rect(Some(&allo), true);
+            }
+        }
     }
     fn remove_item_inner(&mut self, base: &mut MemberBase, i: usize) {
         let this: &mut List = unsafe { utils::base_to_impl_mut(base) };

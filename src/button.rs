@@ -189,12 +189,14 @@ pub(crate) fn spawn() -> Box<dyn controls::Control> {
     Button::with_label("").into_control()
 }
 
-fn on_size_allocate<O: controls::Button>(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
+fn on_size_allocate<O: controls::Button>(this: &::gtk::Widget, allo: &::gtk::Rectangle) {
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<Button>(&mut ll).unwrap();
 
     let measured_size = ll.inner().base.measured;
-    ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
+    if allo.width != measured_size.0 as i32 || allo.height != measured_size.1 as i32 {
+        ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
+    }
 }
 
 fn on_click<O: controls::Button>(this: &reckless::RecklessButton) {
