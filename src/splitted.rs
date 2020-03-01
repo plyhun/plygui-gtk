@@ -126,7 +126,7 @@ impl SplittedInner for GtkSplitted {
 impl HasNativeIdInner for GtkSplitted {
     type Id = common::GtkWidget;
 
-    unsafe fn native_id(&self) -> Self::Id {
+    fn native_id(&self) -> Self::Id {
         self.base.widget.clone().into()
     }
 }

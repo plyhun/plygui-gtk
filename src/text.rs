@@ -89,7 +89,7 @@ impl ControlInner for GtkText {
 impl HasNativeIdInner for GtkText {
     type Id = common::GtkWidget;
 
-    unsafe fn native_id(&self) -> Self::Id {
+    fn native_id(&self) -> Self::Id {
         self.base.widget.clone().into()
     }
 }

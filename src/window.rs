@@ -14,7 +14,7 @@ pub struct GtkWindow {
     skip_callbacks: bool,
 }
 
-pub type Window = AMember<AContainer<ASingleContainer<AWindow<GtkWindow>>>>;
+pub type Window = AMember<AContainer<ASingleContainer<ACloseable<AWindow<GtkWindow>>>>>;
 
 impl GtkWindow {
     fn size_inner(&self) -> (u16, u16) {
@@ -44,84 +44,97 @@ impl CloseableInner for GtkWindow {
     fn on_close(&mut self, callback: Option<callbacks::OnClose>) {
         self.on_close = callback;
     }
+    fn application<'a>(&'a self, base: &'a MemberBase) -> &'a dyn controls::Application {
+        unsafe { utils::base_to_impl::<Window>(base) }.inner().inner().inner().application_impl::<crate::application::Application>()
+    }
+    fn application_mut<'a>(&'a mut self, base: &'a mut MemberBase) -> &'a mut dyn controls::Application {
+        unsafe { utils::base_to_impl_mut::<Window>(base) }.inner_mut().inner_mut().inner_mut().application_impl_mut::<crate::application::Application>()
+    }
 }
-
-impl WindowInner for GtkWindow {
-    fn with_params<S: AsRef<str>>(title: S, start_size: types::WindowStartSize, menu: types::Menu) -> Box<dyn controls::Window> {
-        let mut window = Box::new(AMember::with_inner(
-            AContainer::with_inner(
-	            ASingleContainer::with_inner(
-	                AWindow::with_inner(
-	                    GtkWindow {
-	                        size: (0, 0),
-	                        window: GtkWindowSys::new(WindowType::Toplevel),
-	                        container: reckless::RecklessBox::new(),
-	                        child: None,
-	                        menu_bar: if menu.is_some() { Some(GtkMenuBar::new()) } else { None },
-	                        menu: if menu.is_some() { Vec::new() } else { Vec::with_capacity(0) },
-	                        on_close: None,
-	                        skip_callbacks: false,
-	                    },
-	                ),
-	            )
-            ),
-        ));
-
-        let selfptr = window.as_mut() as *mut Window;
-
-        {
-            let window = window.inner_mut().inner_mut().inner_mut().inner_mut();
-            common::set_pointer(&mut window.window.clone().upcast::<Object>(), selfptr as *mut std::os::raw::c_void);
-
-            if let Some(menu) = menu {
-                fn item_spawn(id: usize, selfptr: *mut Window) -> GtkMenuItem {
-                    let mi = GtkMenuItem::new();
-                    common::set_pointer(&mut mi.clone().upcast(), selfptr as *mut std::os::raw::c_void);
-                    mi.connect_activate(move |this| {
-                        let mut w = this.clone().upcast::<Widget>();
-                        let w = common::cast_gtk_widget_to_member_mut::<Window>(&mut w).unwrap();
-                        if let Some(a) = w.inner_mut().inner_mut().inner_mut().inner_mut().menu.get_mut(id) {
-                            let w = unsafe { &mut *selfptr };
-                            (a.as_mut())(w);
-                        }
-                    });
-                    mi
-                };
-
-                let menu_bar = window.menu_bar.as_ref().unwrap();
-                common::make_menu(menu_bar.clone().upcast::<GtkMenuBar>().upcast(), menu, &mut window.menu, item_spawn, selfptr);
-                window.container.add(menu_bar);
-                menu_bar.show_all();
-            }
-
-            window.container.clone().upcast::<GtkBox>().set_orientation(GtkOrientation::Vertical);
-            window.window.add(&window.container);
-            window.size = match start_size {
+impl<O: controls::Window> NewWindowInner<O> for GtkWindow {
+    fn with_uninit_params(u: &mut mem::MaybeUninit<O>, title: &str, start_size: types::WindowStartSize, menu: types::Menu) -> Self {
+   		let selfptr = u as *mut _ as *mut Window;
+   		let w = GtkWindowSys::new(WindowType::Toplevel);
+   		let mut w = GtkWindow {
+            size: match start_size {
                 types::WindowStartSize::Exact(w, h) => (w as i32, h as i32),
                 types::WindowStartSize::Fullscreen => {
                     use gdk::ScreenExt;
-                    let screen = window.window.get_screen().unwrap();
+                    let screen = w.get_screen().unwrap();
                     (screen.get_width(), screen.get_height())
                 }
-            };
-            window.window.set_default_size(window.size.0, window.size.1);
-            window.window.connect_size_allocate(on_resize_move);
-            window.window.connect_destroy(move |this| {
-                super::application::Application::get()
-                    .unwrap()
-                    .as_any_mut()
-                    .downcast_mut::<super::application::Application>()
-                    .unwrap()
-                    .inner_mut()
-                    .remove_window(this.clone().upcast::<Object>().into());
+            },
+            window: w,
+            container: reckless::RecklessBox::new(),
+            child: None,
+            menu_bar: if menu.is_some() { Some(GtkMenuBar::new()) } else { None },
+            menu: if menu.is_some() { Vec::new() } else { Vec::with_capacity(0) },
+            on_close: None,
+            skip_callbacks: false,
+        };
+   		{
+            common::set_pointer(&mut w.window.clone().upcast::<Object>(), selfptr as *mut std::os::raw::c_void);
+
+            w.container.clone().upcast::<GtkBox>().set_orientation(GtkOrientation::Vertical);
+            w.window.add(&w.container);
+            w.window.set_default_size(w.size.0, w.size.1);
+            w.window.connect_size_allocate(on_resize_move::<O>);
+            w.window.connect_destroy(move |this| {
+                    use crate::plygui_api::controls::Member;
+                    let mut window = this.clone().upcast::<Widget>();
+                    let window = common::cast_gtk_widget_to_member_mut::<Window>(&mut window).unwrap();
+                    let id = window.id();
+                    let app = window.inner_mut().inner_mut().inner_mut().application_impl_mut::<crate::application::Application>();
+                    app.close_root(types::FindBy::Id(id), true);
             });
-            window.window.connect_delete_event(on_widget_deleted);
-            window.window.show();
-            window.container.show();
+            w.window.connect_delete_event(on_widget_deleted);
         }
-        
-        controls::HasLabel::set_label(window.as_mut(), title.as_ref().into());
-        window
+   		w.window.set_title(title);
+		if let Some(menu) = menu {
+            fn item_spawn(id: usize, selfptr: *mut Window) -> GtkMenuItem {
+                let mi = GtkMenuItem::new();
+                common::set_pointer(&mut mi.clone().upcast(), selfptr as *mut std::os::raw::c_void);
+                mi.connect_activate(move |this| {
+                    let mut w = this.clone().upcast::<Widget>();
+                    let w = common::cast_gtk_widget_to_member_mut::<Window>(&mut w).unwrap();
+                    if let Some(a) = w.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().menu.get_mut(id) {
+                        let w = unsafe { &mut *selfptr };
+                        (a.as_mut())(w);
+                    }
+                });
+                mi
+            };
+
+            let menu_bar = w.menu_bar.as_ref().unwrap();
+            common::make_menu(menu_bar.clone().upcast::<GtkMenuBar>().upcast(), menu, &mut w.menu, item_spawn, selfptr);
+            w.container.add(menu_bar);
+            menu_bar.show_all();
+        }
+		w
+    }
+}
+impl WindowInner for GtkWindow {
+    fn with_params<S: AsRef<str>>(app: &mut dyn controls::Application, title: S, start_size: types::WindowStartSize, menu: types::Menu) -> Box<dyn controls::Window> {
+        let mut b: Box<mem::MaybeUninit<Window>> = Box::new_uninit();
+        let ab = AMember::with_inner(
+            AContainer::with_inner(
+	            ASingleContainer::with_inner(
+	                ACloseable::with_inner(
+    	                AWindow::with_inner(
+    	                    <Self as NewWindowInner<Window>>::with_uninit_params(b.as_mut(), title.as_ref(), start_size, menu),
+    	                ),
+    	                app.as_any_mut().downcast_mut::<crate::application::Application>().unwrap()
+	                )
+	            )
+            ),
+        );
+        let mut w = unsafe {
+	        b.as_mut_ptr().write(ab);
+	        b.assume_init()
+        };
+        w.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().window.show();
+        w.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().container.show();
+        w
     }
     fn size(&self) -> (u16, u16) {
         self.size_inner()
@@ -223,7 +236,7 @@ impl HasVisibilityInner for GtkWindow {
 impl HasNativeIdInner for GtkWindow {
     type Id = common::GtkWidget;
 
-    unsafe fn native_id(&self) -> Self::Id {
+    fn native_id(&self) -> Self::Id {
         self.window.clone().upcast::<Object>().into()
     }
 }
@@ -235,11 +248,11 @@ fn on_widget_deleted<'t, 'e>(this: &'t GtkWindowSys, _: &'e gdk::Event) -> glib:
     let window = common::cast_gtk_widget_to_member_mut::<Window>(&mut window);
     let mut inhibit = false;
     if let Some(window) = window {
-        if !window.inner_mut().inner_mut().inner_mut().inner_mut().skip_callbacks {
-            let mut window2 = window.inner_mut().inner_mut().inner_mut().inner_mut().window.clone().upcast::<Widget>();
+        if !window.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().skip_callbacks {
+            let mut window2 = window.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().window.clone().upcast::<Widget>();
             let window2 = common::cast_gtk_widget_to_member_mut::<Window>(&mut window2);
             if let Some(window2) = window2 {
-                if let Some(ref mut on_close) = window.inner_mut().inner_mut().inner_mut().inner_mut().on_close {
+                if let Some(ref mut on_close) = window.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().on_close {
                     inhibit = !(on_close.as_mut())(window2);
                 }
             }
@@ -248,23 +261,23 @@ fn on_widget_deleted<'t, 'e>(this: &'t GtkWindowSys, _: &'e gdk::Event) -> glib:
     glib::signal::Inhibit(inhibit)
 }
 
-fn on_resize_move(this: &GtkWindowSys, allo: &Rectangle) {
+fn on_resize_move<O: controls::Window>(this: &GtkWindowSys, allo: &Rectangle) {
     let mut window = this.clone().upcast::<Widget>();
     let window = common::cast_gtk_widget_to_member_mut::<Window>(&mut window);
     if let Some(window) = window {
-        let (width, mut height) = window.inner().inner().inner().inner().size;
-        if let Some(ref menu) = window.inner().inner().inner().inner().menu_bar {
+        let (width, mut height) = window.inner().inner().inner().inner().inner().size;
+        if let Some(ref menu) = window.inner().inner().inner().inner().inner().menu_bar {
             let allo = menu.get_allocation();
             height -= allo.height;
         }
         
         if width != allo.width || height != allo.height {
-            window.inner_mut().inner_mut().inner_mut().inner_mut().size = (cmp::max(0, allo.width), cmp::max(0, allo.height));
-            if let Some(ref mut child) = window.inner_mut().inner_mut().inner_mut().inner_mut().child {
+            window.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().size = (cmp::max(0, allo.width), cmp::max(0, allo.height));
+            if let Some(ref mut child) = window.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().child {
                 child.measure(width as u16, height as u16);
                 child.draw(Some((0, 0)));
             }
-            window.call_on_size(width as u16, height as u16);
+            window.call_on_size::<O>(width as u16, height as u16);
         }
     }
 }

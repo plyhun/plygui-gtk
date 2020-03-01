@@ -213,7 +213,7 @@ impl ControlInner for GtkFrame {
 impl HasNativeIdInner for GtkFrame {
     type Id = common::GtkWidget;
 
-    unsafe fn native_id(&self) -> Self::Id {
+    fn native_id(&self) -> Self::Id {
         self.base.widget.clone().into()
     }
 }

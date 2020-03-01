@@ -72,7 +72,7 @@ impl HasLabelInner for GtkMessage {
 impl HasNativeIdInner for GtkMessage {
     type Id = common::GtkWidget;
 
-    unsafe fn native_id(&self) -> Self::Id {
+    fn native_id(&self) -> Self::Id {
         self.message.clone().upcast::<Object>().into()
     }
 }

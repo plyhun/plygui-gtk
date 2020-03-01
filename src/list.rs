@@ -237,7 +237,7 @@ impl ControlInner for GtkList {
 impl HasNativeIdInner for GtkList {
     type Id = common::GtkWidget;
 
-    unsafe fn native_id(&self) -> Self::Id {
+    fn native_id(&self) -> Self::Id {
         self.base.widget.clone().into()
     }
 }
