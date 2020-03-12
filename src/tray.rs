@@ -69,7 +69,7 @@ impl HasImageInner for GtkTray {
     }
 }
 impl<O: controls::Tray> NewTrayInner<O> for GtkTray {
-    fn with_uninit_params(u: &mut mem::MaybeUninit<O>, title: &str, icon: image::DynamicImage, menu: types::Menu) -> Self {
+    fn with_uninit_params(u: &mut mem::MaybeUninit<O>, _: &mut dyn controls::Application, title: &str, icon: image::DynamicImage, menu: types::Menu) -> Self {
         let selfptr = u as *mut _ as *mut Tray;
         let mut t = GtkTray {
             tray: GtkStatusIcon::new_from_icon_name(title.as_ref()),
@@ -111,7 +111,7 @@ impl TrayInner for GtkTray {
         let ab = AMember::with_inner(
             ACloseable::with_inner(
                 ATray::with_inner(
-                    <Self as NewTrayInner<Tray>>::with_uninit_params(b.as_mut(), title.as_ref(), icon, menu),
+                    <Self as NewTrayInner<Tray>>::with_uninit_params(b.as_mut(), app, title.as_ref(), icon, menu),
                 ),
 	            app.as_any_mut().downcast_mut::<crate::application::Application>().unwrap()
             )

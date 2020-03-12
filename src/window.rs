@@ -52,7 +52,7 @@ impl CloseableInner for GtkWindow {
     }
 }
 impl<O: controls::Window> NewWindowInner<O> for GtkWindow {
-    fn with_uninit_params(u: &mut mem::MaybeUninit<O>, title: &str, start_size: types::WindowStartSize, menu: types::Menu) -> Self {
+    fn with_uninit_params(u: &mut mem::MaybeUninit<O>, _: &mut dyn controls::Application, title: &str, start_size: types::WindowStartSize, menu: types::Menu) -> Self {
    		let selfptr = u as *mut _ as *mut Window;
    		let w = GtkWindowSys::new(WindowType::Toplevel);
    		let mut w = GtkWindow {
@@ -121,7 +121,7 @@ impl WindowInner for GtkWindow {
 	            ASingleContainer::with_inner(
 	                ACloseable::with_inner(
     	                AWindow::with_inner(
-    	                    <Self as NewWindowInner<Window>>::with_uninit_params(b.as_mut(), title.as_ref(), start_size, menu),
+    	                    <Self as NewWindowInner<Window>>::with_uninit_params(b.as_mut(), app, title.as_ref(), start_size, menu),
     	                ),
     	                app.as_any_mut().downcast_mut::<crate::application::Application>().unwrap()
 	                )
