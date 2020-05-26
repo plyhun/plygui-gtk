@@ -18,7 +18,7 @@ impl GtkList {
         let (pw, ph) = control.measured;
         let this: &mut List = unsafe { utils::base_to_impl_mut(member) };
         
-        let mut item = adapter.adapter.spawn_item_view(i, this);
+        let mut item = adapter.adapter.spawn_item_view(&[i], adapter::Node::Leaf, this);
         let widget = common::cast_control_to_gtkwidget(item.as_mut());
                 
         let (_, yy) = item.size();
@@ -123,7 +123,7 @@ impl ItemClickableInner for GtkList {
     }
 }
 impl AdaptedInner for GtkList {
-    fn on_item_change(&mut self, base: &mut MemberBase, value: types::Change) {
+    fn on_item_change(&mut self, base: &mut MemberBase, value: adapter::Change) {
         let mut y = 0;
         {
             for item in self.items.as_slice() {
@@ -132,20 +132,20 @@ impl AdaptedInner for GtkList {
             }
         }
         match value {
-            types::Change::Added(at) => {
-                self.add_item_inner(base, at, &mut y);
+            adapter::Change::Added(at, _) => {
+                self.add_item_inner(base, at[0], &mut y);
             },
-            types::Change::Removed(at) => {
-                self.remove_item_inner(base, at);
+            adapter::Change::Removed(at) => {
+                self.remove_item_inner(base, at[0]);
             },
-            types::Change::Edited(_) => {
+            adapter::Change::Edited(_,_) => {
             },
         }
         //self.base.widget().get_toplevel().unwrap().queue_resize(); // TODO WHY????
     }
 }
 impl ContainerInner for GtkList {
-    fn find_control_mut(&mut self, arg: types::FindBy) -> Option<&mut dyn controls::Control> {
+    fn find_control_mut<'a>(&'a mut self, arg: &'a types::FindBy) -> Option<&'a mut dyn controls::Control> {
         for child in self.items.as_mut_slice() {
             match arg {
                 types::FindBy::Id(ref id) => {
@@ -162,7 +162,7 @@ impl ContainerInner for GtkList {
                 }
             }
             if let Some(c) = child.is_container_mut() {
-                let ret = c.find_control_mut(arg.clone());
+                let ret = c.find_control_mut(arg);
                 if ret.is_none() {
                     continue;
                 }
@@ -171,7 +171,7 @@ impl ContainerInner for GtkList {
         }
         None
     }
-    fn find_control(&self, arg: types::FindBy) -> Option<&dyn controls::Control> {
+    fn find_control<'a>(&'a self, arg: &'a types::FindBy) -> Option<&'a dyn controls::Control> {
         for child in self.items.as_slice() {
             match arg {
                 types::FindBy::Id(ref id) => {
@@ -188,7 +188,7 @@ impl ContainerInner for GtkList {
                 }
             }
             if let Some(c) = child.is_container() {
-                let ret = c.find_control(arg.clone());
+                let ret = c.find_control(arg);
                 if ret.is_none() {
                     continue;
                 }

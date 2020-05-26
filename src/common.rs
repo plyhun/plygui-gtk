@@ -1,8 +1,8 @@
 pub use plygui_api::sdk::*;
-pub use plygui_api::{callbacks, controls, defaults, ids, layout, types, utils};
+pub use plygui_api::{callbacks, controls, defaults, ids, layout, types::{self, adapter}, utils};
 
 pub use glib::translate::ToGlibPtr;
-pub use glib::Object;
+pub use glib::{Type, Value, Object};
 pub use gobject_sys::GObject;
 pub use gtk::{Align, Cast, Menu as GtkMenu, MenuItem as GtkMenuItem, MenuItemExt, MenuShell as GtkMenuShell, MenuShellExt, Orientation as GtkOrientation, SeparatorMenuItem as GtkSeparatorMenuItem, Widget, WidgetExt};
 pub use gtk_sys::GtkWidget as WidgetSys;
