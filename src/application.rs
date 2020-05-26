@@ -168,12 +168,12 @@ impl ApplicationInner for GtkApplication {
         }
         self.maybe_exit();
     }
-    fn find_member_mut(&mut self, arg: types::FindBy) -> Option<&mut dyn controls::Member> {
+    fn find_member_mut<'a>(&'a mut self, arg: &'a types::FindBy) -> Option<&'a mut dyn controls::Member> {
         let w = &mut unsafe {&mut *self.selfptr}.base;
         for window in w.windows.as_mut_slice() {
             match arg {
                 types::FindBy::Id(id) => {
-                    if window.id() == id {
+                    if window.id() == *id {
                         return Some(window.as_member_mut());
                     }
                 }
@@ -185,7 +185,7 @@ impl ApplicationInner for GtkApplication {
                     }
                 }
             }
-            let found = controls::Container::find_control_mut(window.as_mut(), arg.clone()).map(|control| control.as_member_mut());
+            let found = controls::Container::find_control_mut(window.as_mut(), arg).map(|control| control.as_member_mut());
             if found.is_some() {
                 return found;
             }
@@ -209,12 +209,12 @@ impl ApplicationInner for GtkApplication {
         }
         None
     }
-    fn find_member(&self, arg: types::FindBy) -> Option<&dyn controls::Member> {
+    fn find_member<'a>(&'a self, arg: &'a types::FindBy) -> Option<&'a dyn controls::Member> {
         let w = &unsafe { &*self.selfptr }.base;
         for window in w.windows.as_slice() {
             match arg {
                 types::FindBy::Id(id) => {
-                    if window.id() == id {
+                    if window.id() == *id {
                         return Some(window.as_member());
                     }
                 }
@@ -226,7 +226,7 @@ impl ApplicationInner for GtkApplication {
                     }
                 }
             }
-            let found = controls::Container::find_control(window.as_ref(), arg.clone()).map(|control| control.as_member());
+            let found = controls::Container::find_control(window.as_ref(), arg).map(|control| control.as_member());
             if found.is_some() {
                 return found;
             }
