@@ -145,17 +145,17 @@ impl AdaptedInner for GtkList {
     }
 }
 impl ContainerInner for GtkList {
-    fn find_control_mut<'a>(&'a mut self, arg: &'a types::FindBy) -> Option<&'a mut dyn controls::Control> {
+    fn find_control_mut<'a>(&'a mut self, arg: types::FindBy<'a>) -> Option<&'a mut dyn controls::Control> {
         for child in self.items.as_mut_slice() {
             match arg {
-                types::FindBy::Id(ref id) => {
-                    if child.as_member_mut().id() == *id {
+                types::FindBy::Id(id) => {
+                    if child.as_member_mut().id() == id {
                         return Some(child.as_mut());
                     }
                 }
-                types::FindBy::Tag(ref tag) => {
+                types::FindBy::Tag(tag) => {
                     if let Some(mytag) = child.as_member_mut().tag() {
-                        if tag.as_str() == mytag {
+                        if tag == mytag {
                             return Some(child.as_mut());
                         }
                     }
@@ -171,17 +171,17 @@ impl ContainerInner for GtkList {
         }
         None
     }
-    fn find_control<'a>(&'a self, arg: &'a types::FindBy) -> Option<&'a dyn controls::Control> {
+    fn find_control<'a>(&'a self, arg: types::FindBy<'a>) -> Option<&'a dyn controls::Control> {
         for child in self.items.as_slice() {
             match arg {
-                types::FindBy::Id(ref id) => {
-                    if child.as_member().id() == *id {
+                types::FindBy::Id(id) => {
+                    if child.as_member().id() == id {
                         return Some(child.as_ref());
                     }
                 }
-                types::FindBy::Tag(ref tag) => {
+                types::FindBy::Tag(tag) => {
                     if let Some(mytag) = child.as_member().tag() {
-                        if tag.as_str() == mytag {
+                        if tag == mytag {
                             return Some(child.as_ref());
                         }
                     }

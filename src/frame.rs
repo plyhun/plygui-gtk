@@ -93,17 +93,17 @@ impl SingleContainerInner for GtkFrame {
 }
 
 impl ContainerInner for GtkFrame {
-    fn find_control_mut<'a>(&'a mut self, arg: &'a types::FindBy) -> Option<&'a mut dyn controls::Control> {
+    fn find_control_mut<'a>(&'a mut self, arg: types::FindBy<'a>) -> Option<&'a mut dyn controls::Control> {
         if let Some(child) = self.child.as_mut() {
             match arg {
                 types::FindBy::Id(id) => {
-                    if child.as_member_mut().id() == *id {
+                    if child.as_member_mut().id() == id {
                         return Some(child.as_mut());
                     }
                 }
-                types::FindBy::Tag(ref tag) => {
+                types::FindBy::Tag(tag) => {
                     if let Some(mytag) = child.as_member_mut().tag() {
-                        if tag.as_str() == mytag {
+                        if tag == mytag {
                             return Some(child.as_mut());
                         }
                     }
@@ -118,17 +118,17 @@ impl ContainerInner for GtkFrame {
             None
         }
     }
-    fn find_control<'a>(&'a self, arg: &'a types::FindBy) -> Option<&'a dyn controls::Control> {
+    fn find_control<'a>(&'a self, arg: types::FindBy<'a>) -> Option<&'a dyn controls::Control> {
         if let Some(child) = self.child.as_ref() {
             match arg {
                 types::FindBy::Id(id) => {
-                    if child.as_member().id() == *id {
+                    if child.as_member().id() == id {
                         return Some(child.as_ref());
                     }
                 }
-                types::FindBy::Tag(ref tag) => {
+                types::FindBy::Tag(tag) => {
                     if let Some(mytag) = child.as_member().tag() {
-                        if tag.as_str() == mytag {
+                        if tag == mytag {
                             return Some(child.as_ref());
                         }
                     }
