@@ -34,10 +34,11 @@ impl GtkTree {
         let mut iter = None;
 		for i in 0..indexes.len() {
 			let index = indexes[i];
-			if index >= (items.len()-1) {
+			let end = items.len() < 1 || index >= (items.len()-1);
+			if end {
 				items.insert(index, TreeNode {
 					node: node,
-    				root: if i >= (items.len() - 1) {
+    				root: if end {
         					item.as_mut().map(|item| item.as_mut()).unwrap().on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
         					item.take().unwrap()
         				} else { 
@@ -176,18 +177,18 @@ impl AdaptedInner for GtkTree {
     }
 }
 impl ContainerInner for GtkTree {
-    fn find_control_mut<'a>(&'a mut self, arg: &'a types::FindBy) -> Option<&'a mut dyn controls::Control> {
-    	fn find_control_inner_mut<'a>(vec: &'a mut [TreeNode], arg: &'a types::FindBy) -> Option<&'a mut dyn controls::Control> {
+    fn find_control_mut<'a>(&'a mut self, arg: types::FindBy<'a>) -> Option<&'a mut dyn controls::Control> {
+    	fn find_control_inner_mut<'a>(vec: &'a mut [TreeNode], arg: types::FindBy<'a>) -> Option<&'a mut dyn controls::Control> {
 	    	for child in vec {
 	            match arg {
-	                types::FindBy::Id(ref id) => {
-	                    if child.root.as_member_mut().id() == *id {
+	                types::FindBy::Id(id) => {
+	                    if child.root.as_member_mut().id() == id {
 	                        return Some(child.root.as_mut());
 	                    }
 	                }
-	                types::FindBy::Tag(ref tag) => {
+	                types::FindBy::Tag(tag) => {
 	                    if let Some(mytag) = child.root.as_member_mut().tag() {
-	                        if tag.as_str() == mytag {
+	                        if tag == mytag {
 	                            return Some(child.root.as_mut());
 	                        }
 	                    }
@@ -209,18 +210,18 @@ impl ContainerInner for GtkTree {
     	
         find_control_inner_mut(self.items.as_mut_slice(), arg)
     }
-    fn find_control<'a>(&'a self, arg: &'a types::FindBy) -> Option<&'a dyn controls::Control> {
-        fn find_control_inner<'a>(vec: &'a [TreeNode], arg: &'a types::FindBy) -> Option<&'a dyn controls::Control> {
+    fn find_control<'a>(&'a self, arg: types::FindBy<'a>) -> Option<&'a dyn controls::Control> {
+        fn find_control_inner<'a>(vec: &'a [TreeNode], arg: types::FindBy<'a>) -> Option<&'a dyn controls::Control> {
         	for child in vec {
 	            match arg {
-	                types::FindBy::Id(ref id) => {
-	                    if child.root.as_member().id() == *id {
+	                types::FindBy::Id(id) => {
+	                    if child.root.as_member().id() == id {
 	                        return Some(child.root.as_ref());
 	                    }
 	                }
-	                types::FindBy::Tag(ref tag) => {
+	                types::FindBy::Tag(tag) => {
 	                    if let Some(mytag) = child.root.as_member().tag() {
-	                        if tag.as_str() == mytag {
+	                        if tag == mytag {
 	                            return Some(child.root.as_ref());
 	                        }
 	                    }

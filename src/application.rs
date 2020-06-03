@@ -107,7 +107,7 @@ impl ApplicationInner for GtkApplication {
                         false
                 }).is_some()
             }
-            types::FindBy::Tag(ref tag) => {
+            types::FindBy::Tag(tag) => {
                 (0..base.windows.len()).into_iter().find(|i| if base.windows[*i].tag().is_some() && base.windows[*i].tag().unwrap() == Cow::Borrowed(tag.into()) 
                     && base.windows[*i].as_any_mut().downcast_mut::<crate::window::Window>().unwrap().inner_mut().inner_mut().inner_mut().inner_mut().close(skip_callbacks) {
                         base.windows.remove(*i);
@@ -168,18 +168,18 @@ impl ApplicationInner for GtkApplication {
         }
         self.maybe_exit();
     }
-    fn find_member_mut<'a>(&'a mut self, arg: &'a types::FindBy) -> Option<&'a mut dyn controls::Member> {
+    fn find_member_mut<'a>(&'a mut self, arg: types::FindBy<'a>) -> Option<&'a mut dyn controls::Member> {
         let w = &mut unsafe {&mut *self.selfptr}.base;
         for window in w.windows.as_mut_slice() {
             match arg {
                 types::FindBy::Id(id) => {
-                    if window.id() == *id {
+                    if window.id() == id {
                         return Some(window.as_member_mut());
                     }
                 }
-                types::FindBy::Tag(ref tag) => {
+                types::FindBy::Tag(tag) => {
                     if let Some(mytag) = window.tag() {
-                        if tag.as_str() == mytag {
+                        if tag == mytag {
                             return Some(window.as_member_mut());
                         }
                     }
@@ -193,14 +193,14 @@ impl ApplicationInner for GtkApplication {
         for tray in w.trays.as_mut_slice() {
             let tray = &mut **tray;
             match arg {
-                types::FindBy::Id(ref id) => {
-                    if tray.id() == *id {
+                types::FindBy::Id(id) => {
+                    if tray.id() == id {
                         return Some(tray.as_member_mut());
                     }
                 }
-                types::FindBy::Tag(ref tag) => {
+                types::FindBy::Tag(tag) => {
                     if let Some(mytag) = tray.tag() {
-                        if tag.as_str() == mytag {
+                        if tag == mytag {
                             return Some(tray.as_member_mut());
                         }
                     }
@@ -209,18 +209,18 @@ impl ApplicationInner for GtkApplication {
         }
         None
     }
-    fn find_member<'a>(&'a self, arg: &'a types::FindBy) -> Option<&'a dyn controls::Member> {
+    fn find_member<'a>(&'a self, arg: types::FindBy<'a>) -> Option<&'a dyn controls::Member> {
         let w = &unsafe { &*self.selfptr }.base;
         for window in w.windows.as_slice() {
             match arg {
                 types::FindBy::Id(id) => {
-                    if window.id() == *id {
+                    if window.id() == id {
                         return Some(window.as_member());
                     }
                 }
-                types::FindBy::Tag(ref tag) => {
+                types::FindBy::Tag(tag) => {
                     if let Some(mytag) = window.tag() {
-                        if tag.as_str() == mytag {
+                        if tag == mytag {
                             return Some(window.as_member());
                         }
                     }
@@ -238,9 +238,9 @@ impl ApplicationInner for GtkApplication {
                         return Some(tray.as_member());
                     }
                 }
-                types::FindBy::Tag(ref tag) => {
+                types::FindBy::Tag(tag) => {
                     if let Some(mytag) = tray.tag() {
-                        if tag.as_str() == mytag {
+                        if tag == mytag {
                             return Some(tray.as_member());
                         }
                     }
