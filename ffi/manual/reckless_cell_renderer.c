@@ -134,9 +134,8 @@ static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
 		GtkWidget *widget, const GdkRectangle *background_area,
 		const GdkRectangle *cell_area, GtkCellRendererState state) {
 
-	GdkRectangle _cell_area = *cell_area;
 	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
-	gtk_widget_size_allocate(rc->cell, &_cell_area);
-	gtk_widget_show(rc->cell);
+	gtk_widget_size_allocate(rc->cell, cell_area);
 	gtk_widget_draw(rc->cell, ctx);
+	printf("The value of s is: %p\n", (void *) rc->cell);
 }
