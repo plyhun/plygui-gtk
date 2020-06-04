@@ -1,6 +1,6 @@
 use crate::common::{self, *};
 
-use gtk::{TreeViewExt, ContainerExt, TreePath, TreeViewColumn, TreeStore, TreeStoreExtManual, TreeModelExt, TreeStoreExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
+use gtk::{TreeViewExt, CellLayoutExt, ContainerExt, TreePath, TreeViewColumn, TreeStore, TreeStoreExtManual, TreeModelExt, TreeStoreExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
 use glib::translate::ToGlibPtrMut;
 use gobject_sys::g_value_set_pointer;
 
@@ -16,6 +16,8 @@ struct TreeNode {
 pub struct GtkTree {
     base: GtkControlBase<Tree>,
     boxc: reckless::RecklessTreeView,
+	col: TreeViewColumn,
+    renderer: reckless::cell_renderer::RecklessCellRenderer,
     store: TreeStore,
     items: Vec<TreeNode>,
     h_left_clicked: Option<callbacks::OnItemClick>,
@@ -50,6 +52,10 @@ impl GtkTree {
         				},
     				branches: vec![]
 				});
+				{
+					let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
+					widget.set_parent(&self.boxc);
+				}
 				iter = Some(this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.insert(iter.as_ref(), index as i32));
 				let mut val = Value::from_type(Type::Pointer);
 		        let ptr: *mut gobject_sys::GObject = Object::from(widget.clone()).to_glib_none().0;
@@ -86,6 +92,8 @@ impl<O: controls::Tree> NewTreeInner<O> for GtkTree {
         let mut li = GtkTree {
             base: common::GtkControlBase::with_gtk_widget(li),
             boxc: reckless::RecklessTreeView::new(),
+            col: TreeViewColumn::new(),
+            renderer: reckless::cell_renderer::RecklessCellRenderer::new(),
             store: TreeStore::new(&[Type::Pointer]),
             items: Vec::new(),
             h_left_clicked: None,
@@ -94,7 +102,13 @@ impl<O: controls::Tree> NewTreeInner<O> for GtkTree {
         li.boxc.set_halign(Align::Fill);
         li.boxc.set_valign(Align::Fill);
         li.boxc.connect_row_activated(on_activated::<O>);
-        li.boxc.set_model(&li.store);
+        //li.boxc.set_model(&li.store);
+        {
+            li.col.pack_start(&li.renderer, false);
+            li.col.add_attribute(&li.renderer, "cell", 0);
+            li.boxc.set_model(&li.store);
+            li.boxc.append_column(&li.col);
+        }
         li.boxc.show();
         let scr = Object::from(li.base.widget.clone()).downcast::<ScrolledWindow>().unwrap();
         scr.set_policy(PolicyType::Never, PolicyType::Always);
