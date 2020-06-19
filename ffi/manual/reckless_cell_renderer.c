@@ -20,6 +20,25 @@ static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
 		GtkWidget *widget, const GdkRectangle *background_area,
 		const GdkRectangle *cell_area, GtkCellRendererState state);
 
+static void reckless_cell_renderer_get_preferred_width           (GtkCellRenderer         *cell,
+                                                                  GtkWidget               *widget,
+                                                                  gint                    *minimum_size,
+                                                                  gint                    *natural_size);
+static void reckless_cell_renderer_get_preferred_height          (GtkCellRenderer         *cell,
+                                                                  GtkWidget               *widget,
+                                                                  gint                    *minimum_size,
+                                                                  gint                    *natural_size);
+static void reckless_cell_renderer_get_preferred_height_for_width(GtkCellRenderer         *cell,
+                                                                  GtkWidget               *widget,
+                                                                  gint                     width,
+                                                                  gint                    *minimum_height,
+                                                                  gint                    *natural_height);
+static void reckless_cell_renderer_get_preferred_width_for_height(GtkCellRenderer         *cell,
+                                                                  GtkWidget               *widget,
+                                                                  gint                     height,
+                                                                  gint                    *minimum_width,
+                                                                  gint                    *natural_width);
+
 enum {
 	PROP_CELL = 1,
 };
@@ -62,9 +81,13 @@ static void reckless_cell_renderer_class_init(RecklessCellRendererClass *clz) {
 
 	cell_class->get_size = reckless_cell_renderer_get_size;
 	cell_class->render = reckless_cell_renderer_render;
+	cell_class->get_preferred_width            = reckless_cell_renderer_get_preferred_width;
+	cell_class->get_preferred_height           = reckless_cell_renderer_get_preferred_height;
+	cell_class->get_preferred_width_for_height = reckless_cell_renderer_get_preferred_width_for_height;
+	cell_class->get_preferred_height_for_width = reckless_cell_renderer_get_preferred_height_for_width;
 
 	g_object_class_install_property(object_class, PROP_CELL,
-			g_param_spec_pointer("cell", "Cell", "Widget to display", G_PARAM_READWRITE));
+	g_param_spec_pointer("cell", "Cell", "Widget to display", G_PARAM_READWRITE));
 }
 
 
@@ -111,19 +134,69 @@ reckless_cell_renderer_new(void) {
 	return g_object_new(TYPE_RECKLESS_CELL_RENDERER, NULL);
 }
 
+static void
+reckless_cell_renderer_get_preferred_width (GtkCellRenderer *cell,
+                                            GtkWidget       *widget,
+                                            gint            *minimum,
+                                            gint            *natural)
+{
+	if (minimum) *minimum = 1;
+	if (natural) *natural = 1;
+}
+
+static void
+reckless_cell_renderer_get_preferred_height (GtkCellRenderer *cell,
+                                             GtkWidget       *widget,
+                                             gint            *minimum,
+                                             gint            *natural)
+{
+	if (minimum) *minimum = 1;
+	if (natural) *natural = 1;
+}
+
+
+static void
+reckless_cell_renderer_get_preferred_height_for_width (GtkCellRenderer *cell,
+                                                       GtkWidget       *widget,
+                                                       gint             width,
+                                                       gint            *minimum,
+                                                       gint            *natural)
+{
+	if (minimum) *minimum = 1;
+	if (natural) *natural = 1;
+}
+
+static void
+reckless_cell_renderer_get_preferred_width_for_height (GtkCellRenderer *cell,
+                                                       GtkWidget       *widget,
+                                                       gint             height,
+                                                       gint            *minimum,
+                                                       gint            *natural)
+{
+	if (minimum) *minimum = 1;
+	if (natural) *natural = 1;
+}
+
 static void reckless_cell_renderer_get_size(GtkCellRenderer *cell,
 		GtkWidget *widget, const GdkRectangle *cell_area, gint *x_offset,
 		gint *y_offset, gint *width, gint *height) {
+	gint calc_width;
+	gint calc_height;
 
 	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
-	gtk_widget_get_size_request(rc->cell, width, height);
+	gtk_widget_get_size_request(rc->cell, &calc_width, &calc_height);
 
+	if (width) {
+		*width = calc_width;
+	}
+	if (height) {
+		*height = calc_height;
+	}
 	if (cell_area) {
 		if (x_offset) {
 			*x_offset = (cell_area->width - *width);
 			*x_offset = MAX(*x_offset, 0);
 		}
-
 		if (y_offset) {
 			*y_offset = (cell_area->height - *height);
 			*y_offset = MAX(*y_offset, 0);
@@ -133,9 +206,14 @@ static void reckless_cell_renderer_get_size(GtkCellRenderer *cell,
 static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
 		GtkWidget *widget, const GdkRectangle *background_area,
 		const GdkRectangle *cell_area, GtkCellRendererState state) {
+	GdkRectangle allo;
+
+	allo.x = cell_area->x;
+	allo.y = cell_area->y;
+	allo.width = cell_area->width;
+	allo.height = cell_area->height;
 
 	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
-	gtk_widget_size_allocate(rc->cell, cell_area);
+	gtk_widget_size_allocate(rc->cell, &allo);
 	gtk_widget_draw(rc->cell, ctx);
-	printf("The value of s is: %p\n", (void *) rc->cell);
 }

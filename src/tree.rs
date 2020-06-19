@@ -7,16 +7,16 @@ use gobject_sys::g_value_set_pointer;
 pub type Tree = AMember<AControl<AContainer<AAdapted<ATree<GtkTree>>>>>;
 
 struct TreeNode {
-	node: adapter::Node,
-	root: Box<dyn controls::Control>,
-	branches: Vec<TreeNode>,
+    node: adapter::Node,
+    root: Box<dyn controls::Control>,
+    branches: Vec<TreeNode>,
 }
 
 #[repr(C)]
 pub struct GtkTree {
     base: GtkControlBase<Tree>,
     boxc: reckless::RecklessTreeView,
-	col: TreeViewColumn,
+    col: TreeViewColumn,
     renderer: reckless::cell_renderer::RecklessCellRenderer,
     store: TreeStore,
     items: Vec<TreeNode>,
@@ -34,53 +34,58 @@ impl GtkTree {
         
         let mut items = &mut self.items;
         let mut iter = None;
-		for i in 0..indexes.len() {
-			let index = indexes[i];
-			let end = items.len() < 1 || index >= (items.len()-1);
-			if end {
-				items.insert(index, TreeNode {
-					node: node,
-    				root: if end {
-        					item.as_mut().map(|item| item.as_mut()).unwrap().on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
-        					item.take().unwrap()
-        				} else { 
-        					adapter.adapter.spawn_item_view(
-		    					&indexes[..i+1], 
-		    					adapter::Node::Branch(false), 
-		    					this
-		    				) 
-        				},
-    				branches: vec![]
-				});
-				{
-					let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
-					widget.set_parent(&self.boxc);
-				}
-				iter = Some(this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.insert(iter.as_ref(), index as i32));
-				let mut val = Value::from_type(Type::Pointer);
-		        let ptr: *mut gobject_sys::GObject = Object::from(widget.clone()).to_glib_none().0;
-		        unsafe { g_value_set_pointer(val.to_glib_none_mut().0, ptr as *mut c_void); }
-				this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.set_value(iter.as_ref().unwrap(), index as u32, &val)
-			} else {
-				iter = self.store.iter_nth_child(iter.as_ref(), index as i32);
-				items = &mut items[index].branches;
-			}
-		}
+        for i in 0..indexes.len() {
+            let index = indexes[i];
+            let end = items.len() < 1 || index >= (items.len()-1);
+            if end {
+                items.insert(index, TreeNode {
+                    node: node,
+                    root: if end {
+                            item.as_mut().map(|item| item.as_mut()).unwrap().on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
+                            item.take().unwrap()
+                        } else { 
+                            adapter.adapter.spawn_item_view(
+                                &indexes[..i+1], 
+                                adapter::Node::Branch(false), 
+                                this
+                            ) 
+                        },
+                    branches: vec![]
+                });
+                {
+                    let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
+                    widget.set_parent(&self.boxc);
+                }
+                iter = Some(this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.insert(iter.as_ref(), index as i32));
+                let mut val = Value::from_type(Type::Pointer);
+                let ptr: *mut gobject_sys::GObject = Object::from(widget.clone()).to_glib_none().0;
+                unsafe { g_value_set_pointer(val.to_glib_none_mut().0, ptr as *mut c_void); }
+                this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.set_value(iter.as_ref().unwrap(), index as u32, &val)
+            } else {
+                iter = self.store.iter_nth_child(iter.as_ref(), index as i32);
+                items = &mut items[index].branches;
+            }
+        }
     }
     fn remove_item_inner(&mut self, base: &mut MemberBase, indexes: &[usize]) {
         let this: &mut Tree = unsafe { utils::base_to_impl_mut(base) };
         let mut items = &mut self.items;
         let mut iter = None;
-		for i in 0..indexes.len() {
-			let index = indexes[i];
-			if index >= (items.len()-1) {
-				items.remove(index).root.on_removed_from_container(this); 
-				this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.remove(iter.as_ref().unwrap()/*, index as i32*/);
-			} else {
-				iter = self.store.iter_nth_child(iter.as_ref(), index as i32);
-				items = &mut items[index].branches;
-			}
-		}
+        for i in 0..indexes.len() {
+            let index = indexes[i];
+            if index >= (items.len()-1) {
+                let mut item = items.remove(index);
+                item.root.on_removed_from_container(this);
+                let widget = common::cast_control_to_gtkwidget(item.root.as_mut());
+                let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
+                widget.hide();
+                widget.unparent();
+                this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.remove(iter.as_ref().unwrap()/*, index as i32*/);
+            } else {
+                iter = self.store.iter_nth_child(iter.as_ref(), index as i32);
+                items = &mut items[index].branches;
+            }
+        }
     }
 }
 impl<O: controls::Tree> NewTreeInner<O> for GtkTree {
@@ -120,8 +125,8 @@ impl<O: controls::Tree> NewTreeInner<O> for GtkTree {
     }
 }
 impl TreeInner for GtkTree {
-	fn with_adapter(adapter: Box<dyn types::Adapter>) -> Box<dyn controls::Tree> {
-		let len = adapter.len();
+    fn with_adapter(adapter: Box<dyn types::Adapter>) -> Box<dyn controls::Tree> {
+        let len = adapter.len();
         let mut b: Box<mem::MaybeUninit<Tree>> = Box::new_uninit();
         let mut ab = AMember::with_inner(
             AControl::with_inner(
@@ -138,25 +143,22 @@ impl TreeInner for GtkTree {
         );
         ab.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().items = Vec::with_capacity(len);
         let mut bb = unsafe {
-	        b.as_mut_ptr().write(ab);
-	        b.assume_init()
+            b.as_mut_ptr().write(ab);
+            b.assume_init()
         };
         let (member, _, adapter, tree) = unsafe { Tree::adapter_base_parts_mut(&mut bb.base) };
 
-		let mut y = 0;
-		let mut indexes = Vec::new();
+        let mut y = 0;
         for i in 0..adapter.adapter.len() {
-        	indexes.push(i);
-            tree.inner_mut().add_item_inner(member, indexes.as_slice(), adapter::Node::Branch(true), &mut y); // TODO fix adapterNode
-            indexes.pop();
+            tree.inner_mut().add_item_inner(member, &[i], adapter.adapter.node_at(i), &mut y);
         }
         bb
-	}
+    }
 }
 impl ItemClickableInner for GtkTree {
     fn item_click(&mut self, i: usize, item_view: &mut dyn controls::Control, _skip_callbacks: bool) {
         let mut this = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
-	    let this = common::cast_gtk_widget_to_member_mut::<Tree>(&mut this).unwrap();
+        let this = common::cast_gtk_widget_to_member_mut::<Tree>(&mut this).unwrap();
         if let Some(ref mut callback) = self.h_left_clicked {
             (callback.as_mut())(this, i, item_view)
         }
@@ -169,13 +171,14 @@ impl AdaptedInner for GtkTree {
     fn on_item_change(&mut self, base: &mut MemberBase, value: adapter::Change) {
         let mut y = 0;
         {
-        	fn yadder(level: &[TreeNode], y: &mut i32) {
-	        	for item in level {
-	                let (_, yy) = item.root.size();
-	                *y += yy as i32;
-	                yadder(item.branches.as_slice(), y);
-	            }
-        	};            
+            fn yadder(level: &[TreeNode], y: &mut i32) {
+                for item in level {
+                    let (_, yy) = item.root.size();
+                    *y += yy as i32;
+                    yadder(item.branches.as_slice(), y);
+                }
+            };
+            yadder(self.items.as_slice(), &mut y);        
         }
         match value {
             adapter::Change::Added(at, node) => {
@@ -192,67 +195,67 @@ impl AdaptedInner for GtkTree {
 }
 impl ContainerInner for GtkTree {
     fn find_control_mut<'a>(&'a mut self, arg: types::FindBy<'a>) -> Option<&'a mut dyn controls::Control> {
-    	fn find_control_inner_mut<'a>(vec: &'a mut [TreeNode], arg: types::FindBy<'a>) -> Option<&'a mut dyn controls::Control> {
-	    	for child in vec {
-	            match arg {
-	                types::FindBy::Id(id) => {
-	                    if child.root.as_member_mut().id() == id {
-	                        return Some(child.root.as_mut());
-	                    }
-	                }
-	                types::FindBy::Tag(tag) => {
-	                    if let Some(mytag) = child.root.as_member_mut().tag() {
-	                        if tag == mytag {
-	                            return Some(child.root.as_mut());
-	                        }
-	                    }
-	                }
-	            }
-	            if let Some(c) = child.root.is_container_mut() {
-	                let ret = c.find_control_mut(arg);
-	                if ret.is_some() {
-	                    return ret;
-	                }
-	            }
-	            let ret = find_control_inner_mut(child.branches.as_mut_slice(), arg);
-	            if ret.is_some() {
-	            	return ret;
-	            }
-	        }
-	        None
-    	}
-    	
+        fn find_control_inner_mut<'a>(vec: &'a mut [TreeNode], arg: types::FindBy<'a>) -> Option<&'a mut dyn controls::Control> {
+            for child in vec {
+                match arg {
+                    types::FindBy::Id(id) => {
+                        if child.root.as_member_mut().id() == id {
+                            return Some(child.root.as_mut());
+                        }
+                    }
+                    types::FindBy::Tag(tag) => {
+                        if let Some(mytag) = child.root.as_member_mut().tag() {
+                            if tag == mytag {
+                                return Some(child.root.as_mut());
+                            }
+                        }
+                    }
+                }
+                if let Some(c) = child.root.is_container_mut() {
+                    let ret = c.find_control_mut(arg);
+                    if ret.is_some() {
+                        return ret;
+                    }
+                }
+                let ret = find_control_inner_mut(child.branches.as_mut_slice(), arg);
+                if ret.is_some() {
+                    return ret;
+                }
+            }
+            None
+        }
+        
         find_control_inner_mut(self.items.as_mut_slice(), arg)
     }
     fn find_control<'a>(&'a self, arg: types::FindBy<'a>) -> Option<&'a dyn controls::Control> {
         fn find_control_inner<'a>(vec: &'a [TreeNode], arg: types::FindBy<'a>) -> Option<&'a dyn controls::Control> {
-        	for child in vec {
-	            match arg {
-	                types::FindBy::Id(id) => {
-	                    if child.root.as_member().id() == id {
-	                        return Some(child.root.as_ref());
-	                    }
-	                }
-	                types::FindBy::Tag(tag) => {
-	                    if let Some(mytag) = child.root.as_member().tag() {
-	                        if tag == mytag {
-	                            return Some(child.root.as_ref());
-	                        }
-	                    }
-	                }
-	            }
-	            if let Some(c) = child.root.is_container() {
-	                let ret = c.find_control(arg);
-	                if ret.is_some() {
-	                    return ret;
-	                }
-	            }
-	            let ret = find_control_inner(child.branches.as_slice(), arg);
-	            if ret.is_some() {
-	            	return ret;
-	            }
-	        }
-	        None
+            for child in vec {
+                match arg {
+                    types::FindBy::Id(id) => {
+                        if child.root.as_member().id() == id {
+                            return Some(child.root.as_ref());
+                        }
+                    }
+                    types::FindBy::Tag(tag) => {
+                        if let Some(mytag) = child.root.as_member().tag() {
+                            if tag == mytag {
+                                return Some(child.root.as_ref());
+                            }
+                        }
+                    }
+                }
+                if let Some(c) = child.root.is_container() {
+                    let ret = c.find_control(arg);
+                    if ret.is_some() {
+                        return ret;
+                    }
+                }
+                let ret = find_control_inner(child.branches.as_slice(), arg);
+                if ret.is_some() {
+                    return ret;
+                }
+            }
+            None
         }
         
         find_control_inner(self.items.as_slice(), arg)
@@ -267,11 +270,14 @@ impl HasLayoutInner for GtkTree {
 
 impl ControlInner for GtkTree {
     fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &dyn controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
+        set_parent(self.items.as_mut_slice(), Some(&self.boxc)); 
         self.measure(member, control, pw, ph);
         control.coords = Some((x, y));
         self.draw(member, control);
     }
-    fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &dyn controls::Container) {}
+    fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &dyn controls::Container) {
+        set_parent(self.items.as_mut_slice(), None); 
+    }
 
     fn parent(&self) -> Option<&dyn controls::Member> {
         self.base.parent().map(|m| m.as_member())
@@ -322,12 +328,12 @@ impl Drawable for GtkTree {
         let mut y = 0;
         
         fn draw_inner(vec: &mut [TreeNode], y: &mut i32) {
-	        for item in vec {
-	            let (_, ch) = item.root.size();
-	            item.root.draw(Some((0, *y)));
-	            *y += ch as i32;
-	            draw_inner(item.branches.as_mut_slice(), y);
-	        }
+            for item in vec {
+                let (_, ch) = item.root.size();
+                item.root.draw(Some((0, *y)));
+                *y += ch as i32;
+                draw_inner(item.branches.as_mut_slice(), y);
+            }
         }
         draw_inner(self.items.as_mut_slice(), &mut y);
         
@@ -343,12 +349,12 @@ impl Drawable for GtkTree {
                 let mut h = 0;
                 
                 fn measure_inner(vec: &mut [TreeNode], parent_width: u16, parent_height: u16, w: &mut u16, h: &mut u16) {
-	                for item in vec {
-	                    let (cw, ch, _) = item.root.measure(cmp::max(0, parent_width as i32) as u16, cmp::max(0, parent_height as i32 - *h as i32) as u16);
-	                    *w = cmp::max(*w, cw);
-	                    *h += ch;
-	                    measure_inner(item.branches.as_mut_slice(), parent_width, parent_height, w, h);
-	                }
+                    for item in vec {
+                        let (cw, ch, _) = item.root.measure(cmp::max(0, parent_width as i32) as u16, cmp::max(0, parent_height as i32 - *h as i32) as u16);
+                        *w = cmp::max(*w, cw);
+                        *h += ch;
+                        measure_inner(item.branches.as_mut_slice(), parent_width, parent_height, w, h);
+                    }
                 }
                 measure_inner(self.items.as_mut_slice(), parent_width, parent_height, &mut w, &mut h);
                 
@@ -399,4 +405,17 @@ fn on_activated<O: controls::Tree>(this: &reckless::RecklessTreeView, path: &Tre
         let ll2 = common::cast_gtk_widget_to_member_mut::<O>(&mut ll2).unwrap();
         (callback.as_mut())(ll2, i as usize, item_view.as_mut());
     }*/
+}
+fn set_parent(level: &mut [TreeNode], parent: Option<&reckless::RecklessTreeView>) {
+    for item in level {
+        let widget = common::cast_control_to_gtkwidget(item.root.as_mut());
+        let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
+        if widget.get_parent().is_some() {
+            widget.unparent();
+        }
+        if let Some(parent) = parent {
+            widget.set_parent(parent);
+        }
+        set_parent(item.branches.as_mut_slice(), parent);
+    }
 }
