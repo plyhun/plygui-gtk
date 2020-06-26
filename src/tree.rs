@@ -56,11 +56,12 @@ impl GtkTree {
                     let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
                     widget.set_parent(&self.boxc);
                 }
-                iter = Some(this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.insert(iter.as_ref(), index as i32));
                 let mut val = Value::from_type(Type::Pointer);
                 let ptr: *mut gobject_sys::GObject = Object::from(widget.clone()).to_glib_none().0;
                 unsafe { g_value_set_pointer(val.to_glib_none_mut().0, ptr as *mut c_void); }
-                this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.set_value(iter.as_ref().unwrap(), index as u32, &val)
+                
+                iter = Some(this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.insert(iter.as_ref(), index as i32));
+                this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.set_value(iter.as_ref().unwrap(), 0, &val)
             } else {
                 iter = self.store.iter_nth_child(iter.as_ref(), index as i32);
                 items = &mut items[index].branches;
