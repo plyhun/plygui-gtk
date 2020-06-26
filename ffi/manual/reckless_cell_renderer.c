@@ -208,6 +208,8 @@ static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
 		const GdkRectangle *cell_area, GtkCellRendererState state) {
 	GdkRectangle allo;
 
+	cairo_save(ctx);
+
 	allo.x = cell_area->x;
 	allo.y = cell_area->y;
 	allo.width = cell_area->width;
@@ -215,5 +217,8 @@ static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
 
 	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
 	gtk_widget_size_allocate(rc->cell, &allo);
+	cairo_translate(ctx, allo.x, allo.y);
 	gtk_widget_draw(rc->cell, ctx);
+
+	cairo_restore(ctx);
 }
