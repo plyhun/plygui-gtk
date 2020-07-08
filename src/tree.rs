@@ -46,7 +46,7 @@ impl GtkTree {
                         } else { 
                             adapter.adapter.spawn_item_view(
                                 &indexes[..i+1], 
-                                adapter::Node::Branch(false), 
+                                node, 
                                 this
                             ) 
                         },
@@ -127,7 +127,6 @@ impl<O: controls::Tree> NewTreeInner<O> for GtkTree {
 }
 impl TreeInner for GtkTree {
     fn with_adapter(adapter: Box<dyn types::Adapter>) -> Box<dyn controls::Tree> {
-        let len = adapter.len();
         let mut b: Box<mem::MaybeUninit<Tree>> = Box::new_uninit();
         let mut ab = AMember::with_inner(
             AControl::with_inner(
@@ -142,7 +141,7 @@ impl TreeInner for GtkTree {
                 )
             ),
         );
-        ab.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().items = Vec::with_capacity(len);
+        ab.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().items = Vec::new();
         let mut bb = unsafe {
             b.as_mut_ptr().write(ab);
             b.assume_init()
@@ -150,9 +149,18 @@ impl TreeInner for GtkTree {
         let (member, _, adapter, tree) = unsafe { Tree::adapter_base_parts_mut(&mut bb.base) };
 
         let mut y = 0;
-        for i in 0..adapter.adapter.len() {
-            tree.inner_mut().add_item_inner(member, &[i], adapter.adapter.node_at(i), &mut y);
+        let mut indexes = vec![];
+        
+        fn add_item(tree: &mut GtkTree, adapter: &mut dyn types::Adapter, member: &mut MemberBase, indexes: &mut Vec<usize>, y: &mut i32) {
+            for i in 0..adapter.len_at(indexes.as_slice()) {
+                indexes.push(i);
+                tree.add_item_inner(member, indexes.as_slice(), adapter.node_at(indexes.as_slice()), y);
+                add_item(tree, adapter, member, indexes, y);
+                indexes.pop();
+            }
         }
+        
+        add_item(tree.inner_mut(), adapter.adapter.as_mut(), member, &mut indexes, &mut y);
         bb
     }
 }
