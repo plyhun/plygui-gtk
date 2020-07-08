@@ -81,7 +81,7 @@ impl<O: controls::List> NewListInner<O> for GtkList {
 }
 impl ListInner for GtkList {
 	fn with_adapter(adapter: Box<dyn types::Adapter>) -> Box<dyn controls::List> {
-		let len = adapter.len();
+		let len = adapter.len_at(&[]);
         let mut b: Box<mem::MaybeUninit<List>> = Box::new_uninit();
         let mut ab = AMember::with_inner(
             AControl::with_inner(
@@ -104,7 +104,7 @@ impl ListInner for GtkList {
         let (member, _, adapter, list) = unsafe { List::adapter_base_parts_mut(&mut bb.base) };
 
 		let mut y = 0;
-        for i in 0..adapter.adapter.len() {
+        for i in 0..adapter.adapter.len_at(&[]) {
             list.inner_mut().add_item_inner(member, i, &mut y);
         }
         bb
