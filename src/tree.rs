@@ -29,15 +29,17 @@ impl GtkTree {
         let (pw, ph) = control.measured;
         let this: &mut Tree = unsafe { utils::base_to_impl_mut(member) };
         
-        let mut item = Some(adapter.adapter.spawn_item_view(indexes, node, this));
+        let mut item = adapter.adapter.spawn_item_view(indexes, this);
         let widget = common::cast_control_to_gtkwidget(item.as_mut().map(|item| item.as_mut()).unwrap());
         
         let mut items = &mut self.items;
         let mut iter = None;
         for i in 0..indexes.len() {
             let index = indexes[i];
-            let end = items.len() < 1 || index >= (items.len()-1);
+            println!("{} {:?} {} {} {:?}", i, indexes, index, items.len(), node);
+            let end = (index+1) >= items.len();
             if end {
+                
                 items.insert(index, TreeNode {
                     node: node,
                     root: if end {
@@ -46,9 +48,8 @@ impl GtkTree {
                         } else { 
                             adapter.adapter.spawn_item_view(
                                 &indexes[..i+1], 
-                                node, 
                                 this
-                            ) 
+                            ).unwrap()
                         },
                     branches: vec![]
                 });
@@ -61,7 +62,8 @@ impl GtkTree {
                 unsafe { g_value_set_pointer(val.to_glib_none_mut().0, ptr as *mut c_void); }
                 
                 iter = Some(this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.insert(iter.as_ref(), index as i32));
-                this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.set_value(iter.as_ref().unwrap(), 0, &val)
+                this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.set_value(iter.as_ref().unwrap(), 0, &val);
+                return;
             } else {
                 iter = self.store.iter_nth_child(iter.as_ref(), index as i32);
                 items = &mut items[index].branches;
@@ -152,11 +154,14 @@ impl TreeInner for GtkTree {
         let mut indexes = vec![];
         
         fn add_item(tree: &mut GtkTree, adapter: &mut dyn types::Adapter, member: &mut MemberBase, indexes: &mut Vec<usize>, y: &mut i32) {
-            for i in 0..adapter.len_at(indexes.as_slice()) {
-                indexes.push(i);
-                tree.add_item_inner(member, indexes.as_slice(), adapter.node_at(indexes.as_slice()), y);
-                add_item(tree, adapter, member, indexes, y);
-                indexes.pop();
+            println!("{:?} = {:?}", indexes, adapter.len_at(indexes.as_slice()));
+            if let Some(len) = adapter.len_at(indexes.as_slice()) {
+                for i in 0..len {
+                    indexes.push(i);
+                    tree.add_item_inner(member, indexes.as_slice(), adapter.node_at(indexes.as_slice()).unwrap(), y);
+                    add_item(tree, adapter, member, indexes, y);
+                    indexes.pop();
+                }
             }
         }
         

@@ -18,31 +18,34 @@ impl GtkList {
         let (pw, ph) = control.measured;
         let this: &mut List = unsafe { utils::base_to_impl_mut(member) };
         
-        let mut item = adapter.adapter.spawn_item_view(&[i], adapter::Node::Leaf, this);
-        let widget = common::cast_control_to_gtkwidget(item.as_mut());
-                
-        let (_, yy) = item.size();
-        self.items.insert(i, item);
-        *y += yy as i32;
-        
-        this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
-        
-        self.items[i].on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
-        
-        self.boxc.set_size_request(control.measured.0 as i32, *y as i32 * 13 / 10);
-        
-        /*if let Some(window) = self.base.widget().get_toplevel(){
-            if let Ok(window) = window.downcast::<gtk::Window>() {
-                window.queue_resize();
+        if let Some(mut item) = adapter.adapter.spawn_item_view(&[i], this) {
+            let widget = common::cast_control_to_gtkwidget(item.as_mut());
+                    
+            let (_, yy) = item.size();
+            self.items.insert(i, item);
+            *y += yy as i32;
+            
+            this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
+            
+            self.items[i].on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
+            
+            self.boxc.set_size_request(control.measured.0 as i32, *y as i32 * 13 / 10);
+            
+            /*if let Some(window) = self.base.widget().get_toplevel(){
+                if let Ok(window) = window.downcast::<gtk::Window>() {
+                    window.queue_resize();
+                }
+            }*/
+            
+            {
+                use gdk::WindowExt;
+                let allo = self.boxc.get_allocation();
+                if let Some(window) = self.boxc.get_window() {
+                    window.invalidate_rect(Some(&allo), true);
+                }
             }
-        }*/
-        
-        {
-            use gdk::WindowExt;
-            let allo = self.boxc.get_allocation();
-            if let Some(window) = self.boxc.get_window() {
-                window.invalidate_rect(Some(&allo), true);
-            }
+        } else {
+            panic!("Could not reach the item at {:?}", i);
         }
     }
     fn remove_item_inner(&mut self, base: &mut MemberBase, i: usize) {
@@ -81,33 +84,36 @@ impl<O: controls::List> NewListInner<O> for GtkList {
 }
 impl ListInner for GtkList {
 	fn with_adapter(adapter: Box<dyn types::Adapter>) -> Box<dyn controls::List> {
-		let len = adapter.len_at(&[]);
-        let mut b: Box<mem::MaybeUninit<List>> = Box::new_uninit();
-        let mut ab = AMember::with_inner(
-            AControl::with_inner(
-                AContainer::with_inner(
-                    AAdapted::with_inner(
-                        AList::with_inner(
-                            <Self as NewListInner<List>>::with_uninit(b.as_mut())
+		if let Some(len) = adapter.len_at(&[]) {
+            let mut b: Box<mem::MaybeUninit<List>> = Box::new_uninit();
+            let mut ab = AMember::with_inner(
+                AControl::with_inner(
+                    AContainer::with_inner(
+                        AAdapted::with_inner(
+                            AList::with_inner(
+                                <Self as NewListInner<List>>::with_uninit(b.as_mut())
+                            ),
+                            adapter,
+                            &mut b,
                         ),
-                        adapter,
-                        &mut b,
-                    ),
-                )
-            ),
-        );
-        ab.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().items = Vec::with_capacity(len);
-        let mut bb = unsafe {
-	        b.as_mut_ptr().write(ab);
-	        b.assume_init()
-        };
-        let (member, _, adapter, list) = unsafe { List::adapter_base_parts_mut(&mut bb.base) };
-
-		let mut y = 0;
-        for i in 0..adapter.adapter.len_at(&[]) {
-            list.inner_mut().add_item_inner(member, i, &mut y);
-        }
-        bb
+                    )
+                ),
+            );
+            ab.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().items = Vec::with_capacity(len);
+            let mut bb = unsafe {
+    	        b.as_mut_ptr().write(ab);
+    	        b.assume_init()
+            };
+            let (member, _, adapter, list) = unsafe { List::adapter_base_parts_mut(&mut bb.base) };
+    
+    		let mut y = 0;
+            for i in 0..len {
+                list.inner_mut().add_item_inner(member, i, &mut y);
+            }
+            bb
+		} else {
+		    panic!("Cannot instantiate List with broken Adapter")
+		}
 	}
 }
 impl ItemClickableInner for GtkList {
