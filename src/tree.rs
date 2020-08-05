@@ -151,21 +151,9 @@ impl TreeInner for GtkTree {
         let (member, _, adapter, tree) = unsafe { Tree::adapter_base_parts_mut(&mut bb.base) };
 
         let mut y = 0;
-        let mut indexes = vec![];
-        
-        fn add_item(tree: &mut GtkTree, adapter: &mut dyn types::Adapter, member: &mut MemberBase, indexes: &mut Vec<usize>, y: &mut i32) {
-            println!("{:?} = {:?}", indexes, adapter.len_at(indexes.as_slice()));
-            if let Some(len) = adapter.len_at(indexes.as_slice()) {
-                for i in 0..len {
-                    indexes.push(i);
-                    tree.add_item_inner(member, indexes.as_slice(), adapter.node_at(indexes.as_slice()).unwrap(), y);
-                    add_item(tree, adapter, member, indexes, y);
-                    indexes.pop();
-                }
-            }
+        for (indexes, node) in unsafe { adapter.adapter.into_items_indexes_iter() } {
+            tree.inner_mut().add_item_inner(member, indexes, node, &mut y);
         }
-        
-        add_item(tree.inner_mut(), adapter.adapter.as_mut(), member, &mut indexes, &mut y);
         bb
     }
 }
