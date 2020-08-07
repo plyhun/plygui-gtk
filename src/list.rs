@@ -107,9 +107,12 @@ impl ListInner for GtkList {
             let (member, _, adapter, list) = unsafe { List::adapter_base_parts_mut(&mut bb.base) };
     
     		let mut y = 0;
-            for i in 0..len {
+            /*for i in 0..len {
                 list.inner_mut().add_item_inner(member, i, &mut y);
-            }
+            }*/
+            adapter.adapter.for_each(&mut (|indexes, _node| {
+                list.inner_mut().add_item_inner(member, indexes[0], &mut y);
+            }));
             bb
 		} else {
 		    panic!("Cannot instantiate List with broken Adapter")
