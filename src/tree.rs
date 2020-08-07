@@ -24,7 +24,7 @@ pub struct GtkTree {
 }
 
 impl GtkTree {
-    fn add_item_inner(&mut self, base: &mut MemberBase, indexes: &[usize], node: adapter::Node, y: &mut i32) {
+    fn add_item_inner(&mut self, base: &mut MemberBase, indexes: &[usize], node: &adapter::Node, y: &mut i32) {
         let (member, control, adapter, _) = unsafe { Tree::adapter_base_parts_mut(base) };
         let (pw, ph) = control.measured;
         let this: &mut Tree = unsafe { utils::base_to_impl_mut(member) };
@@ -36,21 +36,16 @@ impl GtkTree {
         let mut iter = None;
         for i in 0..indexes.len() {
             let index = indexes[i];
-            println!("{} {:?} {} {} {:?}", i, indexes, index, items.len(), node);
             let end = (index+1) >= items.len();
+            println!("{} {:?} {} {} {:?}", i, indexes, index, items.len(), node);
             if end {
-                
+                println!("ends at {} {:?} {} {} {:?}", i, indexes, index, items.len(), node);
                 items.insert(index, TreeNode {
-                    node: node,
-                    root: if end {
-                            item.as_mut().map(|item| item.as_mut()).unwrap().on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
-                            item.take().unwrap()
-                        } else { 
-                            adapter.adapter.spawn_item_view(
-                                &indexes[..i+1], 
-                                this
-                            ).unwrap()
-                        },
+                    node: node.clone(),
+                    root: {
+                        item.as_mut().map(|item| item.as_mut()).unwrap().on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
+                        item.take().unwrap()
+                    },
                     branches: vec![]
                 });
                 {
@@ -151,9 +146,10 @@ impl TreeInner for GtkTree {
         let (member, _, adapter, tree) = unsafe { Tree::adapter_base_parts_mut(&mut bb.base) };
 
         let mut y = 0;
-        for (indexes, node) in unsafe { adapter.adapter.into_items_indexes_iter() } {
+        adapter.adapter.for_each(&mut (|indexes, node| {
             tree.inner_mut().add_item_inner(member, indexes, node, &mut y);
-        }
+        }));
+
         bb
     }
 }
@@ -183,7 +179,7 @@ impl AdaptedInner for GtkTree {
             yadder(self.items.as_slice(), &mut y);        
         }
         match value {
-            adapter::Change::Added(at, node) => {
+            adapter::Change::Added(at, ref node) => {
                 self.add_item_inner(base, at, node, &mut y);
             },
             adapter::Change::Removed(at) => {
