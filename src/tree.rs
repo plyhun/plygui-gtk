@@ -36,7 +36,7 @@ impl GtkTree {
         let mut iter = None;
         for i in 0..indexes.len() {
             let index = indexes[i];
-            let end = (index+1) >= items.len();
+            let end = (i+1) >= indexes.len();
             println!("{} {:?} {} {} {:?}", i, indexes, index, items.len(), node);
             if end {
                 println!("ends at {} {:?} {} {} {:?}", i, indexes, index, items.len(), node);
