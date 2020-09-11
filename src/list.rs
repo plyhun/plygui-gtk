@@ -120,7 +120,7 @@ impl ListInner for GtkList {
 	}
 }
 impl ItemClickableInner for GtkList {
-    fn item_click(&mut self, i: usize, item_view: &mut dyn controls::Control, _skip_callbacks: bool) {
+    fn item_click(&mut self, i: &[usize], item_view: &mut dyn controls::Control, _skip_callbacks: bool) {
         let mut this = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
 	    let this = common::cast_gtk_widget_to_member_mut::<List>(&mut this).unwrap();
         if let Some(ref mut callback) = self.h_left_clicked {
@@ -334,6 +334,6 @@ fn on_activated<O: controls::List>(this: &reckless::RecklessListBox, row: &ListB
     if let Some(ref mut callback) = ll2.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().h_left_clicked {
         let mut ll2 = this.clone().upcast::<Widget>();
         let ll2 = common::cast_gtk_widget_to_member_mut::<O>(&mut ll2).unwrap();
-        (callback.as_mut())(ll2, i as usize, item_view.as_mut());
+        (callback.as_mut())(ll2, &[i as usize], item_view.as_mut());
     }
 }
