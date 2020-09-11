@@ -30,6 +30,7 @@ impl GtkTree {
         let this: &mut Tree = unsafe { utils::base_to_impl_mut(member) };
         
         let mut item = adapter.adapter.spawn_item_view(indexes, this);
+        println!("indexes {:?}", indexes);
         let widget = common::cast_control_to_gtkwidget(item.as_mut().map(|item| item.as_mut()).unwrap());
         
         let mut items = &mut self.items;
@@ -37,13 +38,14 @@ impl GtkTree {
         for i in 0..indexes.len() {
             let index = indexes[i];
             let end = (i+1) >= indexes.len();
-            println!("{} {:?} {} {} {:?}", i, indexes, index, items.len(), node);
             if end {
-                println!("ends at {} {:?} {} {} {:?}", i, indexes, index, items.len(), node);
                 items.insert(index, TreeNode {
                     node: node.clone(),
                     root: {
-                        item.as_mut().map(|item| item.as_mut()).unwrap().on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
+                        item.as_mut().map(|item| {
+                                item.set_layout_width(layout::Size::WrapContent);
+                                item.as_mut()
+                            }).unwrap().on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
                         item.take().unwrap()
                     },
                     branches: vec![]
@@ -149,12 +151,11 @@ impl TreeInner for GtkTree {
         adapter.adapter.for_each(&mut (|indexes, node| {
             tree.inner_mut().add_item_inner(member, indexes, node, &mut y);
         }));
-
         bb
     }
 }
 impl ItemClickableInner for GtkTree {
-    fn item_click(&mut self, i: usize, item_view: &mut dyn controls::Control, _skip_callbacks: bool) {
+    fn item_click(&mut self, i: &[usize], item_view: &mut dyn controls::Control, _skip_callbacks: bool) {
         let mut this = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
         let this = common::cast_gtk_widget_to_member_mut::<Tree>(&mut this).unwrap();
         if let Some(ref mut callback) = self.h_left_clicked {
@@ -388,21 +389,26 @@ fn on_size_allocate<O: controls::Tree>(this: &::gtk::Widget, _allo: &::gtk::Rect
     let measured_size = ll.inner().base.measured;
     ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
 }
-fn on_activated<O: controls::Tree>(this: &reckless::RecklessTreeView, path: &TreePath, column: &TreeViewColumn) {
-    /*let i = path.get_indices_with_depth();
-    if i < 0 {
+fn on_activated<O: controls::Tree>(this: &reckless::RecklessTreeView, path: &TreePath, _: &TreeViewColumn) {
+    let i = path.get_indices().iter().map(|i| *i as usize).collect::<Vec<_>>();
+    if i.len() < 1 {
         return;
     }
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<Tree>(&mut ll).unwrap();
     let mut ll2 = this.clone().upcast::<Widget>();
     let ll2 = common::cast_gtk_widget_to_member_mut::<Tree>(&mut ll2).unwrap();
-    let item_view = ll.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().items.get_mut(i as usize).unwrap();
+    let mut item_view = ll.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().items.as_mut_slice();
+    let mut idx = 0;
+    while idx < i.len()-1 {
+        item_view = item_view.get_mut(i[idx]).unwrap().branches.as_mut_slice();
+        idx += 1;
+    }
     if let Some(ref mut callback) = ll2.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().h_left_clicked {
         let mut ll2 = this.clone().upcast::<Widget>();
         let ll2 = common::cast_gtk_widget_to_member_mut::<O>(&mut ll2).unwrap();
-        (callback.as_mut())(ll2, i as usize, item_view.as_mut());
-    }*/
+        (callback.as_mut())(ll2, i.as_slice(), item_view.get_mut(i[i.len()-1]).unwrap().root.as_mut());
+    }
 }
 fn set_parent(level: &mut [TreeNode], parent: Option<&reckless::RecklessTreeView>) {
     for item in level {
