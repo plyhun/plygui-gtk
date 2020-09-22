@@ -30,14 +30,13 @@ impl GtkTree {
         let this: &mut Tree = unsafe { utils::base_to_impl_mut(member) };
         
         let mut item = adapter.adapter.spawn_item_view(indexes, this);
-        println!("indexes {:?}", indexes);
         let widget = common::cast_control_to_gtkwidget(item.as_mut().map(|item| item.as_mut()).unwrap());
         
         let mut items = &mut self.items;
         let mut iter = None;
         for i in 0..indexes.len() {
             let index = indexes[i];
-            let end = (i+1) >= indexes.len();
+            let end = i+1 >= indexes.len();
             if end {
                 items.insert(index, TreeNode {
                     node: node.clone(),
