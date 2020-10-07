@@ -72,16 +72,18 @@ impl GtkTree {
         let mut iter = None;
         for i in 0..indexes.len() {
             let index = indexes[i];
-            if index >= (items.len()-1) {
+            iter = self.store.iter_nth_child(iter.as_ref(), index as i32);
+                
+            if i+1 >= indexes.len() {
                 let mut item = items.remove(index);
                 item.root.on_removed_from_container(this);
                 let widget = common::cast_control_to_gtkwidget(item.root.as_mut());
                 let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
                 widget.hide();
                 widget.unparent();
+                
                 this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.remove(iter.as_ref().unwrap()/*, index as i32*/);
             } else {
-                iter = self.store.iter_nth_child(iter.as_ref(), index as i32);
                 items = &mut items[index].branches;
             }
         }
