@@ -59,6 +59,19 @@ impl GtkTree {
                 
                 iter = Some(this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.insert(iter.as_ref(), index as i32));
                 this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.set_value(iter.as_ref().unwrap(), 0, &val);
+                
+                match items[index].node {
+                	adapter::Node::Branch(expanded) => {
+                		let path = this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.get_path(iter.as_ref().unwrap()).unwrap();
+                		if expanded {
+                			this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.expand_row(&path, false); 
+                		} else {
+                			this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.collapse_row(&path); 
+                		}
+                	},
+                	_ => {}
+                }
+                
                 return;
             } else {
                 iter = self.store.iter_nth_child(iter.as_ref(), index as i32);
@@ -83,6 +96,36 @@ impl GtkTree {
                 widget.unparent();
                 
                 this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.remove(iter.as_ref().unwrap()/*, index as i32*/);
+            } else {
+                items = &mut items[index].branches;
+            }
+        }
+    }
+    fn update_item_inner(&mut self, base: &mut MemberBase, indexes: &[usize], node: &adapter::Node) {
+    	let this: &mut Tree = unsafe { utils::base_to_impl_mut(base) };
+        
+        let mut items = &mut self.items;
+        let mut iter = None;
+        for i in 0..indexes.len() {
+            let index = indexes[i];
+            let end = i+1 >= indexes.len();
+            
+            iter = self.store.iter_nth_child(iter.as_ref(), index as i32);
+
+            if end {
+            	items[index].node = node.clone();
+                match items[index].node {
+                	adapter::Node::Branch(expanded) => {
+                		let path = this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.get_path(iter.as_ref().unwrap()).unwrap();
+                		if expanded {
+                			this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.expand_row(&path, false); 
+                		} else {
+                			this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.collapse_row(&path); 
+                		}
+                	},
+                	_ => {}
+                }
+                return;
             } else {
                 items = &mut items[index].branches;
             }
@@ -187,7 +230,8 @@ impl AdaptedInner for GtkTree {
             adapter::Change::Removed(at) => {
                 self.remove_item_inner(base, at);
             },
-            adapter::Change::Edited(_,_) => {
+            adapter::Change::Edited(at, ref node) => {
+            	self.update_item_inner(base, at, node);
             },
         }
         //self.base.widget().get_toplevel().unwrap().queue_resize(); // TODO WHY????
