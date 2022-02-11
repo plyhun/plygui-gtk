@@ -12,10 +12,6 @@ static void reckless_cell_renderer_set_property(GObject *object, guint param_id,
 
 static void reckless_cell_renderer_finalize(GObject *gobject);
 
-static void reckless_cell_renderer_get_size(GtkCellRenderer *cell,
-		GtkWidget *widget, const GdkRectangle *cell_area, gint *x_offset,
-		gint *y_offset, gint *width, gint *height);
-
 static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
 		GtkWidget *widget, const GdkRectangle *background_area,
 		const GdkRectangle *cell_area, GtkCellRendererState state);
@@ -177,45 +173,23 @@ reckless_cell_renderer_get_preferred_width_for_height (GtkCellRenderer *cell,
 	if (natural) *natural = 1;
 }
 
-static void reckless_cell_renderer_get_size(GtkCellRenderer *cell,
-		GtkWidget *widget, const GdkRectangle *cell_area, gint *x_offset,
-		gint *y_offset, gint *width, gint *height) {
-	gint calc_width;
-	gint calc_height;
-
-	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
-	gtk_widget_get_size_request(rc->cell, &calc_width, &calc_height);
-
-	if (width) {
-		*width = calc_width;
-	}
-	if (height) {
-		*height = calc_height;
-	}
-	if (cell_area) {
-		if (x_offset) {
-			*x_offset = (cell_area->width - *width);
-			*x_offset = MAX(*x_offset, 0);
-		}
-		if (y_offset) {
-			*y_offset = (cell_area->height - *height);
-			*y_offset = MAX(*y_offset, 0);
-		}
-	}
-}
 static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
 		GtkWidget *widget, const GdkRectangle *background_area,
 		const GdkRectangle *cell_area, GtkCellRendererState state) {
 	GdkRectangle allo;
+	gint calc_width;
+	gint calc_height;
 
 	cairo_save(ctx);
 
+	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
+	gtk_widget_get_size_request(rc->cell, &calc_width, &calc_height);
+
 	allo.x = cell_area->x;
 	allo.y = cell_area->y;
-	allo.width = cell_area->width;
-	allo.height = cell_area->height;
+	allo.width = calc_width;
+	allo.height = calc_height;
 
-	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
 	gtk_widget_size_allocate(rc->cell, &allo);
 	cairo_translate(ctx, allo.x, allo.y);
 	gtk_widget_draw(rc->cell, ctx);
