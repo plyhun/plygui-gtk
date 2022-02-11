@@ -6,7 +6,7 @@ use gtk::Application as GtkApplicationSys;
 
 use std::any::TypeId;
 
-const DEFAULT_FRAME_SLEEP_MS: u32 = 10;
+const DEFAULT_FRAME_SLEEP_MS: u32 = 100;
 
 pub struct GtkApplication {
     app: GtkApplicationSys,
