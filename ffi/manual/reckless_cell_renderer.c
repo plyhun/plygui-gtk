@@ -215,8 +215,8 @@ static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
 	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
 	gtk_widget_get_size_request(rc->cell, &calc_width, &calc_height);
 
-	allo.x = cell_area->x;
-	allo.y = cell_area->y;
+	allo.x = MAX(cell_area->x, 0);
+	allo.y = MAX(cell_area->y, 0);
 	allo.width = calc_width;
 	allo.height = calc_height;
 
