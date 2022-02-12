@@ -28,22 +28,8 @@ impl GtkList {
             this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
             
             self.items[i].on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
-            
             self.boxc.set_size_request(control.measured.0 as i32, *y as i32 * 13 / 10);
-            
-            /*if let Some(window) = self.base.widget().get_toplevel(){
-                if let Ok(window) = window.downcast::<gtk::Window>() {
-                    window.queue_resize();
-                }
-            }*/
-            
-            {
-                use gdk::WindowExt;
-                let allo = self.boxc.get_allocation();
-                if let Some(window) = self.boxc.get_window() {
-                    window.invalidate_rect(Some(&allo), true);
-                }
-            }
+            self.boxc.queue_draw();
         } else {
             panic!("Could not reach the item at {:?}", i);
         }
