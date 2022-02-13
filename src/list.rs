@@ -25,11 +25,8 @@ impl GtkList {
             self.items.insert(i, item);
             *y += yy as i32;
             
-            this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
-            
+            self.boxc.insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
             self.items[i].on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
-            self.boxc.set_size_request(control.measured.0 as i32, *y as i32 * 13 / 10);
-            self.boxc.queue_draw();
         } else {
             panic!("Could not reach the item at {:?}", i);
         }
