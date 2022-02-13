@@ -40,7 +40,7 @@ impl GtkApplication {
 impl<O: controls::Application> NewApplicationInner<O> for GtkApplication {
     fn with_uninit_params(u: &mut mem::MaybeUninit<O>, name: &str) -> Self {
         GtkApplication {
-            app: GtkApplicationSys::new("application.plygui", ApplicationFlags::FLAGS_NONE).unwrap(),
+            app: GtkApplicationSys::new(format!("plygui.{}", name).as_str(), ApplicationFlags::FLAGS_NONE).unwrap(),
             name: name.into(),
             selfptr: u as *mut _ as *mut Application,
             sleep: DEFAULT_FRAME_SLEEP_MS,
