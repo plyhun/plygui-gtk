@@ -103,8 +103,7 @@ impl<O: controls::Window> NewWindowInner<O> for GtkWindow {
                     }
                 });
                 mi
-            };
-
+            }
             let menu_bar = w.menu_bar.as_ref().unwrap();
             common::make_menu(menu_bar.clone().upcast::<GtkMenuBar>().upcast(), menu, &mut w.menu, item_spawn, selfptr);
             w.container.add(menu_bar);

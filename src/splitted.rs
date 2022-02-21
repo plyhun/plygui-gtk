@@ -337,7 +337,7 @@ impl MultiContainerInner for GtkSplitted {
         2
     }
     fn set_child_to(&mut self, member: &mut MemberBase, index: usize, mut child: Box<dyn controls::Control>) -> Option<Box<dyn controls::Control>> {
-         let (member, control, _) = unsafe { Splitted::control_base_parts_mut(member) };
+        let (member, control, _) = unsafe { Splitted::control_base_parts_mut(member) };
 
         let (pw, ph) = control.measured;
         let orientation = self.orientation(member);

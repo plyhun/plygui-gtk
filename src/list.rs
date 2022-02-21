@@ -133,7 +133,8 @@ impl AdaptedInner for GtkList {
             adapter::Change::Edited(_,_) => {
             },
         }
-        //self.base.widget().get_toplevel().unwrap().queue_resize(); // TODO WHY????
+        let (member, control, _, _) = unsafe { List::adapter_base_parts_mut(base) };
+        self.draw(member, control);
     }
 }
 impl ContainerInner for GtkList {
@@ -258,7 +259,6 @@ impl Drawable for GtkList {
             y += ch as i32;
         }
         self.base.draw(control);
-        self.boxc.set_size_request(control.measured.0 as i32, y as i32 * 13 / 10);
     }
     fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
         let old_size = control.measured;

@@ -95,8 +95,7 @@ impl<O: controls::Tray> NewTrayInner<O> for GtkTray {
                         }
                     });
                     mi
-                };
-
+                }
                 let context_menu = t.context_menu.as_ref().unwrap();
                 common::make_menu(context_menu.clone().upcast(), menu, &mut t.menu, item_spawn, selfptr);
             }
