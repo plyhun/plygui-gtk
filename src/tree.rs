@@ -34,7 +34,7 @@ impl GtkTree {
             if end {
                 items.insert(index, TreeNode {
                     expanded: if let adapter::Node::Branch(expanded) = node { *expanded } else { false },
-                    root: item,
+                    control: item,
                     branches: vec![],
                     native: widget
                 });
@@ -46,10 +46,11 @@ impl GtkTree {
                 let ptr: *mut gobject_sys::GObject = Object::from(items[index].native.clone()).to_glib_none().0;
                 unsafe { g_value_set_pointer(val.to_glib_none_mut().0, ptr as *mut c_void); }
                 
-                iter = Some(this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.insert(iter.as_ref(), index as i32));
+                iter = this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.iter_nth_child(iter.as_ref(), index as i32)
+                    .or(Some(this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.insert(iter.as_ref(), index as i32)));
                 this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.set_value(iter.as_ref().unwrap(), 0, &val);
-                items[index].root.set_layout_width(layout::Size::WrapContent);
-                items[index].root.on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
+                items[index].control.set_layout_width(layout::Size::WrapContent);
+                items[index].control.on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
                 
                 match items[index].node() {
                 	adapter::Node::Branch(expanded) => {
@@ -80,8 +81,8 @@ impl GtkTree {
                 
             if i+1 >= indexes.len() {
                 let mut item = items.remove(index);
-                item.root.on_removed_from_container(this);
-                let widget = common::cast_control_to_gtkwidget(item.root.as_mut());
+                item.control.on_removed_from_container(this);
+                let widget = common::cast_control_to_gtkwidget(item.control.as_mut());
                 let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
                 widget.hide();
                 widget.unparent();
@@ -207,7 +208,7 @@ impl AdaptedInner for GtkTree {
         {
             fn yadder(level: &[TreeNode<GtkWidget>], y: &mut i32) {
                 for item in level {
-                    let (_, yy) = item.root.size();
+                    let (_, yy) = item.control.size();
                     *y += yy as i32;
                     yadder(item.branches.as_slice(), y);
                 }
@@ -234,19 +235,19 @@ impl ContainerInner for GtkTree {
             for child in vec {
                 match arg {
                     types::FindBy::Id(id) => {
-                        if child.root.as_member_mut().id() == id {
-                            return Some(child.root.as_mut());
+                        if child.control.as_member_mut().id() == id {
+                            return Some(child.control.as_mut());
                         }
                     }
                     types::FindBy::Tag(tag) => {
-                        if let Some(mytag) = child.root.as_member_mut().tag() {
+                        if let Some(mytag) = child.control.as_member_mut().tag() {
                             if tag == mytag {
-                                return Some(child.root.as_mut());
+                                return Some(child.control.as_mut());
                             }
                         }
                     }
                 }
-                if let Some(c) = child.root.is_container_mut() {
+                if let Some(c) = child.control.is_container_mut() {
                     let ret = c.find_control_mut(arg);
                     if ret.is_some() {
                         return ret;
@@ -267,19 +268,19 @@ impl ContainerInner for GtkTree {
             for child in vec {
                 match arg {
                     types::FindBy::Id(id) => {
-                        if child.root.as_member().id() == id {
-                            return Some(child.root.as_ref());
+                        if child.control.as_member().id() == id {
+                            return Some(child.control.as_ref());
                         }
                     }
                     types::FindBy::Tag(tag) => {
-                        if let Some(mytag) = child.root.as_member().tag() {
+                        if let Some(mytag) = child.control.as_member().tag() {
                             if tag == mytag {
-                                return Some(child.root.as_ref());
+                                return Some(child.control.as_ref());
                             }
                         }
                     }
                 }
-                if let Some(c) = child.root.is_container() {
+                if let Some(c) = child.control.is_container() {
                     let ret = c.find_control(arg);
                     if ret.is_some() {
                         return ret;
@@ -364,8 +365,8 @@ impl Drawable for GtkTree {
         
         fn draw_inner(vec: &mut [TreeNode<GtkWidget>], y: &mut i32) {
             for item in vec {
-                let (_, ch) = item.root.size();
-                item.root.draw(Some((0, *y)));
+                let (_, ch) = item.control.size();
+                item.control.draw(Some((0, *y)));
                 *y += ch as i32;
                 draw_inner(item.branches.as_mut_slice(), y);
             }
@@ -385,7 +386,7 @@ impl Drawable for GtkTree {
                 
                 fn measure_inner(vec: &mut [TreeNode<GtkWidget>], parent_width: u16, parent_height: u16, w: &mut u16, h: &mut u16) {
                     for item in vec {
-                        let (cw, ch, _) = item.root.measure(cmp::max(0, parent_width as i32) as u16, cmp::max(0, parent_height as i32 - *h as i32) as u16);
+                        let (cw, ch, _) = item.control.measure(cmp::max(0, parent_width as i32) as u16, cmp::max(0, parent_height as i32 - *h as i32) as u16);
                         *w = cmp::max(*w, cw);
                         *h += ch;
                         measure_inner(item.branches.as_mut_slice(), parent_width, parent_height, w, h);
@@ -443,12 +444,12 @@ fn on_activated<O: controls::Tree>(this: &reckless::RecklessTreeView, path: &Tre
     if let Some(ref mut callback) = ll2.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().h_left_clicked {
         let mut ll2 = this.clone().upcast::<Widget>();
         let ll2 = common::cast_gtk_widget_to_member_mut::<O>(&mut ll2).unwrap();
-        (callback.as_mut())(ll2, i.as_slice(), item_view.get_mut(i[i.len()-1]).unwrap().root.as_mut());
+        (callback.as_mut())(ll2, i.as_slice(), item_view.get_mut(i[i.len()-1]).unwrap().control.as_mut());
     }
 }
 fn set_parent(level: &mut [TreeNode<GtkWidget>], parent: Option<&reckless::RecklessTreeView>) {
     for item in level {
-        let widget = common::cast_control_to_gtkwidget(item.root.as_mut());
+        let widget = common::cast_control_to_gtkwidget(item.control.as_mut());
         let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
         if widget.get_parent().is_some() {
             widget.unparent();

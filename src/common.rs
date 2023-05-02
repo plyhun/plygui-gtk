@@ -1,5 +1,5 @@
 pub use plygui_api::sdk::*;
-pub use plygui_api::{callbacks, controls, defaults, ids, layout, types::{self, adapter}, utils};
+pub use plygui_api::{callbacks, controls, defaults, ids, layout, types::{self, adapter, matrix}, utils};
 
 pub use glib::translate::ToGlibPtr;
 pub use glib::{Type, Value, Object};

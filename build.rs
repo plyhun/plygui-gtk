@@ -279,6 +279,7 @@ fn main() {
         generate("label", &mut cc_build);
         generate("progress_bar", &mut cc_build);
         generate("tree_view", &mut cc_build);
+        generate("grid", &mut cc_build);
         generate("list_box", &mut cc_build);
         generate("scrolled_window", &mut cc_build);
 

@@ -7,6 +7,7 @@ mod _paned_;
 mod _text_view_;
 mod _progress_bar_;
 mod _tree_view_;
+mod _grid_;
 mod _list_box_;
 mod _scrolled_window_;
 
@@ -23,5 +24,6 @@ pub use _paned_::*;
 pub use _text_view_::*;
 pub use _progress_bar_::*;
 pub use _tree_view_::*;
+pub use _grid_::*;
 pub use _list_box_::*;
 pub use _scrolled_window_::*;
