@@ -1,6 +1,7 @@
 use crate::common::{self, *};
 
 use gtk::{ListBoxExt, ContainerExt, ListBoxRow, ListBoxRowExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
+use glib::signal::Inhibit;
 
 pub type List = AMember<AControl<AContainer<AAdapted<AList<GtkList>>>>>;
 
@@ -24,7 +25,13 @@ impl GtkList {
             let (_, yy) = item.size();
             self.items.insert(i, item);
             *y += yy as i32;
-            
+            {
+                let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
+                widget.connect_draw(|this,_| {
+                    this.get_parent().unwrap().queue_draw();
+                    Inhibit(false)
+                });
+            }
             self.boxc.insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
             self.items[i].on_added_to_container(this, 0, *y, utils::coord_to_size(pw as i32) as u16, utils::coord_to_size(ph as i32) as u16);
         } else {

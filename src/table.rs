@@ -3,7 +3,7 @@ use std::panic;
 use crate::common::{self, matrix::*, *};
 
 use gtk::{TreeViewExt, CellLayoutExt, ContainerExt, CellRendererExt, TreeViewColumn, TreeViewColumnExt, ListStore, ListStoreExtManual, TreeModelExt, ListStoreExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
-use glib::translate::ToGlibPtrMut;
+use glib::{translate::ToGlibPtrMut, signal::Inhibit};
 use gobject_sys::g_value_set_pointer;
 
 pub type Table = AMember<AControl<AContainer<AAdapted<ATable<GtkTable>>>>>;
@@ -21,7 +21,7 @@ pub struct GtkTable {
 
 impl GtkTable {
     fn add_row_inner(&mut self, base: &mut MemberBase, index: usize) -> Option<&mut Row<GtkWidget>> {
-        let (member, control, adapter, _) = unsafe { Table::adapter_base_parts_mut(base) };
+        let (_, control, _, _) = unsafe { Table::adapter_base_parts_mut(base) };
         let native = self.store.clone().upcast::<glib::Object>();
         self.store.insert(index as i32);
         let row = Row {
@@ -107,6 +107,10 @@ impl GtkTable {
             {
                 let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
                 widget.set_parent(&self.boxc);
+                widget.connect_draw(|this,_| {
+                    this.get_parent().unwrap().queue_draw();
+                    Inhibit(false)
+                });
             }
             let w = self.data.column_at(x).map(|col| {
                 let widget = Object::from(col.native.clone());
@@ -301,7 +305,6 @@ impl<O: controls::Table> NewTableInner<O> for GtkTable {
             h_left_clicked: None,
             width, height
         };
-        //li.boxc.set_activate_on_single_click(true);
         li.boxc.set_halign(Align::Fill);
         li.boxc.set_valign(Align::Fill);
         //li.boxc.connect_row_activated(on_activated::<O>);
@@ -417,7 +420,7 @@ impl AdaptedInner for GtkTable {
                 }
             },
         }
-        self.base.widget().get_toplevel().unwrap().queue_resize(); // TODO WHY????
+        self.base.widget().get_toplevel().unwrap().queue_draw(); // TODO WHY????
     }
 }
 impl ContainerInner for GtkTable {
@@ -472,18 +475,30 @@ impl ControlInner for GtkTable {
         let parent = self.boxc.clone();
         let this: &mut Table = unsafe { utils::base_to_impl_mut(member) };
         self.data.cols.iter_mut().enumerate().for_each(|(index, col)| {
+            col.control.as_mut().map(|control| set_parent(control.as_mut(), Some(&parent)));
             this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().resize_column(control, index, col.width);
         });
         self.data.rows.iter_mut().enumerate().for_each(|(index, row)| {
             this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().resize_row(control, index, row.height, false);
-            row.cells.iter_mut().filter(|cell| cell.is_some()).for_each(|cell| set_parent(cell.as_mut().unwrap(), Some(&parent)));
+            row.control.as_mut().map(|control| set_parent(control.as_mut(), Some(&parent)));
+            row.cells.iter_mut()
+                .filter(|cell| cell.is_some())
+                .for_each(|cell| {
+                    cell.as_mut().unwrap().control.as_mut()
+                        .map(|control| set_parent(control.as_mut(), Some(&parent)));
+                });
         });
         self.measure(member, control, pw, ph);
         control.coords = Some((x, y));
         self.draw(member, control);
     }
     fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &dyn controls::Container) {
-        self.data.rows.iter_mut().for_each(|row| row.cells.iter_mut().filter(|cell| cell.is_some()).for_each(|cell| set_parent(cell.as_mut().unwrap(), None)));
+        self.data.rows.iter_mut().for_each(|row| row.cells.iter_mut()
+                .filter(|cell| cell.is_some())
+                .for_each(|cell| {
+                    cell.as_mut().unwrap().control.as_mut()
+                        .map(|control| set_parent(control.as_mut(), None));
+                }));
     }
 
     fn parent(&self) -> Option<&dyn controls::Member> {
@@ -584,8 +599,8 @@ fn on_size_allocate<O: controls::Table>(this: &::gtk::Widget, _allo: &::gtk::Rec
     let measured_size = ll.inner().base.measured;
     ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
 }
-fn set_parent(cell: &mut Cell<GtkWidget>, parent: Option<&reckless::RecklessTreeView>) {
-    let widget = common::cast_control_to_gtkwidget(cell.control.as_mut().unwrap().as_mut());
+fn set_parent(control: &mut dyn controls::Control, parent: Option<&reckless::RecklessTreeView>) {
+    let widget = common::cast_control_to_gtkwidget(control);
     let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
     if widget.get_parent().is_some() {
         widget.unparent();

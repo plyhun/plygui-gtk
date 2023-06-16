@@ -1,7 +1,7 @@
 use crate::common::{self, *};
 
 use gtk::{TreeViewExt, CellLayoutExt, ContainerExt, TreePath, TreeViewColumn, TreeStore, TreeStoreExtManual, TreeModelExt, TreeStoreExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
-use glib::translate::ToGlibPtrMut;
+use glib::{translate::ToGlibPtrMut, signal::Inhibit};
 use gobject_sys::g_value_set_pointer;
 
 pub type Tree = AMember<AControl<AContainer<AAdapted<ATree<GtkTree>>>>>;
@@ -41,6 +41,10 @@ impl GtkTree {
                 {
                     let widget = Object::from(items[index].native.clone()).downcast::<Widget>().unwrap();
                     widget.set_parent(&self.boxc);
+                    widget.connect_draw(|this,_| {
+                        this.get_parent().unwrap().queue_draw();
+                        Inhibit(false)
+                    });
                 }
                 let mut val = Value::from_type(Type::Pointer);
                 let ptr: *mut gobject_sys::GObject = Object::from(items[index].native.clone()).to_glib_none().0;
