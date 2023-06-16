@@ -2,7 +2,7 @@ use std::panic;
 
 use crate::common::{self, matrix::*, *};
 
-use gtk::{TreeViewExt, CellLayoutExt, ContainerExt, TreePath, TreeViewColumn, TreeViewColumnExt, ListStore, ListStoreExtManual, TreeModelExt, ListStoreExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
+use gtk::{TreeViewExt, CellLayoutExt, ContainerExt, CellRendererExt, TreeViewColumn, TreeViewColumnExt, ListStore, ListStoreExtManual, TreeModelExt, ListStoreExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
 use glib::translate::ToGlibPtrMut;
 use gobject_sys::g_value_set_pointer;
 
@@ -20,8 +20,8 @@ pub struct GtkTable {
 }
 
 impl GtkTable {
-    fn add_row_inner(&mut self, _base: &mut MemberBase, index: usize) -> Option<&mut Row<GtkWidget>> {
-        dbg!("row", index);
+    fn add_row_inner(&mut self, base: &mut MemberBase, index: usize) -> Option<&mut Row<GtkWidget>> {
+        let (member, control, adapter, _) = unsafe { Table::adapter_base_parts_mut(base) };
         let native = self.store.clone().upcast::<glib::Object>();
         self.store.insert(index as i32);
         let row = Row {
@@ -31,17 +31,19 @@ impl GtkTable {
             height: self.data.default_row_height,
         };
         self.data.rows.insert(index, row);
-        //self.resize_rows(index, self.data.default_row_height, true);
+        self.resize_row(control, index, self.data.default_row_height, true);
         self.data.row_at_mut(index)
     }
     fn remove_row_inner(&mut self, _base: &mut MemberBase, index: usize) {
         if self.store.remove(self.store.iter_nth_child(None, index as i32).as_ref().expect("The Nth iterator should exist")) {
             self.data.row_at_mut(index).map(|row| {
-                (0..row.cells.len()).into_iter().map(|y| row.cells.remove(y).map(|cell| {
-                    let widget = Object::from(cell.native.clone()).downcast::<Widget>().unwrap();
-                    widget.hide();
-                    widget.unparent();
-                }));
+                (0..row.cells.len()).into_iter().for_each(|y| {
+                    row.cells.remove(y).map(|cell| {
+                        let widget = Object::from(cell.native.clone()).downcast::<Widget>().unwrap();
+                        widget.hide();
+                        widget.unparent();
+                    });
+                });
                 row.cells.iter_mut().map(|cell| cell.as_mut().map(|cell| cell.native.clone()))
             });
             self.data.rows.remove(index);
@@ -49,13 +51,12 @@ impl GtkTable {
             panic!("Could not remove row #{}", index);
         }
     }
-	fn add_column_inner(&mut self, base: &mut MemberBase, index: usize, initial: bool) {
+	fn add_column_inner(&mut self, base: &mut MemberBase, index: usize) {
         let (member, control, adapter, _) = unsafe { Table::adapter_base_parts_mut(base) };
         let (pw, ph) = control.measured;
         
         let this: &mut Table = unsafe { utils::base_to_impl_mut(member) };
         let item = adapter.adapter.spawn_item_view(&[index], this);
-        dbg!("col", index);
         self.data.cols.insert(index, Column {
             control: item.map(|mut item| {
             	let width = utils::coord_to_size(pw as i32 - DEFAULT_PADDING);
@@ -70,29 +71,35 @@ impl GtkTable {
                 col.pack_start(&this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().renderer, false);
                 col.add_attribute(&this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().renderer, "cell", index as i32);
 	            //col.set_title();
-	            let total = this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.insert_column(&col, index as i32);
-                dbg!("col1", index);
-                GtkWidget::from(col.upcast::<glib::Object>())
+	            GtkWidget::from(col.upcast::<glib::Object>())
             },
             width: layout::Size::MatchParent,
         });
         {
             let widget = Object::from(self.data.cols[index].native.clone());
             let col = widget.downcast::<TreeViewColumn>().unwrap();
-            self.boxc.insert_column(&col, index as i32);
+            self.boxc.append_column(&col);
+            let prev_column = if index > 0 { 
+                    self.boxc.get_column(index as i32 - 1) 
+                } else { 
+                    None 
+                };
+            self.boxc.move_column_after(&col, prev_column.as_ref());
         }
-        self.data.rows.iter_mut().for_each(|row| row.cells.insert(index, None));
-        //self.resize_column(control, index, self.data.cols[index].width, initial);
-        //self.resize_rows(index, self.data.default_row_height, true);
+        self.resize_column(control, index, self.data.cols[index].width);
+        self.data.rows.iter_mut().enumerate().for_each(|(row_index, row)| {
+            row.cells.insert(index, None);
+            this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().resize_row(control, row_index, row.height, true);
+        });
     }
 	fn add_cell_inner(&mut self, base: &mut MemberBase, x: usize, y: usize) {
         let (member, control, adapter, _) = unsafe { Table::adapter_base_parts_mut(base) };
         let (pw, ph) = control.measured;
-        if self.data.rows.len() <= x {
-            self.add_row_inner(member, x);
+        if self.data.rows.len() <= y {
+            self.add_row_inner(member, y);
         }
-        if self.data.cols.len() <= y {
-            self.add_column_inner(member, y, false);
+        if self.data.cols.len() <= x {
+            self.add_column_inner(member, x);
         }
         let this: &mut Table = unsafe { utils::base_to_impl_mut(member) };
         adapter.adapter.spawn_item_view(&[x, y], this).map(|mut item| {
@@ -101,19 +108,17 @@ impl GtkTable {
                 let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
                 widget.set_parent(&self.boxc);
             }
-            let w = self.data.column_at(y).map(|col| {
+            let w = self.data.column_at(x).map(|col| {
                 let widget = Object::from(col.native.clone());
                 widget.downcast::<TreeViewColumn>().unwrap().get_width()
             }).expect("Column does not exist!");
-            dbg!("cell", x, y);
-            self.data.rows.get_mut(x).map(|row| {
+            self.data.rows.get_mut(y).map(|row| {
         		let mut val = Value::from_type(Type::Pointer);
 	            let ptr: *mut gobject_sys::GObject = Object::from(widget.clone()).to_glib_none().0;
 	            unsafe { g_value_set_pointer(val.to_glib_none_mut().0, ptr as *mut c_void); }
-	            dbg!("cell", x, y);
-                let store: &mut ListStore = &mut this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store;
-	            let iter = store.iter_nth_child(None.as_ref(), x as i32);
-	            store.set_value(iter.as_ref().unwrap(), y as u32, &val);
+	            let store: &mut ListStore = &mut this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store;
+	            let iter = store.iter_nth_child(None.as_ref(), y as i32);
+	            store.set_value(iter.as_ref().unwrap(), x as u32, &val);
 	            //let row_height = *self.data.row_heights.get(&(x as usize)).unwrap_or(&self.data.default_row_height);
 	            item.set_layout_width(layout::Size::Exact(w as u16));
 	            item.set_layout_height(row.height);
@@ -123,58 +128,55 @@ impl GtkTable {
                     control: Some(item),
                     native: widget.into(),
                 }));
-                dbg!("cell1", x, y);
             });
         }).unwrap_or_else(|| {});
     }
 	fn remove_column_inner(&mut self, member: &mut MemberBase, index: usize) {
-        
-    }
-    fn remove_cell_inner(&mut self, member: &mut MemberBase, x: usize, y: usize) {
-        /*self.data.cols.get_mut(x).map(|col| {
-            //remove_cell_from_col(hwnd, col, member, x, y);
-            let this: &mut Table = unsafe { utils::base_to_impl_mut(member) };
-            let treeviewcol = col.native.downcast::<TreeViewColumn>().unwrap();
-	        let mut item = treeviewcol.remove(y);
-            item.control.on_removed_from_container(this);
-            let widget = common::cast_control_to_gtkwidget(item.control.as_mut());
-            let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
+        let this: &mut Table = unsafe { utils::base_to_impl_mut(member) };
+        self.data.rows.iter_mut().enumerate().for_each(|(row_index, row)| {
+            //this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().remove_cell_inner(member, row_index, index);
+            let cell = if index < row.cells.len() { row.cells.remove(index) } else { None };
+            cell.map(|cell| {
+                cell.control.map(|mut control| control.on_removed_from_container(this));
+                let widget = Object::from(cell.native.clone()).downcast::<Widget>().unwrap();
+                widget.hide();
+                widget.unparent();
+                this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.iter_nth_child(None.as_ref(), row_index as i32);
+            });
+        });
+        let column = if index < self.data.cols.len() { Some(self.data.cols.remove(index)) } else { None };
+        column.map(|column| {
+            column.control.map(|mut column| column.on_removed_from_container(this));
+            let widget = Object::from(column.native.clone()).downcast::<Widget>().unwrap();
             widget.hide();
             widget.unparent();
-            
-            this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.remove(iter.as_ref().unwrap()/*, index as i32*/);
-        });*/
+        });
+    }
+    fn remove_cell_inner(&mut self, member: &mut MemberBase, x: usize, y: usize) {
+        let this: &mut Table = unsafe { utils::base_to_impl_mut(member) };
+        self.data.rows.get_mut(x).map(|row| {
+            row.cells.remove(y).map(|cell| {
+                cell.control.map(|mut control| control.on_removed_from_container(this));
+                let widget = Object::from(cell.native.clone()).downcast::<Widget>().unwrap();
+                widget.hide();
+                widget.unparent();
+            });
+            row.cells.insert(y, None);
+        });
+        let val = Value::from_type(Type::Pointer);
+        let store: &mut ListStore = &mut this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store;
+        let iter = store.iter_nth_child(None.as_ref(), y as i32);
+        store.set_value(iter.as_ref().unwrap(), x as u32, &val);
     }
     fn change_column_inner(&mut self, base: &mut MemberBase, index: usize) {
         self.remove_column_inner(base, index);
-        self.add_column_inner(base, index, false);
+        self.add_column_inner(base, index);
     }
     fn change_cell_inner(&mut self, base: &mut MemberBase, x: usize, y: usize) {
         self.remove_cell_inner(base, x, y);
         self.add_cell_inner(base, x, y);
     }
-   /* fn remove_item_inner(&mut self, base: &mut MemberBase, indexes: &[usize]) {
-        let this: &mut Table = unsafe { utils::base_to_impl_mut(base) };
-        let mut data = &mut self.data.0;
-        let mut iter = None;
-        for i in 0..indexes.len() {
-            let index = indexes[i];
-            iter = self.store.iter_nth_child(iter.as_ref(), index as i32);
-                
-            if i+1 >= indexes.len() {
-                let mut item = data.remove(index);
-                item.control.on_removed_from_container(this);
-                let widget = common::cast_control_to_gtkwidget(item.control.as_mut());
-                let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
-                widget.hide();
-                widget.unparent();
-                
-                this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.remove(iter.as_ref().unwrap(), index as i32);
-            } else {
-                data = &mut data[index].branches;
-            }
-        }
-    }
+/* 
     fn update_item_inner(&mut self, base: &mut MemberBase, indexes: &[usize], node: &adapter::Node) {
     	let this: &mut Table = unsafe { utils::base_to_impl_mut(base) };
         
@@ -205,6 +207,84 @@ impl GtkTable {
             }
         }
     }*/
+    fn resize_row(&mut self, base: &ControlBase, index: usize, size: layout::Size, force: bool) {
+        let (w, h) = base.measured;
+            let height = match size {
+                layout::Size::Exact(height) => height,
+                layout::Size::WrapContent => self.data.rows.iter()
+                        .flat_map(|row| row.cells.iter())
+                        .filter(|cell| cell.is_some())
+                        .map(|cell| cell.as_ref().unwrap().control.as_ref())
+                        .filter(|control| control.is_some())
+                        .map(|control| control.unwrap().size().1)
+                        .fold(0, |s, i| if s > i {s} else {i}),
+                layout::Size::MatchParent => base.measured.1 / self.data.cols.len() as u16,
+            };
+            self.renderer.set_property_height(height as i32);
+            self.data.rows.iter_mut().for_each(|row| {
+                row.height = size;
+                row.control.as_mut().map(|control| {
+                    control.set_layout_height(layout::Size::Exact(height));
+                    control.measure(w, h);
+                    control.draw(None);
+                });
+                row.cells.iter_mut().for_each(|cell| {
+                    cell.as_mut().map(|cell| {
+                        cell.control.as_mut().map(|control| {
+                            control.set_layout_height(layout::Size::Exact(height));
+                            control.measure(w, h);
+                            control.draw(None);
+                        });
+                    });
+                });
+            });
+        /*if force || self.data.default_row_height != size {
+            
+            if !force {
+                self.data.row_at_mut(index).map(|row| row.height = size);
+            }
+        } else {
+            let row_height = self.data.default_row_height;
+            self.data.row_at_mut(index).map(|mut row| row.height = row_height);
+        }*/
+    }
+    fn resize_column(&mut self, base: &ControlBase, index: usize, size: layout::Size) {
+        let (w, h) = base.measured;
+        let width = match size {
+            layout::Size::Exact(width) => width,
+            layout::Size::WrapContent => self.data.rows.iter()
+                    .flat_map(|row| row.cells.iter())
+                    .filter(|cell| cell.is_some())
+                    .map(|cell| cell.as_ref().unwrap().control.as_ref())
+                    .filter(|control| control.is_some())
+                    .map(|control| control.unwrap().size().0)
+                    .fold(0, |s, i| if s > i {s} else {i}),
+            layout::Size::MatchParent => base.measured.0 / self.data.cols.len() as u16,
+        };
+        self.boxc.get_column(index as i32).map(|col| {
+            col.set_sizing(gtk::TreeViewColumnSizing::Autosize);
+            col.set_fixed_width(width as i32);
+        });
+        self.data.column_at_mut(index).map(|col| {
+            col.width = size;
+            col.control.as_mut().map(|control| {
+                control.set_layout_width(size);
+                control.measure(w, h);
+                control.draw(None);
+            });
+        });
+        self.data.rows.iter_mut().for_each(|row| {
+            row.cells.iter_mut().for_each(|cell| {
+                cell.as_mut().map(|cell| {
+                    cell.control.as_mut().map(|control| {
+                        control.set_layout_width(layout::Size::Exact(width));
+                        control.measure(w, h);
+                        control.draw(None);
+                    });
+                });
+            });
+        });
+    }
 }
 impl<O: controls::Table> NewTableInner<O> for GtkTable {
     fn with_uninit_params(ptr: &mut mem::MaybeUninit<O>, width: usize, height: usize) -> Self {
@@ -221,18 +301,14 @@ impl<O: controls::Table> NewTableInner<O> for GtkTable {
             h_left_clicked: None,
             width, height
         };
-        li.boxc.set_activate_on_single_click(true);
+        //li.boxc.set_activate_on_single_click(true);
         li.boxc.set_halign(Align::Fill);
         li.boxc.set_valign(Align::Fill);
         //li.boxc.connect_row_activated(on_activated::<O>);
-        {
-        //    li.col.pack_start(&li.renderer, false);
-        //    li.col.add_attribute(&li.renderer, "cell", 0);
-            li.boxc.set_model(&li.store);
-        }
+        li.boxc.set_model(&li.store);
         li.boxc.show();
         let scr = Object::from(li.base.widget.clone()).downcast::<ScrolledWindow>().unwrap();
-        scr.set_policy(PolicyType::Never, PolicyType::Always);
+        scr.set_policy(PolicyType::Automatic, PolicyType::Automatic);
         scr.add(&li.boxc);
         scr.set_min_content_height(1);
         common::set_pointer(&mut li.boxc.clone().upcast(), ptr);
@@ -264,16 +340,16 @@ impl TableInner for GtkTable {
         adapter.adapter.for_each(&mut (|indexes, node| {
             match node {
                 adapter::Node::Leaf => table.inner_mut().add_cell_inner(member, indexes[0], indexes[1]),
-                adapter::Node::Branch(_) => table.inner_mut().add_column_inner(member, indexes[0], true)
+                adapter::Node::Branch(_) => table.inner_mut().add_column_inner(member, indexes[0])
             }
         }));
         bb
     }
     fn set_column_width(&mut self, _: &mut MemberBase, control: &mut ControlBase, _: &mut AdaptedBase, index: usize, size: layout::Size) {
-        //self.resize_column(control, index, size, false)
+        self.resize_column(control, index, size)
     }
-    fn set_row_height(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &mut AdaptedBase, index: usize, size: layout::Size) {
-        //self.resize_rows(index, size, false)
+    fn set_row_height(&mut self, _: &mut MemberBase, control: &mut ControlBase, _: &mut AdaptedBase, index: usize, size: layout::Size) {
+        self.resize_row(control, index, size, false)
     }
 /*    fn resize(&mut self, member: &mut MemberBase, control: &mut ControlBase, adapted: &mut AdaptedBase, width: usize, height: usize) -> (usize, usize) {
         let old_size = self.size(member, control, adapted);
@@ -323,7 +399,7 @@ impl AdaptedInner for GtkTable {
                 if adapter::Node::Leaf == node || at.len() > 1 {
                     self.add_cell_inner(base, at[0], at[1]);
                 } else {
-                    self.add_column_inner(base, at[0], false);
+                    self.add_column_inner(base, at[0]);
                 }
             },
             adapter::Change::Removed(at) => {
@@ -341,7 +417,7 @@ impl AdaptedInner for GtkTable {
                 }
             },
         }
-        //self.base.widget().get_toplevel().unwrap().queue_resize(); // TODO WHY????
+        self.base.widget().get_toplevel().unwrap().queue_resize(); // TODO WHY????
     }
 }
 impl ContainerInner for GtkTable {
@@ -393,12 +469,21 @@ impl HasLayoutInner for GtkTable {
 
 impl ControlInner for GtkTable {
     fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &dyn controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
+        let parent = self.boxc.clone();
+        let this: &mut Table = unsafe { utils::base_to_impl_mut(member) };
+        self.data.cols.iter_mut().enumerate().for_each(|(index, col)| {
+            this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().resize_column(control, index, col.width);
+        });
+        self.data.rows.iter_mut().enumerate().for_each(|(index, row)| {
+            this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().resize_row(control, index, row.height, false);
+            row.cells.iter_mut().filter(|cell| cell.is_some()).for_each(|cell| set_parent(cell.as_mut().unwrap(), Some(&parent)));
+        });
         self.measure(member, control, pw, ph);
         control.coords = Some((x, y));
         self.draw(member, control);
     }
     fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &dyn controls::Container) {
-         
+        self.data.rows.iter_mut().for_each(|row| row.cells.iter_mut().filter(|cell| cell.is_some()).for_each(|cell| set_parent(cell.as_mut().unwrap(), None)));
     }
 
     fn parent(&self) -> Option<&dyn controls::Member> {
@@ -447,28 +532,35 @@ impl MemberInner for GtkTable {}
 
 impl Drawable for GtkTable {
     fn draw(&mut self, _: &mut MemberBase, control: &mut ControlBase) {
-        let mut y = 0;
-        
+        fn draw_inner(cell: &mut Cell<GtkWidget>) {
+            cell.control.as_mut().map(|control| {
+                let (cw, ch) = control.size();
+                control.draw(Some((cw as i32, ch as i32)));
+            });
+        }
+        self.data.rows.iter_mut().for_each(|row| row.cells.iter_mut().filter(|cell| cell.is_some()).for_each(|cell| draw_inner(cell.as_mut().unwrap())));              
         self.base.draw(control);
-        self.boxc.set_size_request(control.measured.0 as i32, y as i32 * 13 / 10);
+        self.boxc.set_size_request(control.measured.0 as i32, control.measured.1 as i32);
     }
     fn measure(&mut self, _: &mut MemberBase, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
         let old_size = control.measured;
         control.measured = match control.visibility {
             types::Visibility::Gone => (0, 0),
             _ => {
-                let mut w = 0;
-                let mut h = 0;
-                
+                fn measure_inner(cell: &mut Cell<GtkWidget>, parent_width: u16, parent_height: u16) {
+                    let cell = cell.control.as_mut().unwrap();
+                    cell.measure(cmp::max(0, parent_width as i32) as u16, cmp::max(0, parent_height as i32) as u16);
+                }
+                self.data.rows.iter_mut().for_each(|row| row.cells.iter_mut().filter(|cell| cell.is_some()).for_each(|cell| measure_inner(cell.as_mut().unwrap(), parent_width, parent_height)));              
                 let w = match control.layout.width {
                     layout::Size::MatchParent => parent_width,
                     layout::Size::Exact(w) => w,
-                    layout::Size::WrapContent => cmp::max(0, w as i32) as u16,
+                    layout::Size::WrapContent => defaults::THE_ULTIMATE_ANSWER_TO_EVERYTHING,
                 };
                 let h = match control.layout.height {
                     layout::Size::MatchParent => parent_height,
                     layout::Size::Exact(h) => h,
-                    layout::Size::WrapContent => cmp::max(0, h as i32) as u16,
+                    layout::Size::WrapContent => defaults::THE_ULTIMATE_ANSWER_TO_EVERYTHING,
                 };
                 (w, h)
             }
@@ -491,4 +583,14 @@ fn on_size_allocate<O: controls::Table>(this: &::gtk::Widget, _allo: &::gtk::Rec
 
     let measured_size = ll.inner().base.measured;
     ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
+}
+fn set_parent(cell: &mut Cell<GtkWidget>, parent: Option<&reckless::RecklessTreeView>) {
+    let widget = common::cast_control_to_gtkwidget(cell.control.as_mut().unwrap().as_mut());
+    let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
+    if widget.get_parent().is_some() {
+        widget.unparent();
+    }
+    if let Some(parent) = parent {
+        widget.set_parent(parent);
+    }
 }

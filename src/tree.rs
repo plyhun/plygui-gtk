@@ -143,13 +143,10 @@ impl<O: controls::Tree> NewTreeInner<O> for GtkTree {
         li.boxc.set_halign(Align::Fill);
         li.boxc.set_valign(Align::Fill);
         li.boxc.connect_row_activated(on_activated::<O>);
-        //li.boxc.set_model(&li.store);
-        {
-            li.col.pack_start(&li.renderer, false);
-            li.col.add_attribute(&li.renderer, "cell", 0);
-            li.boxc.set_model(&li.store);
-            li.boxc.append_column(&li.col);
-        }
+        li.col.pack_start(&li.renderer, false);
+        li.col.add_attribute(&li.renderer, "cell", 0);
+        li.boxc.set_model(&li.store);
+        li.boxc.append_column(&li.col);
         li.boxc.show();
         let scr = Object::from(li.base.widget.clone()).downcast::<ScrolledWindow>().unwrap();
         scr.set_policy(PolicyType::Never, PolicyType::Always);
