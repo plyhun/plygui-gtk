@@ -2,7 +2,7 @@ use std::panic;
 
 use crate::common::{self, matrix::*, *};
 
-use gtk::{TreeViewExt, CellLayoutExt, ContainerExt, CellRendererExt, TreeViewColumn, TreeViewColumnExt, ListStore, ListStoreExtManual, TreeModelExt, ListStoreExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
+use gtk::{SelectionMode, TreeSelectionExt, TreeViewExt, CellLayoutExt, ContainerExt, CellRendererExt, TreeViewColumn, TreeViewColumnExt, ListStore, ListStoreExtManual, TreeModelExt, ListStoreExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
 use glib::{translate::ToGlibPtrMut, signal::Inhibit};
 use gobject_sys::g_value_set_pointer;
 
@@ -56,23 +56,41 @@ impl GtkTable {
         let (pw, ph) = control.measured;
         
         let this: &mut Table = unsafe { utils::base_to_impl_mut(member) };
-        let item = adapter.adapter.spawn_item_view(&[index], this);
+        let indices = &[index];
+        let mut item = adapter.adapter.spawn_item_view(indices, this).map(|mut item| {
+            let width = utils::coord_to_size(pw as i32 - DEFAULT_PADDING);
+            let height = utils::coord_to_size(ph as i32 - DEFAULT_PADDING);
+            item.set_layout_width(layout::Size::Exact(width));
+            item.set_layout_height(self.data.default_row_height);
+            item.on_added_to_container(this, 0, 0, width, height);
+            item
+        });
+        let widget = {
+            let col = TreeViewColumn::new();
+            col.pack_start(&this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().renderer, false);
+            col.add_attribute(&this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().renderer, "cell", index as i32);
+            item.as_mut().map(|item| {
+                let widget = common::cast_control_to_gtkwidget(item.as_mut());
+                let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
+                /*{
+                    let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
+                    widget.set_parent(&self.boxc);
+                    widget.connect_draw(|this,_| {
+                        this.get_parent().unwrap().queue_draw();
+                        Inhibit(false)
+                    });
+                }*/
+                col.set_widget(Some(&widget));
+                widget.show();
+            }).or_else(|| adapter.adapter.alt_text_at(indices).map(|value| col.set_title(value)));
+            col.set_resizable(true);
+            col.set_sizing(gtk::TreeViewColumnSizing::Autosize);
+            col.connect_property_width_notify(column_resized);
+            GtkWidget::from(col.upcast::<glib::Object>())
+        };
         self.data.cols.insert(index, Column {
-            control: item.map(|mut item| {
-            	let width = utils::coord_to_size(pw as i32 - DEFAULT_PADDING);
-            	let height = utils::coord_to_size(ph as i32 - DEFAULT_PADDING);
-            	item.set_layout_width(layout::Size::Exact(width));
-                item.set_layout_height(self.data.default_row_height);
-                item.on_added_to_container(this, 0, 0, width, height);
-                item
-            }),
-            native: {
-                let mut col = TreeViewColumn::new();
-                col.pack_start(&this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().renderer, false);
-                col.add_attribute(&this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().renderer, "cell", index as i32);
-	            //col.set_title();
-	            GtkWidget::from(col.upcast::<glib::Object>())
-            },
+            control: item,
+            native: widget,
             width: layout::Size::MatchParent,
         });
         {
@@ -272,7 +290,7 @@ impl GtkTable {
         self.data.column_at_mut(index).map(|col| {
             col.width = size;
             col.control.as_mut().map(|control| {
-                control.set_layout_width(size);
+                control.set_layout_width(layout::Size::Exact(width));
                 control.measure(w, h);
                 control.draw(None);
             });
@@ -307,7 +325,8 @@ impl<O: controls::Table> NewTableInner<O> for GtkTable {
         };
         li.boxc.set_halign(Align::Fill);
         li.boxc.set_valign(Align::Fill);
-        //li.boxc.connect_row_activated(on_activated::<O>);
+        li.boxc.get_selection().set_mode(SelectionMode::None);
+        li.boxc.set_headers_visible(true);
         li.boxc.set_model(&li.store);
         li.boxc.show();
         let scr = Object::from(li.base.widget.clone()).downcast::<ScrolledWindow>().unwrap();
@@ -608,4 +627,7 @@ fn set_parent(control: &mut dyn controls::Control, parent: Option<&reckless::Rec
     if let Some(parent) = parent {
         widget.set_parent(parent);
     }
+}
+fn column_resized(tvc: &TreeViewColumn) {
+
 }
