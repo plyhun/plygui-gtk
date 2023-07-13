@@ -64,7 +64,10 @@ impl<O: controls::Splitted> NewSplittedInner<O> for GtkSplitted {
     	let ptr = ptr as *mut _ as *mut c_void;
         let sp = reckless::RecklessPaned::new();
         let sp = sp.upcast::<Paned>();
-    	sp.set_orientation(common::orientation_to_gtk(orientation));
+        sp.set_valign(Align::Center);
+        sp.set_halign(Align::Center);
+        sp.set_vexpand(true);
+        sp.set_orientation(common::orientation_to_gtk(orientation));
         sp.pack1(&Object::from(common::cast_control_to_gtkwidget(first.as_mut())).downcast::<Widget>().unwrap(), false, true);
         sp.pack2(&Object::from(common::cast_control_to_gtkwidget(second.as_mut())).downcast::<Widget>().unwrap(), false, true);
         sp.connect_property_position_notify(on_property_position_notify);

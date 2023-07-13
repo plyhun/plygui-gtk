@@ -183,8 +183,12 @@ static void reckless_cell_renderer_get_size(GtkCellRenderer *cell,
 	gint calc_width;
 	gint calc_height;
 
-	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
-	gtk_widget_get_size_request(rc->cell, &calc_width, &calc_height);
+	if (cell) {
+		RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
+		if (GTK_IS_WIDGET(rc->cell)) {
+			gtk_widget_get_size_request(rc->cell, &calc_width, &calc_height);
+		}
+	}
 
 	if (width) {
 		*width = calc_width;
@@ -207,22 +211,25 @@ static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
 		GtkWidget *widget, const GdkRectangle *background_area,
 		const GdkRectangle *cell_area, GtkCellRendererState state) {
 	GdkRectangle allo;
-	gint calc_width;
-	gint calc_height;
+	gint calc_width = 0;
+	gint calc_height = 0;
 
 	cairo_save(ctx);
 
-	RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
-	gtk_widget_get_size_request(rc->cell, &calc_width, &calc_height);
+	if (cell) {
+		RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
+		if (GTK_IS_WIDGET(rc->cell)) {
+			gtk_widget_get_size_request(rc->cell, &calc_width, &calc_height);
+	
+			allo.x = MAX(cell_area->x, 0);
+			allo.y = MAX(cell_area->y, 0);
+			allo.width = calc_width;
+			allo.height = calc_height;
 
-	allo.x = MAX(cell_area->x, 0);
-	allo.y = MAX(cell_area->y, 0);
-	allo.width = calc_width;
-	allo.height = calc_height;
-
-	gtk_widget_size_allocate(rc->cell, &allo);
-	cairo_translate(ctx, allo.x, allo.y);
-	gtk_widget_draw(rc->cell, ctx);
-
+			gtk_widget_size_allocate(rc->cell, &allo);
+			cairo_translate(ctx, allo.x, allo.y);
+			gtk_widget_draw(rc->cell, ctx);
+		}
+	}
 	cairo_restore(ctx);
 }

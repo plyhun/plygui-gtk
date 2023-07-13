@@ -131,11 +131,11 @@ impl GtkTree {
 impl<O: controls::Tree> NewTreeInner<O> for GtkTree {
     fn with_uninit(ptr: &mut mem::MaybeUninit<O>) -> Self {
         let ptr = ptr as *mut _ as *mut c_void;
-        let li = reckless::RecklessScrolledWindow::new();
-        let li = li.upcast::<Widget>();
-        li.connect_size_allocate(on_size_allocate::<O>);
-        let mut li = GtkTree {
-            base: common::GtkControlBase::with_gtk_widget(li),
+        let scr = reckless::RecklessScrolledWindow::new();
+        let scr = scr.upcast::<Widget>();
+        scr.connect_size_allocate(on_size_allocate::<O>);
+        let mut this = GtkTree {
+            base: common::GtkControlBase::with_gtk_widget(scr),
             boxc: reckless::RecklessTreeView::new(),
             col: TreeViewColumn::new(),
             renderer: reckless::cell_renderer::RecklessCellRenderer::new(),
@@ -143,22 +143,22 @@ impl<O: controls::Tree> NewTreeInner<O> for GtkTree {
             items: Default::default(),
             h_left_clicked: None,
         };
-        li.boxc.set_activate_on_single_click(true);
-        li.boxc.set_halign(Align::Fill);
-        li.boxc.set_valign(Align::Fill);
-        li.boxc.connect_row_activated(on_activated::<O>);
-        li.col.pack_start(&li.renderer, false);
-        li.col.add_attribute(&li.renderer, "cell", 0);
-        li.boxc.set_model(&li.store);
-        li.boxc.append_column(&li.col);
-        li.boxc.show();
-        let scr = Object::from(li.base.widget.clone()).downcast::<ScrolledWindow>().unwrap();
+        this.boxc.set_activate_on_single_click(true);
+        this.boxc.set_halign(Align::Fill);
+        this.boxc.set_valign(Align::Fill);
+        this.boxc.connect_row_activated(on_activated::<O>);
+        this.col.pack_start(&this.renderer, false);
+        this.col.add_attribute(&this.renderer, "cell", 0);
+        this.boxc.set_model(&this.store);
+        this.boxc.append_column(&this.col);
+        this.boxc.show();
+        let scr = Object::from(this.base.widget.clone()).downcast::<ScrolledWindow>().unwrap();
         scr.set_policy(PolicyType::Never, PolicyType::Always);
-        scr.add(&li.boxc);
+        scr.add(&this.boxc);
         scr.set_min_content_height(1);
-        common::set_pointer(&mut li.boxc.clone().upcast(), ptr);
-        li.base.set_pointer(ptr);  
-        li
+        common::set_pointer(&mut this.boxc.clone().upcast(), ptr);
+        this.base.set_pointer(ptr);  
+        this
     }
 }
 impl TreeInner for GtkTree {

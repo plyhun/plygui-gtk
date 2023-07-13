@@ -1,3 +1,4 @@
+use gdk::Rectangle;
 pub use plygui_api::sdk::*;
 pub use plygui_api::{callbacks, controls, defaults, ids, layout, types::{self, adapter, matrix}, utils};
 
@@ -160,8 +161,15 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
         }
     }
     pub fn draw(&mut self, control: &mut ControlBase) {
-        if control.coords.is_some() {
+        control.coords.map(|(x, y)| {
             let widget = self.widget();
+            /*let mut allo = Rectangle {
+                x,
+                y,
+                width: control.measured.0 as i32,
+                height: control.measured.1 as i32 
+            };
+            widget.size_allocate(&mut allo);*/
             widget.set_size_request(control.measured.0 as i32, control.measured.1 as i32);
             if let types::Visibility::Gone = control.visibility {
                 widget.hide();
@@ -175,7 +183,7 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
                 widget.set_sensitive(true);
                 widget.set_opacity(1.0);
             }
-        }
+        });
     }
     pub fn measure(&mut self, control: &mut ControlBase, parent_width: u16, parent_height: u16) -> (u16, u16, bool) {
         let old_size = control.measured;

@@ -49,7 +49,7 @@ glib_wrapper! {
 
 impl RecklessCellRenderer {
     pub fn new() -> RecklessCellRenderer {
-        //assert_initialized_main_thread!(); // private module
+        //assert_initialized_main_thread!(); // FIXME private module
         if !::gtk::is_initialized_main_thread() {
             if ::gtk::is_initialized() {
                 panic!("GTK may only be used from the main thread.");
