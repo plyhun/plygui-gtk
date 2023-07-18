@@ -1,8 +1,8 @@
 use std::panic;
 
-use crate::common::{self, matrix::*, *};
+use crate::{common::{self, matrix::*, *}, tree};
 
-use gtk::{SelectionMode, TreeSelectionExt, TreeViewExt, CellLayoutExt, ContainerExt, CellRendererExt, TreeViewColumn, TreeViewColumnExt, ListStore, ListStoreExtManual, TreeModelExt, ListStoreExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
+use gtk::{TreeView, SelectionMode, TreeSelectionExt, TreeViewExt, CellLayoutExt, ContainerExt, CellRendererExt, TreeViewColumn, TreeViewColumnExt, ListStore, ListStoreExtManual, TreeModelExt, ListStoreExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
 use glib::{translate::ToGlibPtrMut, signal::Inhibit};
 use gobject_sys::g_value_set_pointer;
 
@@ -13,7 +13,7 @@ const DEFAULT_PADDING: i32 = common::DEFAULT_PADDING / 2;
 #[repr(C)]
 pub struct GtkTable {
     base: GtkControlBase<Table>,
-    tree_view: reckless::RecklessTreeView,
+    tree_view: TreeView,
     renderer: reckless::cell_renderer::RecklessCellRenderer,
     store: ListStore,
     width: usize, height: usize,
@@ -76,8 +76,9 @@ impl GtkTable {
             }).or_else(|| adapter.adapter.alt_text_at(indices).map(|value| col.set_title(value)));
             col.set_resizable(true);
             col.set_visible(true);
-            col.set_sizing(gtk::TreeViewColumnSizing::Autosize);
-            //col.connect_property_width_notify(column_resized);
+            col.set_sizing(gtk::TreeViewColumnSizing::Fixed);
+            col.set_min_width(1);
+            col.connect_property_width_notify(column_resized);
             GtkWidget::from(col.upcast::<glib::Object>())
         };
         self.data.cols.insert(index, Column {
@@ -276,7 +277,7 @@ impl GtkTable {
             layout::Size::MatchParent => w / self.data.cols.len() as u16,
         };
         self.tree_view.get_column(index as i32).map(|col| {
-            col.set_sizing(gtk::TreeViewColumnSizing::Autosize);
+            col.set_sizing(gtk::TreeViewColumnSizing::Fixed);
             col.set_fixed_width(width as i32);
         });
         if width as i32 >= DEFAULT_PADDING {
@@ -291,13 +292,11 @@ impl GtkTable {
             });
         });
         self.data.rows.iter_mut().for_each(|row| {
-            row.cells.iter_mut().for_each(|cell| {
-                cell.as_mut().map(|cell| {
-                    cell.control.as_mut().map(|control| {
-                        control.set_layout_width(layout::Size::Exact(width));
-                        control.measure(h, h);
-                        control.draw(None);
-                    });
+            row.cell_at_mut(index).map(|cell| {
+                cell.control.as_mut().map(|control| {
+                    control.set_layout_width(layout::Size::Exact(width));
+                    control.measure(w, h);
+                    control.draw(None);
                 });
             });
         });
@@ -307,34 +306,39 @@ impl<O: controls::Table> NewTableInner<O> for GtkTable {
     fn with_uninit_params(ptr: &mut mem::MaybeUninit<O>, width: usize, height: usize) -> Self {
         let ptr = ptr as *mut _ as *mut c_void;
         let scr = reckless::RecklessScrolledWindow::new();
-        let tv = reckless::RecklessTreeView::new();
-        tv.set_halign(Align::Fill);
-        tv.set_valign(Align::Fill);
-        tv.get_selection().set_mode(SelectionMode::None);
-        tv.set_headers_visible(true);
+        let tree_view = TreeView::new();
+        tree_view.set_halign(Align::Fill);
+        tree_view.set_valign(Align::Fill);
+        tree_view.get_selection().set_mode(SelectionMode::None);
         scr.set_policy(PolicyType::Automatic, PolicyType::Automatic);
         scr.set_min_content_height(1);
-        scr.add(&tv);
+        scr.add(&tree_view);
         let scr = scr.upcast::<Widget>();
         scr.connect_size_allocate(on_size_allocate::<O>);
         let mut this = GtkTable {
             base: common::GtkControlBase::with_gtk_widget(scr),
-            tree_view: tv,
+            tree_view,
             renderer: reckless::cell_renderer::RecklessCellRenderer::new(),
             store: ListStore::new((0..width).into_iter().map(|_| Type::Pointer).collect::<Vec<_>>().as_slice()),
             data: Default::default(),
             h_left_clicked: None,
             width, height
         };
+        common::set_pointer(&mut this.tree_view.clone().upcast(), ptr);
+        this.base.set_pointer(ptr);  
         this.tree_view.set_model(&this.store);
         this.renderer.set_visible(true);
         this.base.widget().show_all();
-        common::set_pointer(&mut this.tree_view.clone().upcast(), ptr);
-        this.base.set_pointer(ptr);  
         this
     }
 }
 impl TableInner for GtkTable {
+    fn headers_visible(&self, _: &MemberBase, _: &ControlBase, _: &AdaptedBase) -> bool {
+        self.tree_view.get_headers_visible()
+    }
+    fn set_headers_visible(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &mut AdaptedBase, visible: bool) {
+        self.tree_view.set_headers_visible(visible)
+    }
     fn with_adapter_initial_size(adapter: Box<dyn types::Adapter>, width: usize, height: usize) -> Box<dyn controls::Table> {
         let mut b: Box<mem::MaybeUninit<Table>> = Box::new_uninit();
         let ab = AMember::with_inner(
@@ -594,12 +598,12 @@ impl Drawable for GtkTable {
                 let ww = if w as i32 >= DEFAULT_PADDING { utils::coord_to_size(w as i32 - DEFAULT_PADDING) } else {0};
                 self.data.cols.iter_mut().for_each(|col| {
                     col.control.as_mut().map(|control| {
-                        control.measure(ww, h);
+                        control.as_mut().measure(ww, h);
                     });
                 });
                 fn measure_inner(cell: &mut Cell<GtkWidget>, w: u16, h: u16) {
                     cell.control.as_mut().map(|control| {
-                        control.measure(w, h);
+                        control.as_mut().measure(w, h);
                     });
                 }
                 self.data.rows.iter_mut().for_each(|row| row.cells.iter_mut().filter(|cell| cell.is_some()).for_each(|cell| measure_inner(cell.as_mut().unwrap(), ww, h)));              
@@ -619,13 +623,13 @@ impl Spawnable for GtkTable {
 }
 
 fn on_size_allocate<O: controls::Table>(this: &::gtk::Widget, _allo: &::gtk::Rectangle) {
-    let mut ll = this.clone().upcast::<Widget>();
-    let ll = common::cast_gtk_widget_to_member_mut::<Table>(&mut ll).unwrap();
+    let mut table = this.clone().upcast::<Widget>();
+    let table = common::cast_gtk_widget_to_member_mut::<Table>(&mut table).unwrap();
 
-    let measured_size = ll.inner().base.measured;
-    ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
+    let measured_size = table.inner().base.measured;
+    table.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
 }
-fn set_parent(control: &mut dyn controls::Control, parent: Option<&reckless::RecklessTreeView>) {
+fn set_parent(control: &mut dyn controls::Control, parent: Option<&TreeView>) {
     let widget = common::cast_control_to_gtkwidget(control);
     let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
     if widget.get_parent().is_some() {
@@ -636,5 +640,33 @@ fn set_parent(control: &mut dyn controls::Control, parent: Option<&reckless::Rec
     }
 }
 fn column_resized(tvc: &TreeViewColumn) {
-
+    let width = tvc.get_width();
+    let gw = unsafe {
+        let ptr: *mut GObject = tvc.clone().to_glib_full();
+        GtkWidget::from_outer(ptr as usize) 
+    };
+    tvc.get_tree_view().as_mut().and_then(|tv| common::cast_gtk_widget_to_member_mut::<Table>(tv)).map(|this| {
+        let (_, control, _, table) = this.as_adapted_parts_mut();
+        let (w, h) = control.measured;
+        
+        let x = table.inner_mut().data.cols.iter_mut().filter(|col| col.native == gw).enumerate().map(|(x, _)| x).next();
+        x.map(|x| {
+            table.inner_mut().data.column_at_mut(x).map(|col| {
+                col.control.as_mut().map(|control| {
+                    control.set_layout_width(layout::Size::Exact(width as u16));
+                    control.measure(w, h);
+                    control.draw(None);
+                });
+            });
+            table.inner_mut().data.rows.iter_mut().for_each(|row| {
+                row.cell_at_mut(x).map(|cell| {
+                    cell.control.as_mut().map(|control| {
+                        control.set_layout_width(layout::Size::Exact(width as u16));
+                        control.measure(w, h);
+                        control.draw(None);
+                    });
+                });
+            });
+        });
+    });
 }
