@@ -11,7 +11,6 @@ pub type Button = AMember<AControl<AButton<GtkButton>>>;
 #[repr(C)]
 pub struct GtkButton {
     base: GtkControlBase<Button>,
-
     h_left_clicked: Option<callbacks::OnClick>,
     skip_callbacks: bool,
 }

@@ -138,6 +138,9 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
         self.widget().get_toplevel().map(|w| unsafe { cast_gobject_mut(&mut w.upcast()).unwrap() })
     }
     pub fn invalidate(&mut self) -> bool {
+        if self.as_control().is_skip_draw() {
+            return false;
+        }
         let widget = self.widget();
         if let Some(mut parent_widget) = widget.get_parent() {
             if pointer(&parent_widget.clone().upcast()).is_null() {

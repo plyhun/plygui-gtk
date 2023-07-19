@@ -133,7 +133,7 @@ impl GtkTable {
 	            item.set_layout_height(row.height);
 	            item.on_added_to_container(this, 0, 0, pw, ph);
 	            
-                row.cells.insert(y, Some(Cell {
+                row.cells.insert(x, Some(Cell {
                     control: Some(item),
                     native: gtk_widget,
                 }));
@@ -310,6 +310,7 @@ impl<O: controls::Table> NewTableInner<O> for GtkTable {
         tree_view.set_halign(Align::Fill);
         tree_view.set_valign(Align::Fill);
         tree_view.get_selection().set_mode(SelectionMode::None);
+        tree_view.set_hover_selection(false);
         scr.set_policy(PolicyType::Automatic, PolicyType::Automatic);
         scr.set_min_content_height(1);
         scr.add(&tree_view);
@@ -640,29 +641,33 @@ fn set_parent(control: &mut dyn controls::Control, parent: Option<&TreeView>) {
     }
 }
 fn column_resized(tvc: &TreeViewColumn) {
-    let width = tvc.get_width();
-    let gw = unsafe {
-        let ptr: *mut GObject = tvc.clone().to_glib_full();
-        GtkWidget::from_outer(ptr as usize) 
-    };
+    let mut width = tvc.get_width();
+    if width as i32 >= DEFAULT_PADDING {
+        width -= DEFAULT_PADDING as i32;
+    }
+    let gw = GtkWidget::from(tvc.clone().upcast::<glib::Object>());
     tvc.get_tree_view().as_mut().and_then(|tv| common::cast_gtk_widget_to_member_mut::<Table>(tv)).map(|this| {
         let (_, control, _, table) = this.as_adapted_parts_mut();
         let (w, h) = control.measured;
         
-        let x = table.inner_mut().data.cols.iter_mut().filter(|col| col.native == gw).enumerate().map(|(x, _)| x).next();
+        let x = table.inner_mut().data.cols.iter_mut().enumerate().filter(|(x, col)| col.native == gw).map(|(x, _)| x).next();
         x.map(|x| {
             table.inner_mut().data.column_at_mut(x).map(|col| {
                 col.control.as_mut().map(|control| {
+                    control.set_skip_draw(true);
                     control.set_layout_width(layout::Size::Exact(width as u16));
                     control.measure(w, h);
+                    control.set_skip_draw(false);
                     control.draw(None);
                 });
             });
             table.inner_mut().data.rows.iter_mut().for_each(|row| {
                 row.cell_at_mut(x).map(|cell| {
                     cell.control.as_mut().map(|control| {
+                        control.set_skip_draw(true);
                         control.set_layout_width(layout::Size::Exact(width as u16));
                         control.measure(w, h);
+                        control.set_skip_draw(false);
                         control.draw(None);
                     });
                 });
