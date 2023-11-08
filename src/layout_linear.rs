@@ -1,6 +1,8 @@
 use crate::common::{self, *};
 
-use gtk::{Box as GtkBox, BoxExt, Cast, ContainerExt, OrientableExt, Widget, WidgetExt};
+use gtk::{Box as GtkBox, Widget};
+use glib::Cast;
+use gtk::traits::{BoxExt, WidgetExt, ContainerExt, OrientableExt};
 
 pub type LinearLayout = AMember<AControl<AContainer<AMultiContainer<ALinearLayout<GtkLinearLayout>>>>>;
 
@@ -186,7 +188,7 @@ impl ControlInner for GtkLinearLayout {
 impl HasOrientationInner for GtkLinearLayout {
     fn orientation(&self, _: &MemberBase) -> layout::Orientation {
         let gtk_self = Object::from(self.base.widget.clone()).downcast::<GtkBox>().unwrap();
-        common::gtk_to_orientation(gtk_self.get_orientation())
+        common::gtk_to_orientation(gtk_self.orientation())
     }
     fn set_orientation(&mut self, _: &mut MemberBase, orientation: layout::Orientation) {
         let gtk_self = Object::from(self.base.widget.clone()).downcast::<GtkBox>().unwrap();
@@ -282,8 +284,8 @@ impl MultiContainerInner for GtkLinearLayout {
                 self2,
                 0,
                 0,
-                utils::coord_to_size(cmp::max(0, pw as i32 - self_widget.get_margin_start() - self_widget.get_margin_end())),
-                utils::coord_to_size(cmp::max(0, ph as i32 - self_widget.get_margin_top() - self_widget.get_margin_bottom())),
+                utils::coord_to_size(cmp::max(0, pw as i32 - self_widget.margin_start() - self_widget.margin_end())),
+                utils::coord_to_size(cmp::max(0, ph as i32 - self_widget.margin_top() - self_widget.margin_bottom())),
             );
         }
         self.base.invalidate();
@@ -294,7 +296,7 @@ impl MultiContainerInner for GtkLinearLayout {
         if index < self.children.len() {
             let item = self.children.remove(index);
             let widget = common::cast_control_to_gtkwidget(item.as_ref());
-            Object::from(self.base.widget.clone()).downcast::<GtkBox>().unwrap().remove::<Widget>(&Object::from(widget).downcast().unwrap());
+            Object::from(self.base.widget.clone()).downcast::<GtkBox>().unwrap().remove(&Object::from(widget).downcast::<Widget>().unwrap());
             self.base.invalidate();
 
             Some(item)

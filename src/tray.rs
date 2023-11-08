@@ -1,10 +1,9 @@
 #![allow(deprecated)]
 
-// TODO use libappindicator
-
 use crate::common::{self, *};
 
-use gtk::{MenuExtManual, StatusIcon as GtkStatusIcon, StatusIconExt};
+use gtk::prelude::GtkMenuExtManual;
+use crate::reckless::status_icon::{StatusIcon as GtkStatusIcon, StatusIconExt};
 
 #[repr(C)]
 pub struct GtkTray {
@@ -23,15 +22,15 @@ impl GtkTray {
     		i.resize(status_size, status_size, image::FilterType::Lanczos3)
     	};*/
     	let i = common::image_to_pixbuf(&i);
-    	self.tray.set_from_pixbuf(Some(&i));
+    	self.tray.set_pixbuf(Some(&i));
     }
 }
 impl HasLabelInner for GtkTray {
     fn label(&self, _: &MemberBase) -> Cow<str> {
-        Cow::Owned(self.tray.get_title().unwrap_or(String::new()))
+        Cow::Owned(self.tray.title().map(String::from).unwrap_or(String::new()))
     }
     fn set_label(&mut self, _: &mut MemberBase, label: Cow<str>) {
-        self.tray.set_title(&label);
+        self.tray.set_title(Some(&label));
     }
 }
 
@@ -72,12 +71,12 @@ impl<O: controls::Tray> NewTrayInner<O> for GtkTray {
     fn with_uninit_params(u: &mut mem::MaybeUninit<O>, _: &mut dyn controls::Application, title: &str, icon: image::DynamicImage, menu: types::Menu) -> Self {
         let selfptr = u as *mut _ as *mut Tray;
         let mut t = GtkTray {
-            tray: GtkStatusIcon::new_from_icon_name(title.as_ref()),
+            tray: GtkStatusIcon::from_icon_name(title.as_ref()),
             context_menu: if menu.is_some() { Some(GtkMenu::new()) } else { None },
             menu: if menu.is_some() { Vec::new() } else { Vec::with_capacity(0) },
             on_close: None,
         };
-        t.tray.set_title(title);
+        t.tray.set_title(Some(title));
         t.set_image_inner(icon);
         {
             common::set_pointer(&mut t.tray.clone().upcast::<Object>(), selfptr as *mut std::os::raw::c_void);
@@ -138,6 +137,6 @@ fn popup_menu<'a>(this: &'a GtkStatusIcon, user_data: u32, button: u32) {
     let t = unsafe { common::cast_gobject_mut::<Tray>(&mut t).unwrap() };
     if let Some(ref mut menu) = t.inner_mut().inner_mut().inner_mut().context_menu {
         menu.show_all();
-        menu.popup(Option::<&GtkMenu>::None, Option::<&GtkMenu>::None, move |menu, x, y| GtkStatusIcon::position_menu(menu, x, y, this), user_data, button);
+        menu.popup(Option::<&GtkMenu>::None, Option::<&GtkMenu>::None, move |menu, x, y| this.position_menu(x, y, menu), user_data, button);
     }
 }

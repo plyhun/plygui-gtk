@@ -1,7 +1,8 @@
 use crate::common::{self, *};
 
-use gtk::{TreeViewExt, CellLayoutExt, ContainerExt, TreePath, TreeViewColumn, TreeStore, TreeStoreExtManual, TreeModelExt, TreeStoreExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
-use glib::{translate::ToGlibPtrMut, signal::Inhibit};
+use gtk::{TreePath, TreeViewColumn, TreeStore, ScrolledWindow, PolicyType, prelude::TreeStoreExtManual};
+use gtk::traits::{TreeViewExt, CellLayoutExt, ContainerExt, TreeModelExt, TreeStoreExt, ScrolledWindowExt};
+use glib::{translate::ToGlibPtrMut};
 use gobject_sys::g_value_set_pointer;
 
 pub type Tree = AMember<AControl<AContainer<AAdapted<ATree<GtkTree>>>>>;
@@ -42,11 +43,11 @@ impl GtkTree {
                     let widget = Object::from(items[index].native.clone()).downcast::<Widget>().unwrap();
                     widget.set_parent(&self.boxc);
                     widget.connect_draw(|this,_| {
-                        this.get_parent().unwrap().queue_draw();
-                        Inhibit(false)
+                        this.parent().unwrap().queue_draw();
+                        glib::Propagation::Proceed
                     });
                 }
-                let mut val = Value::from_type(Type::Pointer);
+                let mut val = Value::from_type(Type::POINTER);
                 let ptr: *mut gobject_sys::GObject = Object::from(items[index].native.clone()).to_glib_none().0;
                 unsafe { g_value_set_pointer(val.to_glib_none_mut().0, ptr as *mut c_void); }
                 
@@ -58,7 +59,7 @@ impl GtkTree {
                 
                 match items[index].node() {
                 	adapter::Node::Branch(expanded) => {
-                		let path = this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.get_path(iter.as_ref().unwrap()).unwrap();
+                		let path = this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.path(iter.as_ref().unwrap()).unwrap();
                 		if expanded {
                 			this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.expand_row(&path, false); 
                 		} else {
@@ -112,7 +113,7 @@ impl GtkTree {
             	items[index].expanded = if let adapter::Node::Branch(expanded) = node { *expanded } else { false };
                 match items[index].node() {
                 	adapter::Node::Branch(expanded) => {
-                		let path = this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.get_path(iter.as_ref().unwrap()).unwrap();
+                		let path = this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.path(iter.as_ref().unwrap()).unwrap();
                 		if expanded {
                 			this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.expand_row(&path, false); 
                 		} else {
@@ -139,7 +140,7 @@ impl<O: controls::Tree> NewTreeInner<O> for GtkTree {
             boxc: reckless::RecklessTreeView::new(),
             col: TreeViewColumn::new(),
             renderer: reckless::cell_renderer::RecklessCellRenderer::new(),
-            store: TreeStore::new(&[Type::Pointer]),
+            store: TreeStore::new(&[Type::POINTER]),
             items: Default::default(),
             h_left_clicked: None,
         };
@@ -149,7 +150,7 @@ impl<O: controls::Tree> NewTreeInner<O> for GtkTree {
         this.boxc.connect_row_activated(on_activated::<O>);
         this.col.pack_start(&this.renderer, false);
         this.col.add_attribute(&this.renderer, "cell", 0);
-        this.boxc.set_model(&this.store);
+        this.boxc.set_model(Some(&this.store));
         this.boxc.append_column(&this.col);
         this.boxc.show();
         let scr = Object::from(this.base.widget.clone()).downcast::<ScrolledWindow>().unwrap();
@@ -428,7 +429,7 @@ fn on_size_allocate<O: controls::Tree>(this: &::gtk::Widget, _allo: &::gtk::Rect
     ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
 }
 fn on_activated<O: controls::Tree>(this: &reckless::RecklessTreeView, path: &TreePath, _: &TreeViewColumn) {
-    let i = path.get_indices().iter().map(|i| *i as usize).collect::<Vec<_>>();
+    let i = path.indices().iter().map(|i| *i as usize).collect::<Vec<_>>();
     if i.len() < 1 {
         return;
     }
@@ -452,7 +453,7 @@ fn set_parent(level: &mut [TreeNode<GtkWidget>], parent: Option<&reckless::Reckl
     for item in level {
         let widget = common::cast_control_to_gtkwidget(item.control.as_mut());
         let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
-        if widget.get_parent().is_some() {
+        if widget.parent().is_some() {
             widget.unparent();
         }
         if let Some(parent) = parent {

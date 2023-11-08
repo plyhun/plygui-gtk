@@ -1,6 +1,8 @@
 use crate::common::{self, *};
 
-use gtk::{Cast, OrientableExt, Paned, PanedExt, Widget, WidgetExt};
+use gtk::{Paned, Widget};
+use glib::Cast;
+use gtk::traits::{PanedExt, WidgetExt, OrientableExt};
 
 pub type Splitted = AMember<AControl<AContainer<AMultiContainer<ASplitted<GtkSplitted>>>>>;
 
@@ -27,8 +29,8 @@ impl GtkSplitted {
         let o = self.orientation(member);
         let handle = 6; // no access to handle-size
         let (target, start, end) = match o {
-            layout::Orientation::Horizontal => (w, self_widget.get_margin_start(), self_widget.get_margin_end()),
-            layout::Orientation::Vertical => (h, self_widget.get_margin_top(), self_widget.get_margin_bottom()),
+            layout::Orientation::Horizontal => (w, self_widget.margin_start(), self_widget.margin_end()),
+            layout::Orientation::Vertical => (h, self_widget.margin_top(), self_widget.margin_bottom()),
         };
         (
             utils::coord_to_size((target as f32 * self.splitter) as i32 - start - (handle / 2)),
@@ -70,7 +72,7 @@ impl<O: controls::Splitted> NewSplittedInner<O> for GtkSplitted {
         sp.set_orientation(common::orientation_to_gtk(orientation));
         sp.pack1(&Object::from(common::cast_control_to_gtkwidget(first.as_mut())).downcast::<Widget>().unwrap(), false, true);
         sp.pack2(&Object::from(common::cast_control_to_gtkwidget(second.as_mut())).downcast::<Widget>().unwrap(), false, true);
-        sp.connect_property_position_notify(on_property_position_notify);
+        sp.connect_position_notify(on_property_position_notify);
         let sp = sp.upcast::<Widget>();
         sp.connect_size_allocate(on_size_allocate::<O>);
         let mut sp = GtkSplitted {
@@ -247,7 +249,7 @@ impl ControlInner for GtkSplitted {
 impl HasOrientationInner for GtkSplitted {
     fn orientation(&self, _: &MemberBase) -> layout::Orientation {
         let gtk_self = Object::from(self.base.widget.clone()).downcast::<Paned>().unwrap();
-        common::gtk_to_orientation(gtk_self.get_orientation())
+        common::gtk_to_orientation(gtk_self.orientation())
     }
     fn set_orientation(&mut self, _: &mut MemberBase, orientation: layout::Orientation) {
         let gtk_self = Object::from(self.base.widget.clone()).downcast::<Paned>().unwrap();
@@ -422,7 +424,7 @@ fn on_size_allocate<O: controls::Splitted>(this: &::gtk::Widget, _: &::gtk::Rect
 fn on_property_position_notify(this: &Paned) {
     use plygui_api::controls::{HasSize};
 
-    let position = this.get_position();
+    let position = this.position();
     if position < 1 {
         return;
     }
@@ -455,5 +457,5 @@ fn on_property_position_notify(this: &Paned) {
     ll.first.draw(Some((0,0)));
     ll.second.draw(Some((0,0)));
     
-    this.get_toplevel().unwrap().queue_resize(); // TODO WHY????
+    this.toplevel().unwrap().queue_resize(); // TODO WHY????
 }

@@ -1,9 +1,11 @@
 use std::panic;
 
 use crate::{common::{self, matrix::*, *}, tree};
-
-use gtk::{TreeView, SelectionMode, TreeSelectionExt, TreeViewExt, CellLayoutExt, ContainerExt, CellRendererExt, TreeViewColumn, TreeViewColumnExt, ListStore, ListStoreExtManual, TreeModelExt, ListStoreExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
-use glib::{translate::ToGlibPtrMut, signal::Inhibit};
+use glib::{translate::*, ObjectType};
+use gtk::prelude::{GtkListStoreExtManual, GtkListStoreExt};
+use gtk::traits::{TreeSelectionExt, TreeViewExt, ContainerExt, CellRendererExt, TreeViewColumnExt, ScrolledWindowExt, TreeModelExt};
+use gtk::{TreeView, SelectionMode, TreeViewColumn, ListStore, ScrolledWindow, PolicyType, EventControllerMotion};
+use glib::{Propagation, translate::ToGlibPtrMut};
 use gobject_sys::g_value_set_pointer;
 
 pub type Table = AMember<AControl<AContainer<AAdapted<ATable<GtkTable>>>>>;
@@ -19,6 +21,8 @@ pub struct GtkTable {
     width: usize, height: usize,
     data: Matrix<GtkWidget>,
     h_left_clicked: Option<callbacks::OnItemClick>,
+
+    //motion: EventControllerMotion,
 }
 
 impl GtkTable {
@@ -78,7 +82,7 @@ impl GtkTable {
             col.set_visible(true);
             col.set_sizing(gtk::TreeViewColumnSizing::Fixed);
             col.set_min_width(1);
-            col.connect_property_width_notify(column_resized);
+            col.connect_width_notify(column_resized);
             GtkWidget::from(col.upcast::<glib::Object>())
         };
         self.data.cols.insert(index, Column {
@@ -109,22 +113,23 @@ impl GtkTable {
         let this: &mut Table = unsafe { utils::base_to_impl_mut(member) };
         adapter.adapter.spawn_item_view(&[x, y], this).map(|mut item| {
         	let gtk_widget = common::cast_control_to_gtkwidget(item.as_mut());
-            let widget = Object::from(gtk_widget.clone()).downcast::<Widget>().unwrap();
+            let object = Object::from(gtk_widget.clone());
+            let ptr = object.as_object_ref().to_glib_none().0 as *mut gobject_sys::GObject;
+            let widget = object.downcast::<Widget>().unwrap();
             widget.set_parent(&self.tree_view);
             widget.connect_draw(|this,_| {
-                this.get_parent().unwrap().queue_draw();
-                Inhibit(false)
+                this.parent().unwrap().queue_draw();
+                Propagation::Proceed
             });
             let mut width = self.data.column_at(x).map(|col| {
                 let widget = Object::from(col.native.clone());
-                widget.downcast::<TreeViewColumn>().unwrap().get_width()
+                widget.downcast::<TreeViewColumn>().unwrap().width()
             }).expect("Column does not exist!");
             if width >= DEFAULT_PADDING {
                 width -= DEFAULT_PADDING;
             }
             self.data.rows.get_mut(y).map(|row| {
-        		let mut val = Value::from_type(Type::Pointer);
-	            let ptr: *mut gobject_sys::GObject = widget.to_glib_none().0;
+        		let mut val = Value::from_type(Type::POINTER);
 	            unsafe { g_value_set_pointer(val.to_glib_none_mut().0, ptr as *mut c_void); }
 	            let store: &mut ListStore = &mut this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store;
 	            let iter = store.iter_nth_child(None.as_ref(), y as i32);
@@ -171,7 +176,7 @@ impl GtkTable {
             });
             row.cells.insert(y, None);
         });
-        let val = Value::from_type(Type::Pointer);
+        let val = Value::from_type(Type::POINTER);
         let store: &mut ListStore = &mut this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store;
         let iter = store.iter_nth_child(None.as_ref(), y as i32);
         store.set_value(iter.as_ref().unwrap(), x as u32, &val);
@@ -228,7 +233,7 @@ impl GtkTable {
                         .fold(0, |s, i| if s > i {s} else {i}),
                 layout::Size::MatchParent => base.measured.1 / self.data.cols.len() as u16,
             };
-            self.renderer.set_property_height(height as i32);
+            self.renderer.set_height(height as i32);
             self.data.cols.iter_mut().for_each(|col| {
                 col.control.as_mut().map(|control| {
                     control.set_layout_height(layout::Size::Exact(height));
@@ -276,7 +281,7 @@ impl GtkTable {
                     .fold(0, |s, i| if s > i {s} else {i}),
             layout::Size::MatchParent => w / self.data.cols.len() as u16,
         };
-        self.tree_view.get_column(index as i32).map(|col| {
+        self.tree_view.column(index as i32).map(|col| {
             col.set_sizing(gtk::TreeViewColumnSizing::Fixed);
             col.set_fixed_width(width as i32);
         });
@@ -308,8 +313,8 @@ impl<O: controls::Table> NewTableInner<O> for GtkTable {
         let scr = reckless::RecklessScrolledWindow::new();
         let tree_view = TreeView::new();
         tree_view.set_halign(Align::Fill);
-        tree_view.set_valign(Align::Fill);
-        tree_view.get_selection().set_mode(SelectionMode::None);
+        tree_view.set_valign(Align::Start);
+        tree_view.selection().set_mode(SelectionMode::None);
         tree_view.set_hover_selection(false);
         scr.set_policy(PolicyType::Automatic, PolicyType::Automatic);
         scr.set_min_content_height(1);
@@ -320,14 +325,14 @@ impl<O: controls::Table> NewTableInner<O> for GtkTable {
             base: common::GtkControlBase::with_gtk_widget(scr),
             tree_view,
             renderer: reckless::cell_renderer::RecklessCellRenderer::new(),
-            store: ListStore::new((0..width).into_iter().map(|_| Type::Pointer).collect::<Vec<_>>().as_slice()),
+            store: ListStore::new((0..width).into_iter().map(|_| Type::POINTER).collect::<Vec<_>>().as_slice()),
             data: Default::default(),
             h_left_clicked: None,
             width, height
         };
         common::set_pointer(&mut this.tree_view.clone().upcast(), ptr);
         this.base.set_pointer(ptr);  
-        this.tree_view.set_model(&this.store);
+        this.tree_view.set_model(Some(&this.store));
         this.renderer.set_visible(true);
         this.base.widget().show_all();
         this
@@ -335,7 +340,7 @@ impl<O: controls::Table> NewTableInner<O> for GtkTable {
 }
 impl TableInner for GtkTable {
     fn headers_visible(&self, _: &MemberBase, _: &ControlBase, _: &AdaptedBase) -> bool {
-        self.tree_view.get_headers_visible()
+        self.tree_view.is_headers_visible()
     }
     fn set_headers_visible(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &mut AdaptedBase, visible: bool) {
         self.tree_view.set_headers_visible(visible)
@@ -440,7 +445,7 @@ impl AdaptedInner for GtkTable {
                 }
             },
         }
-        self.base.widget().get_toplevel().unwrap().queue_draw(); // TODO WHY????
+        self.base.widget().toplevel().unwrap().queue_draw(); // TODO WHY????
     }
 }
 impl ContainerInner for GtkTable {
@@ -633,7 +638,7 @@ fn on_size_allocate<O: controls::Table>(this: &::gtk::Widget, _allo: &::gtk::Rec
 fn set_parent(control: &mut dyn controls::Control, parent: Option<&TreeView>) {
     let widget = common::cast_control_to_gtkwidget(control);
     let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
-    if widget.get_parent().is_some() {
+    if widget.parent().is_some() {
         widget.unparent();
     }
     if let Some(parent) = parent {
@@ -641,16 +646,16 @@ fn set_parent(control: &mut dyn controls::Control, parent: Option<&TreeView>) {
     }
 }
 fn column_resized(tvc: &TreeViewColumn) {
-    let mut width = tvc.get_width();
+    let mut width = tvc.width();
     if width as i32 >= DEFAULT_PADDING {
         width -= DEFAULT_PADDING as i32;
     }
     let gw = GtkWidget::from(tvc.clone().upcast::<glib::Object>());
-    tvc.get_tree_view().as_mut().and_then(|tv| common::cast_gtk_widget_to_member_mut::<Table>(tv)).map(|this| {
+    tvc.tree_view().as_mut().and_then(|tv| common::cast_gtk_widget_to_member_mut::<Table>(tv)).map(|this| {
         let (_, control, _, table) = this.as_adapted_parts_mut();
         let (w, h) = control.measured;
         
-        let x = table.inner_mut().data.cols.iter_mut().enumerate().filter(|(x, col)| col.native == gw).map(|(x, _)| x).next();
+        let x = table.inner_mut().data.cols.iter_mut().enumerate().filter(|(_, col)| col.native == gw).map(|(x, _)| x).next();
         x.map(|x| {
             table.inner_mut().data.column_at_mut(x).map(|col| {
                 col.control.as_mut().map(|control| {

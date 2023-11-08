@@ -1,7 +1,8 @@
 use crate::common::{self, *};
 
-use gtk::{ListBoxExt, ContainerExt, ListBoxRow, ListBoxRowExt, ScrolledWindow, ScrolledWindowExt, PolicyType};
-use glib::signal::Inhibit;
+use gtk::{ListBoxRow, ScrolledWindow, PolicyType};
+use glib::{Cast, Propagation};
+use gtk::traits::{ListBoxExt, ListBoxRowExt, ContainerExt, ScrolledWindowExt};
 
 pub type List = AMember<AControl<AContainer<AAdapted<AList<GtkList>>>>>;
 
@@ -28,8 +29,8 @@ impl GtkList {
             {
                 let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
                 widget.connect_draw(|this,_| {
-                    this.get_parent().unwrap().queue_draw();
-                    Inhibit(false)
+                    this.parent().unwrap().queue_draw();
+                    Propagation::Stop
                 });
             }
             self.boxc.insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
@@ -41,7 +42,7 @@ impl GtkList {
     fn remove_item_inner(&mut self, base: &mut MemberBase, i: usize) {
         let this: &mut List = unsafe { utils::base_to_impl_mut(base) };
         self.items.remove(i).on_removed_from_container(this); 
-        let row = this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.get_row_at_index(i as i32).unwrap();
+        let row = this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.row_at_index(i as i32).unwrap();
         
         this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.remove(&row);
     }
@@ -312,7 +313,7 @@ fn on_size_allocate<O: controls::List>(this: &::gtk::Widget, _allo: &::gtk::Rect
     ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
 }
 fn on_activated<O: controls::List>(this: &reckless::RecklessListBox, row: &ListBoxRow) {
-    let i = row.get_index();
+    let i = row.index();
     if i < 0 {
         return;
     }

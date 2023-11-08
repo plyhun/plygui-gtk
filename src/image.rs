@@ -1,6 +1,8 @@
 use crate::common::{self, *};
 
-use gtk::{Cast, Image as GtkImageSys, ImageExt, Widget, WidgetExt};
+use glib::Cast;
+use gtk::{Image as GtkImageSys, Widget};
+use gtk::traits::{ImageExt, WidgetExt};
 
 pub type Image = AMember<AControl<AImage<GtkImage>>>;
 
@@ -15,7 +17,7 @@ impl<O: controls::Image> NewImageInner<O> for GtkImage {
     fn with_uninit_params(ptr: &mut mem::MaybeUninit<O>, content: image::DynamicImage) -> Self {
         let ptr = ptr as *mut _ as *mut c_void;
         let pixbuf = common::image_to_pixbuf(&content);
-        let i = GtkImageSys::new_from_pixbuf(Some(&pixbuf));
+        let i = GtkImageSys::from_pixbuf(Some(&pixbuf));
         let i = i.upcast::<Widget>();
         i.connect_size_allocate(on_size_allocate::<O>);
         i.connect_show(on_show);
@@ -66,8 +68,8 @@ impl HasImageInner for GtkImage {
 }
 impl GtkImage {
     fn apply_sized_image(&mut self, control: &ControlBase) {
-        let bm_width = self.orig.get_width();
-        let bm_height = self.orig.get_height();
+        let bm_width = self.orig.width();
+        let bm_height = self.orig.height();
 
         let (aw, ah) = control.measured;
         let (lm, tm, rm, bm) = self.base.margins().into();
@@ -87,20 +89,20 @@ impl GtkImage {
                 if bm_h < 1 || bm_v < 1 {
                     return;
                 }
-                let alpha = self.orig.get_has_alpha();
-                let bits = self.orig.get_bits_per_sample();
+                let alpha = self.orig.has_alpha();
+                let bits = self.orig.bits_per_sample();
                 
                 let scaled = Pixbuf::new(Colorspace::Rgb, alpha, bits, bm_h, bm_v);
-                self.orig.scale(&scaled, 0, 0, bm_h, bm_v, 0f64, 0f64, less_rate as f64, less_rate as f64, InterpType::Hyper);
+                self.orig.scale(scaled.as_ref().unwrap(), 0, 0, bm_h, bm_v, 0f64, 0f64, less_rate as f64, less_rate as f64, InterpType::Hyper);
                 scaled
             }
             types::ImageScalePolicy::CropCenter => {
                 let half_diff_h = (bm_width - aw as i32) / 2;
                 let half_diff_v = (bm_height - ah as i32) / 2;
-                self.orig.new_subpixbuf(cmp::max(0, half_diff_h), cmp::max(0, half_diff_v), cmp::max(1, cmp::min(bm_width, inner_h)), cmp::max(1, cmp::min(bm_height, inner_v))).unwrap()
+                Some(self.orig.new_subpixbuf(cmp::max(0, half_diff_h), cmp::max(0, half_diff_v), cmp::max(1, cmp::min(bm_width, inner_h)), cmp::max(1, cmp::min(bm_height, inner_v))))
             }
         };
-        Object::from(self.base.widget.clone()).downcast::<GtkImageSys>().unwrap().set_from_pixbuf(&scaled);
+        Object::from(self.base.widget.clone()).downcast::<GtkImageSys>().unwrap().set_from_pixbuf(scaled.as_ref());
     }
 }
 
@@ -177,7 +179,7 @@ impl Drawable for GtkImage {
                     layout::Size::Exact(w) => w as i32,
                     layout::Size::WrapContent => {
                         if size.0 < 0 {
-                            size = (self.orig.get_width(), self.orig.get_height());
+                            size = (self.orig.width(), self.orig.height());
                         }
                         size.0 + lm + rm
                     }
@@ -187,7 +189,7 @@ impl Drawable for GtkImage {
                     layout::Size::Exact(h) => h as i32,
                     layout::Size::WrapContent => {
                         if size.1 < 0 {
-                            size = (self.orig.get_width(), self.orig.get_height());
+                            size = (self.orig.width(), self.orig.height());
                         }
                         size.1 + tm + bm
                     }

@@ -1,12 +1,7 @@
-use glib::object::{Downcast, IsA};
+use glib::{Object, Cast};
+use glib::object::IsA;
 use glib::translate::*;
-use gtk::{CellRenderer, Object};
-
-use glib_sys as glib_ffi;
-use gobject_sys as gobject_ffi;
-use gtk_sys as gtk_ffi;
-
-use std::{mem, ptr};
+use gtk::CellRenderer;
 
 pub mod ffi {
     extern "C" {
@@ -37,13 +32,11 @@ pub mod ffi {
     }
 }
 
-glib_wrapper! {
-    pub struct RecklessCellRenderer(Object<ffi::GtkRecklessCellRenderer, ffi::GtkRecklessCellRendererClass>): [
-         CellRenderer => gtk_ffi::GtkCellRenderer,
-    ];
+wrapper! {
+    pub struct RecklessCellRenderer(Object<ffi::GtkRecklessCellRenderer, ffi::GtkRecklessCellRendererClass>) @implements CellRenderer;
 
     match fn {
-        get_type => || ffi::reckless_cell_renderer_get_type(),
+        type_ => || ffi::reckless_cell_renderer_get_type(),
     }
 }
 
@@ -57,7 +50,7 @@ impl RecklessCellRenderer {
                 panic!("GTK has not been initialized. Call `gtk::init` first.");
             }
         }
-        unsafe { Object::from_glib_none(ffi::reckless_cell_renderer_new()).downcast_unchecked() }
+        unsafe { Object::from_glib_none(ffi::reckless_cell_renderer_new()).unsafe_cast() }
     }
 }
 impl Default for RecklessCellRenderer {

@@ -1,7 +1,8 @@
 use crate::common::{self, *};
 
-use gtk::{Cast, ContainerExt, Frame as GtkFrameSys, FrameExt, Label, LabelExt, Widget, WidgetExt};
-use pango::LayoutExt;
+use glib::Cast;
+use gtk::{Frame as GtkFrameSys, Label, Widget};
+use gtk::traits::{ContainerExt, FrameExt, LabelExt, WidgetExt};
 
 use std::borrow::Cow;
 
@@ -70,8 +71,8 @@ impl SingleContainerInner for GtkFrame {
                     this,
                     0,
                     0,
-                    utils::coord_to_size(cmp::max(0, pw as i32 - self_widget.get_margin_start() - self_widget.get_margin_end())),
-                    utils::coord_to_size(cmp::max(0, ph as i32 - self_widget.get_margin_top() - self_widget.get_margin_bottom())),
+                    utils::coord_to_size(cmp::max(0, pw as i32 - self_widget.margin_start() - self_widget.margin_end())),
+                    utils::coord_to_size(cmp::max(0, ph as i32 - self_widget.margin_top() - self_widget.margin_bottom())),
                 );
             }
         }
@@ -147,7 +148,7 @@ impl ContainerInner for GtkFrame {
 
 impl HasLabelInner for GtkFrame {
     fn label(&self, _: &MemberBase) -> Cow<str> {
-        Cow::Owned(Object::from(self.base.widget.clone()).downcast::<GtkFrameSys>().unwrap().get_label().unwrap_or(String::new()))
+        Cow::Owned(Object::from(self.base.widget.clone()).downcast::<GtkFrameSys>().unwrap().label().map(String::from).unwrap_or(String::new()))
     }
     fn set_label(&mut self, _: &mut MemberBase, label: Cow<str>) {
         use std::borrow::Borrow;
@@ -170,14 +171,14 @@ impl ControlInner for GtkFrame {
             let self2 = unsafe { utils::base_to_impl_mut::<Frame>(member) };
             let self_widget = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
             let frame_sys = self_widget.clone().downcast::<GtkFrameSys>().unwrap();
-            let label = frame_sys.get_label_widget().unwrap().downcast::<Label>().unwrap();
-            let label_size = label.get_layout().unwrap().get_pixel_size();
+            let label = frame_sys.label_widget().unwrap().downcast::<Label>().unwrap();
+            let label_size = label.layout().unwrap().pixel_size();
             child.on_added_to_container(
                 self2,
                 0,
                 0,
-                utils::coord_to_size(cmp::max(0, pw as i32 - self_widget.get_margin_start() - self_widget.get_margin_end())),
-                utils::coord_to_size(cmp::max(0, ph as i32 - self_widget.get_margin_top() - self_widget.get_margin_bottom() - label_size.1)),
+                utils::coord_to_size(cmp::max(0, pw as i32 - self_widget.margin_start() - self_widget.margin_end())),
+                utils::coord_to_size(cmp::max(0, ph as i32 - self_widget.margin_top() - self_widget.margin_bottom() - label_size.1)),
             );
         }
     }
@@ -245,8 +246,8 @@ impl Drawable for GtkFrame {
                 let mut measured = false;
                 let self_widget = Object::from(self.base.widget.clone()).downcast::<Widget>().unwrap();
                 let frame_sys = self_widget.clone().downcast::<GtkFrameSys>().unwrap();
-                let label = frame_sys.get_label_widget().unwrap().downcast::<Label>().unwrap();
-                let label_size = label.get_layout().unwrap().get_pixel_size();
+                let label = frame_sys.label_widget().unwrap().downcast::<Label>().unwrap();
+                let label_size = label.layout().unwrap().pixel_size();
                 let w = match control.layout.width {
                     layout::Size::MatchParent => parent_width as i32,
                     layout::Size::Exact(w) => w as i32,
@@ -257,7 +258,7 @@ impl Drawable for GtkFrame {
                             size += cw as i32;
                             measured = true;
                         }
-                        cmp::max(size, label_size.0) + self_widget.get_margin_start() + self_widget.get_margin_end()
+                        cmp::max(size, label_size.0) + self_widget.margin_start() + self_widget.margin_end()
                     }
                 };
                 let h = match control.layout.height {
@@ -274,7 +275,7 @@ impl Drawable for GtkFrame {
                             };
                             size += ch as i32;
                         }
-                        size + label_size.1 + self_widget.get_margin_top() + self_widget.get_margin_bottom() + 2 // TODO WHY???
+                        size + label_size.1 + self_widget.margin_top() + self_widget.margin_bottom() + 2 // TODO WHY???
                     }
                 };
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)

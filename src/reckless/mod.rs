@@ -14,6 +14,7 @@ mod _scrolled_window_;
 mod manual;
 
 pub use manual::cell_renderer;
+pub use manual::status_icon;
 
 pub use _box_::*;
 pub use _button_::*;

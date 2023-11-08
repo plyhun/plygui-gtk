@@ -1,7 +1,7 @@
 use crate::common::{self, *};
 
 use gio::ApplicationFlags;
-use glib::{self, Continue};
+use glib::{self, ControlFlow::Continue};
 use gtk::Application as GtkApplicationSys;
 
 use std::any::TypeId;
@@ -39,8 +39,9 @@ impl GtkApplication {
 
 impl<O: controls::Application> NewApplicationInner<O> for GtkApplication {
     fn with_uninit_params(u: &mut mem::MaybeUninit<O>, name: &str) -> Self {
+        gtk::init().unwrap();
         GtkApplication {
-            app: GtkApplicationSys::new(format!("plygui.{}", name).as_str(), ApplicationFlags::FLAGS_NONE).unwrap(),
+            app: GtkApplicationSys::new(Some(format!("plygui.{}", name).as_str()), ApplicationFlags::FLAGS_NONE),
             name: name.into(),
             selfptr: u as *mut _ as *mut Application,
             sleep: DEFAULT_FRAME_SLEEP_MS,
@@ -153,7 +154,7 @@ impl ApplicationInner for GtkApplication {
                     }
                 }
                 glib::usleep(a.inner().sleep as u64);
-                Continue(true)
+                Continue
             });
         }
         gtk::main()

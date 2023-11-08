@@ -1,13 +1,13 @@
-use gdk::Rectangle;
 pub use plygui_api::sdk::*;
 pub use plygui_api::{callbacks, controls, defaults, ids, layout, types::{self, adapter, matrix}, utils};
 
 pub use glib::translate::ToGlibPtr;
-pub use glib::{Type, Value, Object};
+pub use glib::{Type, Value, Object, Cast};
 pub use gobject_sys::GObject;
-pub use gtk::{Align, Cast, Menu as GtkMenu, MenuItem as GtkMenuItem, MenuItemExt, MenuShell as GtkMenuShell, MenuShellExt, Orientation as GtkOrientation, SeparatorMenuItem as GtkSeparatorMenuItem, Widget, WidgetExt};
-pub use gtk_sys::GtkWidget as WidgetSys;
-pub use gdk_pixbuf::{Colorspace, InterpType, Pixbuf, PixbufExt};
+pub use gtk::{Align, Menu as GtkMenu, MenuItem as GtkMenuItem, MenuShell as GtkMenuShell, Orientation as GtkOrientation, SeparatorMenuItem as GtkSeparatorMenuItem, Widget};
+pub use gtk::traits::{GtkMenuItemExt, MenuShellExt, WidgetExt};
+pub use gdk_pixbuf::{Colorspace, InterpType, Pixbuf};
+//pub use gdk_pixbuf::traits::PixbufExt;
 pub use cairo::{self, Format};
 pub use gdk;
 
@@ -107,12 +107,12 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
     }
     pub fn margins(&self) -> layout::BoundarySize {
         let widget = self.widget();
-        layout::BoundarySize::Distinct(widget.get_margin_start(), widget.get_margin_top(), widget.get_margin_end(), widget.get_margin_bottom())
+        layout::BoundarySize::Distinct(widget.margin_start(), widget.margin_top(), widget.margin_end(), widget.margin_bottom())
     }
     pub fn parent(&self) -> Option<&MemberBase> {
-        if let Some(w) = self.widget().get_parent() {
+        if let Some(w) = self.widget().parent() {
             if pointer(&w.clone().upcast()).is_null() {
-                w.get_parent().map(|w| unsafe { cast_gobject(&w.upcast()).unwrap() })
+                w.parent().map(|w| unsafe { cast_gobject(&w.upcast()).unwrap() })
             } else {
                 Some(unsafe { cast_gobject(&w.upcast()).unwrap() })
             }
@@ -121,9 +121,9 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
         }
     }
     pub fn parent_mut(&mut self) -> Option<&mut MemberBase> {
-        if let Some(w) = self.widget().get_parent() {
+        if let Some(w) = self.widget().parent() {
             if pointer(&w.clone().upcast()).is_null() {
-                w.get_parent().map(|w| unsafe { cast_gobject_mut(&mut w.upcast()).unwrap() })
+                w.parent().map(|w| unsafe { cast_gobject_mut(&mut w.upcast()).unwrap() })
             } else {
                 Some(unsafe { cast_gobject_mut(&mut w.upcast()).unwrap() })
             }
@@ -132,19 +132,19 @@ impl<T: controls::Control + Sized> GtkControlBase<T> {
         }
     }
     pub fn root(&self) -> Option<&MemberBase> {
-        self.widget().get_toplevel().map(|w| unsafe { cast_gobject(&w.upcast()).unwrap() })
+        self.widget().toplevel().map(|w| unsafe { cast_gobject(&w.upcast()).unwrap() })
     }
     pub fn root_mut(&mut self) -> Option<&mut MemberBase> {
-        self.widget().get_toplevel().map(|w| unsafe { cast_gobject_mut(&mut w.upcast()).unwrap() })
+        self.widget().toplevel().map(|w| unsafe { cast_gobject_mut(&mut w.upcast()).unwrap() })
     }
     pub fn invalidate(&mut self) -> bool {
         if self.as_control().is_skip_draw() {
             return false;
         }
         let widget = self.widget();
-        if let Some(mut parent_widget) = widget.get_parent() {
+        if let Some(mut parent_widget) = widget.parent() {
             if pointer(&parent_widget.clone().upcast()).is_null() {
-                parent_widget = parent_widget.get_parent().unwrap();
+                parent_widget = parent_widget.parent().unwrap();
             }
             if let Some(mparent) = cast_gtk_widget_to_base_mut(&mut parent_widget) {
                 let (pw, ph) = mparent.as_member().is_has_size().unwrap().size();
@@ -295,16 +295,16 @@ pub fn gtk_to_orientation(a: GtkOrientation) -> layout::Orientation {
 }
 pub fn gtk_allocation_to_size<'a>(object: &'a Widget) -> (i32, i32) {
     object.queue_draw();
-    let alloc = object.get_allocation();
-    (alloc.width, alloc.height)
+    let alloc = object.allocation();
+    (alloc.width(), alloc.height())
 }
 pub fn image_to_pixbuf(src: &image::DynamicImage) -> Pixbuf {
     use image::GenericImageView;
     
     let (w, h) = src.dimensions();
-    let raw = src.to_rgba().into_raw();
+    let mut raw = src.to_rgba8().into_raw();
     let stride = Format::ARgb32.stride_for_width(w).unwrap();
-    Pixbuf::new_from_vec(raw, Colorspace::Rgb, true, 8, w as i32, h as i32, stride)
+    Pixbuf::from_mut_slice(raw.as_mut_slice(), Colorspace::Rgb, true, 8, w as i32, h as i32, stride)
 }
 fn append_item<T: controls::Member>(menu: GtkMenuShell, label: String, action: callbacks::Action, storage: &mut Vec<callbacks::Action>, item_spawn: fn(id: usize, selfptr: *mut T) -> GtkMenuItem, selfptr: *mut T) {
     let id = storage.len();
@@ -314,10 +314,10 @@ fn append_item<T: controls::Member>(menu: GtkMenuShell, label: String, action: c
     menu.append(&mi);
 }
 fn append_level<T: controls::Member>(menu: GtkMenuShell, label: String, items: Vec<types::MenuItem>, storage: &mut Vec<callbacks::Action>, item_spawn: fn(id: usize, selfptr: *mut T) -> GtkMenuItem, selfptr: *mut T) {
-    let mi = GtkMenuItem::new_with_label(label.as_str());
+    let mi = GtkMenuItem::with_label(label.as_str());
     let submenu = GtkMenu::new();
     make_menu(submenu.clone().upcast(), items, storage, item_spawn, selfptr);
-    mi.set_submenu(&submenu);
+    mi.set_submenu(Some(&submenu));
     menu.append(&mi);
 }
 pub fn make_menu<T: controls::Member>(menu: GtkMenuShell, mut items: Vec<types::MenuItem>, storage: &mut Vec<callbacks::Action>, item_spawn: fn(id: usize, selfptr: *mut T) -> GtkMenuItem, selfptr: *mut T) {

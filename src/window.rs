@@ -1,6 +1,9 @@
 use crate::common::{self, *};
 
-use gtk::{BoxExt, Box as GtkBox, ContainerExt, GtkWindowExt, MenuBar as GtkMenuBar, OrientableExt, Rectangle, Widget, Window as GtkWindowSys, WindowType};
+use glib::Propagation;
+use gtk::prelude::{MonitorExt, DisplayExtManual};
+use gtk::{Box as GtkBox, MenuBar as GtkMenuBar, Rectangle, Widget, Window as GtkWindowSys, WindowType};
+use gtk::traits::{OrientableExt, ContainerExt, GtkWindowExt, BoxExt};
 
 #[repr(C)]
 pub struct GtkWindow {
@@ -18,7 +21,7 @@ pub type Window = AMember<AContainer<ASingleContainer<ACloseable<AWindow<GtkWind
 
 impl GtkWindow {
     fn size_inner(&self) -> (u16, u16) {
-        let size = self.window.get_size();
+        let size = self.window.size();
         (size.0 as u16, size.1 as u16)
     }
     fn redraw(&mut self) {
@@ -33,12 +36,13 @@ impl GtkWindow {
 impl CloseableInner for GtkWindow {
     fn close(&mut self, skip_callbacks: bool) -> bool {
         self.skip_callbacks = skip_callbacks;
-        let glib::signal::Inhibit(inhibit) = on_widget_deleted(&self.window, unsafe { &mem::zeroed() });
-        if inhibit {
-            false
-        } else {
-            self.window.destroy();
-            true
+        match on_widget_deleted(&self.window, &gdk::Event::new(gdk::EventType::Nothing)) {
+            Propagation::Proceed => {
+                use gtk::prelude::WidgetExtManual;
+                unsafe { self.window.destroy() };
+                true
+            }
+            Propagation::Stop => false
         }
     }
     fn on_close(&mut self, callback: Option<callbacks::OnClose>) {
@@ -59,9 +63,11 @@ impl<O: controls::Window> NewWindowInner<O> for GtkWindow {
             size: match start_size {
                 types::WindowStartSize::Exact(w, h) => (w as i32, h as i32),
                 types::WindowStartSize::Fullscreen => {
-                    use gdk::ScreenExt;
-                    let screen = w.get_screen().unwrap();
-                    (screen.get_width(), screen.get_height())
+                    let dim = w.window().and_then(|ref wi| GtkWindowExt::screen(&w).and_then(|screen| screen.display().monitor_at_window(wi).map(|m| m.workarea())));
+                    match dim {
+                        Some(dim) => (dim.width(), dim.height()),
+                        None => (640, 480)
+                    }
                 }
             },
             window: w,
@@ -139,13 +145,13 @@ impl WindowInner for GtkWindow {
         self.size_inner()
     }
     fn position(&self) -> (i32, i32) {
-        self.window.get_position()
+        self.window.position()
     }
 }
 
 impl HasLabelInner for GtkWindow {
     fn label(&self, _: &MemberBase) -> ::std::borrow::Cow<str> {
-        Cow::Owned(self.window.get_title().unwrap_or(String::new()))
+        Cow::Owned(self.window.title().map(String::from).unwrap_or(String::new()))
     }
     fn set_label(&mut self, _: &mut MemberBase, label: Cow<str>) {
         self.window.set_title(&label);
@@ -175,8 +181,8 @@ impl SingleContainerInner for GtkWindow {
                 self2,
                 0,
                 0,
-                utils::coord_to_size(cmp::max(0, pw as i32 - self.window.get_margin_start() - self.window.get_margin_end())),
-                utils::coord_to_size(cmp::max(0, ph as i32 - self.window.get_margin_top() - self.window.get_margin_bottom())),
+                utils::coord_to_size(cmp::max(0, pw as i32 - self.window.margin_start() - self.window.margin_end())),
+                utils::coord_to_size(cmp::max(0, ph as i32 - self.window.margin_top() - self.window.margin_bottom())),
             );
         }
         self.child = child;
@@ -242,7 +248,7 @@ impl HasNativeIdInner for GtkWindow {
 
 impl MemberInner for GtkWindow {}
 
-fn on_widget_deleted<'t, 'e>(this: &'t GtkWindowSys, _: &'e gdk::Event) -> glib::signal::Inhibit {
+fn on_widget_deleted<'t, 'e>(this: &'t GtkWindowSys, _: &'e gdk::Event) -> Propagation {
     let mut window = this.clone().upcast::<Widget>();
     let window = common::cast_gtk_widget_to_member_mut::<Window>(&mut window);
     let mut inhibit = false;
@@ -257,7 +263,7 @@ fn on_widget_deleted<'t, 'e>(this: &'t GtkWindowSys, _: &'e gdk::Event) -> glib:
             }
         }
     }
-    glib::signal::Inhibit(inhibit)
+    if inhibit { Propagation::Stop } else { Propagation::Proceed }
 }
 
 fn on_resize_move<O: controls::Window>(this: &GtkWindowSys, allo: &Rectangle) {
@@ -266,12 +272,12 @@ fn on_resize_move<O: controls::Window>(this: &GtkWindowSys, allo: &Rectangle) {
     if let Some(window) = window {
         let (width, mut height) = window.inner().inner().inner().inner().inner().size;
         if let Some(ref menu) = window.inner().inner().inner().inner().inner().menu_bar {
-            let allo = menu.get_allocation();
-            height -= allo.height;
+            let allo = menu.allocation();
+            height -= allo.height();
         }
         
-        if width != allo.width || height != allo.height {
-            window.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().size = (cmp::max(0, allo.width), cmp::max(0, allo.height));
+        if width != allo.width() || height != allo.height() {
+            window.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().size = (cmp::max(0, allo.width()), cmp::max(0, allo.height()));
             if let Some(ref mut child) = window.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().child {
                 child.measure(width as u16, height as u16);
                 child.draw(Some((0, 0)));

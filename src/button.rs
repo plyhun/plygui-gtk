@@ -1,8 +1,8 @@
 use crate::common::{self, *};
 
-use gtk::{Bin, BinExt, Button as GtkButtonSys, ButtonExt, Label, LabelExt};
+use gtk::{Bin, Button as GtkButtonSys, Label};
 use gdk::ModifierType;
-use pango::LayoutExt;
+use gtk::traits::{BinExt, ButtonExt, LabelExt};
 
 use std::borrow::Cow;
 
@@ -51,7 +51,7 @@ impl ButtonInner for GtkButton {
 impl HasLabelInner for GtkButton {
     fn label(&self, _: &MemberBase) -> Cow<str> {
         let self_widget: Object = Object::from(self.base.widget.clone()).into();
-        Cow::Owned(self_widget.downcast::<GtkButtonSys>().unwrap().get_label().unwrap_or(String::new()))
+        Cow::Owned(self_widget.downcast::<GtkButtonSys>().unwrap().label().map(String::from).unwrap_or(String::new()))
     }
     fn set_label(&mut self, _: &mut MemberBase, label: Cow<str>) {
         let self_widget: Object = Object::from(self.base.widget.clone()).into();
@@ -66,7 +66,8 @@ impl ClickableInner for GtkButton {
     fn click(&mut self, skip_callbacks: bool) {
         self.skip_callbacks = skip_callbacks;
         let self_widget: Object = Object::from(self.base.widget.clone()).into();
-        gtk::test_widget_click(&self_widget.downcast::<GtkButtonSys>().unwrap(), 1, ModifierType::BUTTON1_MASK);
+        let self_widget = self_widget.downcast_ref::<gtk::Widget>().unwrap();
+        unsafe { ::gtk_sys::gtk_test_widget_click(self_widget.to_glib_none().0, 1, ModifierType::BUTTON1_MASK.bits()); }
     }
 }
 
@@ -147,11 +148,11 @@ impl Drawable for GtkButton {
                         let widget: Object = self.base.widget.clone().into();
                         if label_size.0 < 0 {
                             let bin = widget.clone().downcast::<Bin>().unwrap();
-                            let label = bin.get_child().unwrap().downcast::<Label>().unwrap();
-                            label_size = label.get_layout().unwrap().get_pixel_size();
+                            let label = bin.child().unwrap().downcast::<Label>().unwrap();
+                            label_size = label.layout().unwrap().pixel_size();
                         }
                         let widget = widget.downcast::<Widget>().unwrap();
-                        label_size.0 + widget.get_margin_start() + widget.get_margin_end() + DEFAULT_PADDING + DEFAULT_PADDING
+                        label_size.0 + widget.margin_start() + widget.margin_end() + DEFAULT_PADDING + DEFAULT_PADDING
                     }
                 };
                 let h = match control.layout.height {
@@ -161,11 +162,11 @@ impl Drawable for GtkButton {
                         let widget: Object = self.base.widget.clone().into();
                         if label_size.1 < 0 {
                             let bin = widget.clone().downcast::<Bin>().unwrap();
-                            let label = bin.get_child().unwrap().downcast::<Label>().unwrap();
-                            label_size = label.get_layout().unwrap().get_pixel_size();
+                            let label = bin.child().unwrap().downcast::<Label>().unwrap();
+                            label_size = label.layout().unwrap().pixel_size();
                         }
                         let widget = widget.downcast::<Widget>().unwrap();
-                        label_size.1 + widget.get_margin_top() + widget.get_margin_bottom() + DEFAULT_PADDING + DEFAULT_PADDING
+                        label_size.1 + widget.margin_top() + widget.margin_bottom() + DEFAULT_PADDING + DEFAULT_PADDING
                     }
                 };
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)
@@ -193,7 +194,7 @@ fn on_size_allocate<O: controls::Button>(this: &::gtk::Widget, allo: &::gtk::Rec
     let ll = common::cast_gtk_widget_to_member_mut::<Button>(&mut ll).unwrap();
 
     let measured_size = ll.inner().base.measured;
-    if allo.width != measured_size.0 as i32 || allo.height != measured_size.1 as i32 {
+    if allo.width() != measured_size.0 as i32 || allo.height() != measured_size.1 as i32 {
         ll.call_on_size::<O>(measured_size.0 as u16, measured_size.1 as u16);
     }
 }

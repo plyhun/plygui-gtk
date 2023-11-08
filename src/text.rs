@@ -1,7 +1,7 @@
 use crate::common::{self, *};
 
-use gtk::{Label, LabelExt};
-use pango::LayoutExt;
+use gtk::{Label};
+use gtk::traits::{LabelExt, LayoutExt};
 
 use std::borrow::Cow;
 
@@ -44,7 +44,7 @@ impl TextInner for GtkText {
 
 impl HasLabelInner for GtkText {
     fn label<'a>(&'a self, _: &MemberBase) -> Cow<str> {
-        Cow::Owned(self.base.widget().downcast::<Label>().unwrap().get_text().unwrap_or(String::new()))
+        Cow::Owned(self.base.widget().downcast::<Label>().unwrap().text().into())
     }
     fn set_label(&mut self, _: &mut MemberBase, label: Cow<str>) {
         self.base.widget().downcast::<Label>().unwrap().set_text(&label)
@@ -127,9 +127,9 @@ impl Drawable for GtkText {
                         let self_widget = self.base.widget();
                         if label_size.0 < 0 {
                             let label = Object::from(self.base.widget.clone()).downcast::<Label>().unwrap();
-                            label_size = label.get_layout().unwrap().get_pixel_size();
+                            label_size = label.layout().unwrap().pixel_size();
                         }
-                        label_size.0 + self_widget.get_margin_start() + self_widget.get_margin_end()
+                        label_size.0 + self_widget.margin_start() + self_widget.margin_end()
                     }
                 };
                 let h = match control.layout.height {
@@ -139,9 +139,9 @@ impl Drawable for GtkText {
                         let self_widget = self.base.widget();
                         if label_size.1 < 0 {
                             let label = Object::from(self.base.widget.clone()).downcast::<Label>().unwrap();
-                            label_size = label.get_layout().unwrap().get_pixel_size();
+                            label_size = label.layout().unwrap().pixel_size();
                         }
-                        label_size.1 + self_widget.get_margin_top() + self_widget.get_margin_bottom()
+                        label_size.1 + self_widget.margin_top() + self_widget.margin_bottom()
                     }
                 };
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)

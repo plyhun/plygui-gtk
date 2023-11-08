@@ -152,15 +152,10 @@ fn generate(kls: &str, cc_build: &mut cc::Build) {
     
     let mut rs = File::create(format!("src/reckless/_{}_.rs", snake)).unwrap();
     write!(rs, r#"
-            use glib::object::{{Downcast, IsA}};
+            use glib::Cast;
+            use glib::object::IsA;
             use glib::translate::*;
             use gtk::{{ {}, Buildable, Container, Widget }};
-            
-            use glib_sys as glib_ffi;
-            use gobject_sys as gobject_ffi;
-            use gtk_sys as gtk_ffi;
-            
-            use std::{{mem, ptr}};
             
             pub mod ffi {{
                 extern "C" {{
@@ -191,16 +186,11 @@ fn generate(kls: &str, cc_build: &mut cc::Build) {
                 }}
             }}
             
-            glib_wrapper! {{
-                pub struct Reckless{}(Object<ffi::GtkReckless{}, ffi::GtkReckless{}Class>): [
-                     {} => gtk_ffi::Gtk{},
-                     Container => gtk_ffi::GtkContainer,
-                     Widget => gtk_ffi::GtkWidget,
-                     Buildable => gtk_ffi::GtkBuildable,
-                ];
+            wrapper! {{
+                pub struct Reckless{}(Object<ffi::GtkReckless{}, ffi::GtkReckless{}Class>) @extends {}, Container, Widget, @implements Buildable;
             
                 match fn {{
-                    get_type => || ffi::reckless_{}_get_type(),
+                    type_ => || ffi::reckless_{}_get_type(),
                 }}
             }}
             
@@ -213,7 +203,7 @@ fn generate(kls: &str, cc_build: &mut cc::Build) {
                             panic!("GTK has not been initialized. Call `gtk::init` first.");
                         }}
                     }}
-                    unsafe {{ Widget::from_glib_none(ffi::reckless_{}_new()).downcast_unchecked() }}
+                    unsafe {{ Widget::from_glib_none(ffi::reckless_{}_new()).unsafe_cast() }}
                 }}
             }}
             impl Default for Reckless{} {{
@@ -228,7 +218,6 @@ fn generate(kls: &str, cc_build: &mut cc::Build) {
         camel.clone(),
         snake.clone(),
         snake.clone(),
-        camel.clone(),
         camel.clone(),
         camel.clone(),
         camel.clone(),
@@ -278,7 +267,7 @@ fn main() {
         generate("text_view", &mut cc_build);
         generate("label", &mut cc_build);
         generate("progress_bar", &mut cc_build);
-        generate("tree_view", &mut cc_build);
+        generate("tree_view", &mut cc_build); 
         generate("grid", &mut cc_build);
         generate("list_box", &mut cc_build);
         generate("scrolled_window", &mut cc_build);

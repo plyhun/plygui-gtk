@@ -1,6 +1,8 @@
 use crate::common::{self, *};
 
-use gtk::{ProgressBar as GtkProgressBarSys, ProgressBarExt, WidgetExt};
+use gtk::{ProgressBar as GtkProgressBarSys};
+use gtk::traits::{ProgressBarExt, WidgetExt};
+
 pub type ProgressBar = AMember<AControl<AProgressBar<GtkProgressBar>>>;
 
 #[repr(C)]
@@ -42,14 +44,14 @@ impl HasProgressInner for GtkProgressBar {
 	fn progress(&self, _base: &MemberBase) -> types::Progress {
 	    let self_widget: Object = Object::from(self.base.widget.clone()).into();
         let progress_bar = self_widget.downcast::<GtkProgressBarSys>().unwrap();
-        if progress_bar.get_inverted() {
+        if progress_bar.is_inverted() {
             return types::Progress::None;
         }
-        if progress_bar.get_pulse_step() > 0.0 {
+        if progress_bar.pulse_step() > 0.0 {
             return types::Progress::Undefined;
         }
         types::Progress::Value(
-            (progress_bar.get_fraction() * 100.0) as u32,
+            (progress_bar.fraction() * 100.0) as u32,
             100
         )
     }
@@ -149,7 +151,7 @@ impl Drawable for GtkProgressBar {
                     layout::Size::WrapContent => {
                         let widget: Object = self.base.widget.clone().into();
                         let widget = widget.downcast::<Widget>().unwrap();
-                        24 + widget.get_margin_start() + widget.get_margin_end() + DEFAULT_PADDING + DEFAULT_PADDING
+                        24 + widget.margin_start() + widget.margin_end() + DEFAULT_PADDING + DEFAULT_PADDING
                     }
                 };
                 let h = match control.layout.height {
@@ -158,7 +160,7 @@ impl Drawable for GtkProgressBar {
                     layout::Size::WrapContent => {
                         let widget: Object = self.base.widget.clone().into();
                         let widget = widget.downcast::<Widget>().unwrap();
-                        24 + widget.get_margin_top() + widget.get_margin_bottom() + DEFAULT_PADDING + DEFAULT_PADDING
+                        24 + widget.margin_top() + widget.margin_bottom() + DEFAULT_PADDING + DEFAULT_PADDING
                     }
                 };
                 (cmp::max(0, w) as u16, cmp::max(0, h) as u16)
