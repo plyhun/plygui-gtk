@@ -2,7 +2,7 @@ pub use plygui_api::sdk::*;
 pub use plygui_api::{callbacks, controls, defaults, ids, layout, types::{self, adapter, matrix}, utils};
 
 pub use glib::translate::ToGlibPtr;
-pub use glib::{Type, Value, Object, Cast};
+pub use glib::{Type, Value, Object, Cast, Bytes};
 pub use gobject_sys::GObject;
 pub use gtk::{Align, Menu as GtkMenu, MenuItem as GtkMenuItem, MenuShell as GtkMenuShell, Orientation as GtkOrientation, SeparatorMenuItem as GtkSeparatorMenuItem, Widget};
 pub use gtk::traits::{GtkMenuItemExt, MenuShellExt, WidgetExt};
@@ -302,9 +302,10 @@ pub fn image_to_pixbuf(src: &image::DynamicImage) -> Pixbuf {
     use image::GenericImageView;
     
     let (w, h) = src.dimensions();
-    let mut raw = src.to_rgba8().into_raw();
+    let raw = src.to_bgra().into_raw();
     let stride = Format::ARgb32.stride_for_width(w).unwrap();
-    Pixbuf::from_mut_slice(raw.as_mut_slice(), Colorspace::Rgb, true, 8, w as i32, h as i32, stride)
+    Pixbuf::from_bytes(&Bytes::from_owned(raw), Colorspace::Rgb, true, 8, w as i32, h as i32, stride)
+    //Pixbuf::from_mut_slice(raw.as_mut_slice(), Colorspace::Rgb, true, 8, w as i32, h as i32, stride)
 }
 fn append_item<T: controls::Member>(menu: GtkMenuShell, label: String, action: callbacks::Action, storage: &mut Vec<callbacks::Action>, item_spawn: fn(id: usize, selfptr: *mut T) -> GtkMenuItem, selfptr: *mut T) {
     let id = storage.len();
