@@ -40,9 +40,17 @@ static void reckless_cell_renderer_get_preferred_width_for_height(GtkCellRendere
                                                                   gint                    *natural_width);
 
 enum {
-	PROP_CELL = 1,
+	PROP_CELL = 1
 };
 static gpointer parent_class;
+
+void reckless_cell_renderer_set_consider_headers(RecklessCellRenderer *cellrenderer, gboolean value) {
+	cellrenderer->headers = value;
+}
+
+gboolean reckless_cell_renderer_get_consider_headers(RecklessCellRenderer *cellrenderer) {
+	return cellrenderer->headers;
+}
 
 GType reckless_cell_renderer_get_type(void) {
 	static GType cell__type = 0;
@@ -87,7 +95,7 @@ static void reckless_cell_renderer_class_init(RecklessCellRendererClass *clz) {
 	cell_class->get_preferred_height_for_width = reckless_cell_renderer_get_preferred_height_for_width;
 
 	g_object_class_install_property(object_class, PROP_CELL,
-	g_param_spec_pointer("cell", "Cell", "Widget to display", G_PARAM_READWRITE));
+		g_param_spec_pointer("cell", "Cell", "Widget to display", G_PARAM_READWRITE));
 }
 
 
@@ -107,7 +115,6 @@ static void reckless_cell_renderer_get_property(GObject *object, guint param_id,
 	case PROP_CELL:
 		g_value_set_pointer(value, cell->cell);
 		break;
-
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, param_id, psec);
 		break;
@@ -122,7 +129,6 @@ static void reckless_cell_renderer_set_property(GObject *object, guint param_id,
 	case PROP_CELL:
 		cell->cell = g_value_get_pointer(value);
 		break;
-
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, param_id, pspec);
 		break;
@@ -199,37 +205,36 @@ static void reckless_cell_renderer_get_size(GtkCellRenderer *cell,
 	if (cell_area) {
 		if (x_offset) {
 			*x_offset = (cell_area->width - *width);
-			*x_offset = MAX(*x_offset, 0);
 		}
 		if (y_offset) {
 			*y_offset = (cell_area->height - *height);
-			*y_offset = MAX(*y_offset, 0);
 		}
 	}
 }
 static void reckless_cell_renderer_render(GtkCellRenderer *cell, cairo_t *ctx,
 		GtkWidget *widget, const GdkRectangle *background_area,
 		const GdkRectangle *cell_area, GtkCellRendererState state) {
-	GdkRectangle allo;
-	gint calc_width = 0;
-	gint calc_height = 0;
-
-	cairo_save(ctx);
-
 	if (cell) {
 		RecklessCellRenderer *rc = RECKLESS_CELL_RENDERER(cell);
 		if (GTK_IS_WIDGET(rc->cell)) {
+			GdkRectangle allo;
+			gint calc_width = 0;
+			gint calc_height = 0;
+
+			cairo_save(ctx);
+
 			gtk_widget_get_size_request(rc->cell, &calc_width, &calc_height);
 	
-			allo.x = MAX(cell_area->x, 0);
-			allo.y = MAX(cell_area->y, 0);
-			allo.width = calc_width;
-			allo.height = calc_height;
+			allo.x = cell_area->x;
+			allo.y = cell_area->y + (rc->headers ? cell_area->height : 0);
+			allo.width = cell_area->width;
+			allo.height = cell_area->height;
 
 			gtk_widget_size_allocate(rc->cell, &allo);
-			cairo_translate(ctx, allo.x, allo.y);
+			cairo_translate(ctx, allo.x, allo.y - (rc->headers ? cell_area->height : 0));
 			gtk_widget_draw(rc->cell, ctx);
+
+			cairo_restore(ctx);
 		}
-	}
-	cairo_restore(ctx);
+	}	
 }

@@ -2,11 +2,14 @@ use glib::{Object, Cast};
 use glib::object::IsA;
 use glib::translate::*;
 use gtk::CellRenderer;
+use glib_sys;
 
 pub mod ffi {
     extern "C" {
         pub fn reckless_cell_renderer_get_type() -> ::glib_sys::GType;
         pub fn reckless_cell_renderer_new() -> *mut ::gobject_sys::GObject;
+        pub fn reckless_cell_renderer_set_consider_headers(cellrenderer: *mut GtkRecklessCellRenderer, value: glib_sys::gboolean);
+        pub fn reckless_cell_renderer_get_consider_headers(cellrenderer: *const GtkRecklessCellRenderer) -> glib_sys::gboolean;
     }
 
     #[repr(C)]
@@ -51,6 +54,14 @@ impl RecklessCellRenderer {
             }
         }
         unsafe { Object::from_glib_none(ffi::reckless_cell_renderer_new()).unsafe_cast() }
+    }
+    pub fn set_consider_headers(&mut self, value: bool) {
+        unsafe {
+            ffi::reckless_cell_renderer_set_consider_headers(self.to_glib_none().0, value.into_glib());
+        }
+    }
+    pub fn is_consider_headers(&self) -> bool {
+        unsafe { from_glib(ffi::reckless_cell_renderer_get_consider_headers(self.to_glib_none().0)) }
     }
 }
 impl Default for RecklessCellRenderer {

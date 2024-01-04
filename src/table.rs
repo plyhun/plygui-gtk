@@ -328,7 +328,7 @@ impl<O: controls::Table> NewTableInner<O> for GtkTable {
             store: ListStore::new((0..width).into_iter().map(|_| Type::POINTER).collect::<Vec<_>>().as_slice()),
             data: Default::default(),
             h_left_clicked: None,
-            width, height
+            width, height,
         };
         common::set_pointer(&mut this.tree_view.clone().upcast(), ptr);
         this.base.set_pointer(ptr);  
@@ -343,7 +343,8 @@ impl TableInner for GtkTable {
         self.tree_view.is_headers_visible()
     }
     fn set_headers_visible(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &mut AdaptedBase, visible: bool) {
-        self.tree_view.set_headers_visible(visible)
+        self.tree_view.set_headers_visible(visible);
+        self.renderer.set_consider_headers(visible);
     }
     fn with_adapter_initial_size(adapter: Box<dyn types::Adapter>, width: usize, height: usize) -> Box<dyn controls::Table> {
         let mut b: Box<mem::MaybeUninit<Table>> = Box::new_uninit();

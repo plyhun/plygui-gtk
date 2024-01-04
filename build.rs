@@ -41,7 +41,8 @@ fn generate(kls: &str, cc_build: &mut cc::Build) {
                 *minimal = *natural = 1;
             }}
             static void reckless_{}_get_preferred_height_and_baseline_for_width (GtkWidget *widget, int width, int *minimum_height, int *natural_height, int *minimum_baseline, int *natural_baseline) {{
-                *minimum_height = *natural_height = *minimum_baseline = *natural_baseline = 1;
+                *minimum_height = *natural_height = 1;
+                //*minimum_baseline = *natural_baseline = -1;
             }}
             static void reckless_{}_get_preferred_size (GtkWidget *widget, GtkRequisition *minimum_size, GtkRequisition *natural_size) {{
                 minimum_size->width = minimum_size->height = natural_size->width = natural_size->height = 1;

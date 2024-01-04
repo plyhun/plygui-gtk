@@ -13,6 +13,7 @@ typedef struct _RecklessCellRendererClass RecklessCellRendererClass;
 struct _RecklessCellRenderer {
 	GtkCellRenderer parent;
 	GtkWidget *cell;
+	gboolean headers;
 };
 
 struct _RecklessCellRendererClass {
@@ -22,3 +23,7 @@ struct _RecklessCellRendererClass {
 GType reckless_cell_renderer_get_type(void);
 
 GObject* reckless_cell_renderer_new(void);
+
+void reckless_cell_renderer_set_consider_headers(RecklessCellRenderer *cellrenderer, gboolean value);
+
+gboolean reckless_cell_renderer_get_consider_headers(RecklessCellRenderer *cellrenderer);

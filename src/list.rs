@@ -30,7 +30,7 @@ impl GtkList {
                 let widget = Object::from(widget.clone()).downcast::<Widget>().unwrap();
                 widget.connect_draw(|this,_| {
                     this.parent().unwrap().queue_draw();
-                    Propagation::Stop
+                    Propagation::Proceed
                 });
             }
             self.boxc.insert(&Object::from(widget).downcast::<Widget>().unwrap(), i as i32);
