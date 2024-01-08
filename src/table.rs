@@ -4,9 +4,10 @@ use crate::{common::{self, matrix::*, *}, tree};
 use glib::{translate::*, ObjectType};
 use gtk::prelude::{GtkListStoreExtManual, GtkListStoreExt};
 use gtk::traits::{TreeSelectionExt, TreeViewExt, ContainerExt, CellRendererExt, TreeViewColumnExt, ScrolledWindowExt, TreeModelExt};
-use gtk::{TreeView, SelectionMode, TreeViewColumn, ListStore, ScrolledWindow, PolicyType, EventControllerMotion};
+use gtk::{TreeView, SelectionMode, TreeViewColumn, ListStore, TreePath, PolicyType};
 use glib::{Propagation, translate::ToGlibPtrMut};
 use gobject_sys::g_value_set_pointer;
+use gtk_sys::GtkTreeView;
 
 pub type Table = AMember<AControl<AContainer<AAdapted<ATable<GtkTable>>>>>;
 
@@ -333,6 +334,8 @@ impl<O: controls::Table> NewTableInner<O> for GtkTable {
         common::set_pointer(&mut this.tree_view.clone().upcast(), ptr);
         this.base.set_pointer(ptr);  
         this.tree_view.set_model(Some(&this.store));
+        this.tree_view.set_activate_on_single_click(true);
+        this.tree_view.connect_row_activated(on_activated::<O>);
         this.renderer.set_visible(true);
         this.base.widget().show_all();
         this
@@ -680,4 +683,27 @@ fn column_resized(tvc: &TreeViewColumn) {
             });
         });
     });
+}
+fn on_activated<O: controls::Table>(this: &TreeView, path: &TreePath, col: &TreeViewColumn) {
+    let i = path.indices().iter().map(|i| *i as usize).collect::<Vec<_>>();
+    if i.len() != 1 {
+        return;
+    }
+    let x = gtk_tree_view_column_get_index(col);
+    let mut ll = this.clone().upcast::<Widget>();
+    let ll = common::cast_gtk_widget_to_member_mut::<Table>(&mut ll).unwrap();
+    let mut ll2 = this.clone().upcast::<Widget>();
+    let ll2 = common::cast_gtk_widget_to_member_mut::<Table>(&mut ll2).unwrap();
+    if let Some(item_view) = ll.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().data.cell_at_mut(&[i[0], x]).unwrap().control.as_mut() {
+        if let Some(ref mut callback) = ll2.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().h_left_clicked {
+            let mut ll2 = this.clone().upcast::<Widget>();
+            let ll2 = common::cast_gtk_widget_to_member_mut::<O>(&mut ll2).unwrap();
+            (callback.as_mut())(ll2, i.as_slice(), item_view.as_mut());
+        }
+    }
+}
+fn gtk_tree_view_column_get_index (column: &TreeViewColumn) -> usize {
+    let tv = unsafe { column.tree_view().unwrap().unsafe_cast::<TreeView>() };
+    let cols = tv.columns();
+    cols.iter().enumerate().find(|col| col.1 == column).map(|col| col.0).unwrap()
 }
