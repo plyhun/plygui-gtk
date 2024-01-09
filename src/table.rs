@@ -83,7 +83,9 @@ impl GtkTable {
             col.set_visible(true);
             col.set_sizing(gtk::TreeViewColumnSizing::Fixed);
             col.set_min_width(1);
+            col.set_clickable(true);
             col.connect_width_notify(column_resized);
+            col.connect_clicked(column_clicked);
             GtkWidget::from(col.upcast::<glib::Object>())
         };
         self.data.cols.insert(index, Column {
@@ -190,37 +192,15 @@ impl GtkTable {
         self.remove_cell_inner(base, x, y);
         self.add_cell_inner(base, x, y);
     }
-/* 
+
     fn update_item_inner(&mut self, base: &mut MemberBase, indexes: &[usize], node: &adapter::Node) {
     	let this: &mut Table = unsafe { utils::base_to_impl_mut(base) };
-        
-        let mut data = &mut self.data.0;
-        let mut iter = None;
-        for i in 0..indexes.len() {
-            let index = indexes[i];
-            let end = i+1 >= indexes.len();
-            
-            iter = self.store.iter_nth_child(iter.as_ref(), index as i32);
-
-            if end {
-            	data[index].expanded = if let adapter::Node::Branch(expanded) = node { *expanded } else { false };
-                match data[index].node() {
-                	adapter::Node::Branch(expanded) => {
-                		let path = this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().store.get_path(iter.as_ref().unwrap()).unwrap();
-                		if expanded {
-                			this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.expand_row(&path, false); 
-                		} else {
-                			this.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().boxc.collapse_row(&path); 
-                		}
-                	},
-                	_ => {}
-                }
-                return;
-            } else {
-                data = &mut data[index].branches;
-            }
+        match indexes.len() {
+            2 => self.change_cell_inner(base, indexes[0], indexes[1]),
+            1 => self.change_column_inner(base, indexes[0]),
+            _ => {}
         }
-    }*/
+    }
     fn resize_row(&mut self, base: &ControlBase, index: usize, size: layout::Size, force: bool) {
         let (w, h) = base.measured;
             let height = match size {
@@ -684,21 +664,35 @@ fn column_resized(tvc: &TreeViewColumn) {
         });
     });
 }
+fn column_clicked(tvc: &TreeViewColumn) {
+    let mut this = tvc.tree_view().unwrap();
+    let ll = common::cast_gtk_widget_to_member_mut::<Table>(&mut this).unwrap();
+    let x = gtk_tree_view_column_get_index(tvc);
+    if let Some(item_view) = ll.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().data.column_at_mut(x).and_then(|col| col.control.as_mut()) {
+        let ll2 = common::cast_gtk_widget_to_member_mut::<Table>(&mut this).unwrap();
+        if let Some(ref mut callback) = ll2.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().h_left_clicked {
+            let mut ll2 = this.clone().upcast::<Widget>();
+            let ll2 = common::cast_gtk_widget_to_member_mut::<Table>(&mut ll2).unwrap();
+            (callback.as_mut())(ll2, &[x], item_view.as_mut());
+        }
+    }
+}
 fn on_activated<O: controls::Table>(this: &TreeView, path: &TreePath, col: &TreeViewColumn) {
     let i = path.indices().iter().map(|i| *i as usize).collect::<Vec<_>>();
     if i.len() != 1 {
         return;
     }
     let x = gtk_tree_view_column_get_index(col);
+    let index = [i[0], x];
     let mut ll = this.clone().upcast::<Widget>();
     let ll = common::cast_gtk_widget_to_member_mut::<Table>(&mut ll).unwrap();
     let mut ll2 = this.clone().upcast::<Widget>();
     let ll2 = common::cast_gtk_widget_to_member_mut::<Table>(&mut ll2).unwrap();
-    if let Some(item_view) = ll.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().data.cell_at_mut(&[i[0], x]).unwrap().control.as_mut() {
+    if let Some(item_view) = ll.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().data.cell_at_mut(&index).and_then(|cell| cell.control.as_mut()) {
         if let Some(ref mut callback) = ll2.inner_mut().inner_mut().inner_mut().inner_mut().inner_mut().h_left_clicked {
             let mut ll2 = this.clone().upcast::<Widget>();
             let ll2 = common::cast_gtk_widget_to_member_mut::<O>(&mut ll2).unwrap();
-            (callback.as_mut())(ll2, i.as_slice(), item_view.as_mut());
+            (callback.as_mut())(ll2, &index, item_view.as_mut());
         }
     }
 }
