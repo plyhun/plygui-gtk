@@ -477,6 +477,8 @@ impl HasLayoutInner for GtkTable {
 impl ControlInner for GtkTable {
     fn on_added_to_container(&mut self, member: &mut MemberBase, control: &mut ControlBase, _parent: &dyn controls::Container, x: i32, y: i32, pw: u16, ph: u16) {
         let parent = self.tree_view.clone();
+        self.measure(member, control, pw, ph);
+        control.coords = Some((x, y));
         let this: &mut Table = unsafe { utils::base_to_impl_mut(member) };
         self.data.cols.iter_mut().enumerate().for_each(|(index, col)| {
             //col.control.as_mut().map(|control| set_parent(control.as_mut(), Some(&parent)));
@@ -492,8 +494,6 @@ impl ControlInner for GtkTable {
                         .map(|control| set_parent(control.as_mut(), Some(&parent)));
                 });
         });
-        self.measure(member, control, pw, ph);
-        control.coords = Some((x, y));
         self.draw(member, control);
     }
     fn on_removed_from_container(&mut self, _: &mut MemberBase, _: &mut ControlBase, _: &dyn controls::Container) {
